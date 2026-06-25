@@ -63,6 +63,10 @@ export class StateColumn extends LimitedColumn {
     return [...this.expTodo.stream(), ...this.stdTodo.stream()].sort(this.comparator);
   }
 
+  getExpeditableStandardCards(day: Day): Card[] {
+    return this.stdTodo.stream().filter((c) => c.isExpeditable(day));
+  }
+
   pull(context: Context, cos: ClassOfService): Card | undefined {
     this.doTheWork(context);
     return this.done(cos).poll();
@@ -168,6 +172,22 @@ export class StateColumn extends LimitedColumn {
       this.stdTodo.remove(card);
       this.expTodo.add(card);
     }
+  }
+
+  manualExpedite(card: Card, day: Day): void {
+    if (!this.stdTodo.contains(card)) {
+      throw new Error(`Card not in standard queue: ${card.getName()}`);
+    }
+    if (!card.isExpeditable(day)) {
+      throw new Error(`Card not expeditable: ${card.getName()}`);
+    }
+    this.stdTodo.remove(card);
+    this.expTodo.add(card);
+  }
+
+  clearDiceAssignments(): void {
+    this.groups = [];
+    this.rolled = false;
   }
 
   clear(): void {

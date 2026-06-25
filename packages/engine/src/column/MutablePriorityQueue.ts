@@ -1,10 +1,12 @@
 export class MutablePriorityQueue<T> {
   private items: T[] = [];
+  private manualOrder = false;
 
   constructor(private comparator: (a: T, b: T) => number) {}
 
   setComparator(comparator: (a: T, b: T) => number): void {
     this.comparator = comparator;
+    this.manualOrder = false;
     this.items.sort(this.comparator);
   }
 
@@ -14,6 +16,7 @@ export class MutablePriorityQueue<T> {
 
   add(item: T): void {
     this.items.push(item);
+    this.manualOrder = false;
     this.items.sort(this.comparator);
   }
 
@@ -45,7 +48,24 @@ export class MutablePriorityQueue<T> {
   }
 
   stream(): T[] {
+    if (this.manualOrder) {
+      return [...this.items];
+    }
     return [...this.items].sort(this.comparator);
+  }
+
+  setOrder(orderedItems: T[]): void {
+    const remaining = new Set(this.items);
+    for (const item of orderedItems) {
+      if (!remaining.has(item)) {
+        throw new Error('Item not in queue');
+      }
+    }
+    if (orderedItems.length !== this.items.length) {
+      throw new Error('Order must include all items');
+    }
+    this.items = [...orderedItems];
+    this.manualOrder = true;
   }
 
   [Symbol.iterator](): Iterator<T> {

@@ -48,6 +48,22 @@ export class Options extends AbstractColumn {
     this.cards.setComparator(comparator);
   }
 
+  reorder(cardNames: string[]): void {
+    const cards = this.getCards();
+    const byName = new Map(cards.map((c) => [c.getName(), c]));
+    const ordered = cardNames.map((name) => {
+      const card = byName.get(name);
+      if (!card) {
+        throw new Error(`Card not in backlog: ${name}`);
+      }
+      return card;
+    });
+    if (ordered.length !== cards.length) {
+      throw new Error('Reorder must include all backlog cards');
+    }
+    this.cards.setOrder(ordered);
+  }
+
   clear(): void {
     this.cards.clear();
   }

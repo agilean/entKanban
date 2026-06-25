@@ -6,6 +6,12 @@ import type { Instruction } from './instructions/Instruction.js';
 import type { DiceAssignmentStrategy } from './policies/DiceAssignmentStrategy.js';
 import { ComplexDiceAssignmentStrategy } from './policies/ComplexDiceAssignmentStrategy.js';
 
+export interface BlockerRollResult {
+  cardName: string;
+  roll: number;
+  delta: number;
+}
+
 export class Day {
   private readonly diceAssignmentStrategy: DiceAssignmentStrategy;
   private readonly instructions: Instruction[];
@@ -31,6 +37,46 @@ export class Day {
     this.assignDice(board);
   }
 
+  adjustWipLimits(board: Board): void {
+    board.adjustLimits(this.ordinal);
+  }
+
+  removeBlockers(board: Board): BlockerRollResult[] {
+    const results: BlockerRollResult[] = [];
+    for (const card of board.getStateColumn(State.DEVELOPMENT).getIncompleteCards()) {
+      if (!card.isBlocked() || !card.getBlocker()) {
+        continue;
+      }
+      const roll = new RandomDice().roll();
+      const delta = Math.min(roll, card.getBlocker()!.getRemainingWork());
+      card.getBlocker()!.doWork(delta);
+      results.push({ cardName: card.getName(), roll, delta });
+    }
+    return results;
+  }
+
+  replenishSelected(board: Board): void {
+    const context = new Context(board, this);
+    board.getStateColumn(State.ANALYSIS).doTheWork(context);
+    board.getSelected().doTheWork(context);
+    board.getReadyToDeploy().doTheWork(context);
+    board.getSelected().doTheWork(context);
+  }
+
+  expediteTickets(board: Board): void {
+    board.getStateColumn(State.ANALYSIS).expediteTickets(this);
+    board.getStateColumn(State.DEVELOPMENT).expediteTickets(this);
+    board.getStateColumn(State.TEST).expediteTickets(this);
+  }
+
+  assignDice(board: Board): void {
+    this.diceAssignmentStrategy.assignDice(board);
+  }
+
+  getDiceAssignmentStrategy(): DiceAssignmentStrategy {
+    return this.diceAssignmentStrategy;
+  }
+
   doTheWork(context: Context): void {
     context.getBoard().getDeployed().doTheWork(context);
   }
@@ -42,39 +88,6 @@ export class Day {
     board.getStateColumn(State.TEST).assignDice();
     board.getStateColumn(State.DEVELOPMENT).assignDice();
     board.getStateColumn(State.ANALYSIS).assignDice();
-  }
-
-  private adjustWipLimits(board: Board): void {
-    board.adjustLimits(this.ordinal);
-  }
-
-  private expediteTickets(board: Board): void {
-    board.getStateColumn(State.ANALYSIS).expediteTickets(this);
-    board.getStateColumn(State.DEVELOPMENT).expediteTickets(this);
-    board.getStateColumn(State.TEST).expediteTickets(this);
-  }
-
-  private removeBlockers(board: Board): void {
-    for (const card of board.getStateColumn(State.DEVELOPMENT).getIncompleteCards()) {
-      if (!card.isBlocked() || !card.getBlocker()) {
-        continue;
-      }
-      const roll = new RandomDice().roll();
-      const delta = Math.min(roll, card.getBlocker()!.getRemainingWork());
-      card.getBlocker()!.doWork(delta);
-    }
-  }
-
-  private replenishSelected(board: Board): void {
-    const context = new Context(board, this);
-    board.getStateColumn(State.ANALYSIS).doTheWork(context);
-    board.getSelected().doTheWork(context);
-    board.getReadyToDeploy().doTheWork(context);
-    board.getSelected().doTheWork(context);
-  }
-
-  private assignDice(board: Board): void {
-    this.diceAssignmentStrategy.assignDice(board);
   }
 
   toString(): string {

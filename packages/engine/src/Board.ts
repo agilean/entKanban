@@ -128,6 +128,14 @@ export class Board {
     this.adjustments.set(adjustment.getDay(), adjustment);
   }
 
+  getWipAdjustments(): WipLimitAdjustment[] {
+    return [...this.adjustments.values()];
+  }
+
+  getWipAdjustmentCount(): number {
+    return this.adjustments.size;
+  }
+
   getCards(): Card[] {
     return [
       ...this.backlog.getCards(),
@@ -138,6 +146,10 @@ export class Board {
       ...this.readyToDeploy.getCards(),
       ...this.deployed.getCards(),
     ];
+  }
+
+  findCardByName(name: string): Card | undefined {
+    return this.getCards().find((c) => c.getName() === name);
   }
 
   adjustLimits(ordinal: number): void {

@@ -13,6 +13,20 @@ export { FinancialSummary } from './finance/FinancialSummary.js';
 export { RunConfiguration } from './simulation/RunConfiguration.js';
 export { runAutoGame, defaultRunConfiguration } from './simulation/runAutoGame.js';
 
+export { GamePhase } from './session/GamePhase.js';
+export type { PendingAction } from './session/PendingAction.js';
+export type { PlayerAction, DiceAssignmentInput } from './session/PlayerAction.js';
+export type { DispatchResult } from './session/DispatchResult.js';
+export type { GameSessionState, WipAdjustmentState } from './session/GameSessionState.js';
+export { GameSession } from './session/GameSession.js';
+export type { GameSessionOptions } from './session/GameSession.js';
+
+export type { DaySnapshot, ColumnWipCounts } from './history/DaySnapshot.js';
+export { DaySnapshotStore } from './history/DaySnapshotStore.js';
+export { createDaySnapshot, captureWipCounts } from './history/createDaySnapshot.js';
+
+export type { BlockerRollResult } from './Day.js';
+
 export type { Instruction } from './instructions/Instruction.js';
 export { PeteFromPlatformTeam } from './instructions/PeteFromPlatformTeam.js';
 export { CarlosHired } from './instructions/CarlosHired.js';
