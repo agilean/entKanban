@@ -20,11 +20,15 @@ export function createDaySnapshot(board: Board, day: number): DaySnapshot {
   return {
     day,
     wipCounts: captureWipCounts(board),
-    deployedCardNames: board
+    deployedToday: board
       .getDeployed()
       .getCards()
       .filter((card) => card.getDayDeployed() === day)
-      .map((card) => card.getName()),
+      .map((card) => ({
+        name: card.getName(),
+        cycleTime: card.getCycleTime(),
+        leadTime: card.getDayDeployed() - card.getDaySelected(),
+      })),
     totalGrossProfit: summary.getTotalGrossProfitToDate(
       FinancialSummary.getBillingDay(day),
     ),

@@ -1,9 +1,11 @@
 import {
   captureWipCounts,
+  FinancialSummary,
   GamePhase,
   GameSession,
   State,
   WipLimitAdjustment,
+  type DaySnapshot,
   type DiceAssignmentInput,
   type DispatchResult,
   type PendingAction,
@@ -48,10 +50,15 @@ export const useGameStore = defineStore('game', () => {
     }
     return buildBoardView(session.value.getBoard());
   });
-  const snapshotCount = computed(() => {
+  const snapshots = computed((): readonly DaySnapshot[] => {
     void revision.value;
-    return session.value?.getSnapshots().length ?? 0;
+    return session.value?.getSnapshots() ?? [];
   });
+  const financialSummary = computed((): FinancialSummary | null => {
+    void revision.value;
+    return session.value?.getFinancialSummary() ?? null;
+  });
+  const snapshotCount = computed(() => snapshots.value.length);
   const isGameOver = computed(() => {
     void revision.value;
     return session.value?.isGameOver() ?? false;
@@ -117,6 +124,8 @@ export const useGameStore = defineStore('game', () => {
     board,
     wipAdjustments,
     boardView,
+    snapshots,
+    financialSummary,
     snapshotCount,
     isGameOver,
     startNewGame,

@@ -2,9 +2,20 @@
 import { ENGINE_VERSION } from '@kanban-game/engine';
 import { computed } from 'vue';
 import { useGameStore } from '../stores/gameStore';
+import { useUiStore, type AppTab } from '../stores/uiStore';
 import { phaseLabel } from '../utils/phaseLabel';
 
 const game = useGameStore();
+const ui = useUiStore();
+
+const tabs: Array<{ id: AppTab; label: string }> = [
+  { id: 'board', label: '看板' },
+  { id: 'cfd', label: 'CFD' },
+  { id: 'control', label: '控制图' },
+  { id: 'leadtime', label: '前置时间' },
+  { id: 'run', label: 'Run Chart' },
+  { id: 'finance', label: '财务' },
+];
 
 const subtitle = computed(() => {
   if (!game.hasSession) {
@@ -27,7 +38,7 @@ const subtitle = computed(() => {
           新游戏
         </button>
         <button
-          v-else-if="!game.isGameOver"
+          v-else-if="!game.isGameOver && ui.activeTab === 'board'"
           type="button"
           class="btn"
           @click="game.confirmPhase()"
@@ -38,12 +49,16 @@ const subtitle = computed(() => {
     </header>
 
     <nav class="tabs" aria-label="视图导航">
-      <span class="tab active">看板</span>
-      <span class="tab disabled">CFD</span>
-      <span class="tab disabled">控制图</span>
-      <span class="tab disabled">前置时间</span>
-      <span class="tab disabled">Run Chart</span>
-      <span class="tab disabled">财务</span>
+      <button
+        v-for="tab in tabs"
+        :key="tab.id"
+        type="button"
+        class="tab"
+        :class="{ active: ui.activeTab === tab.id }"
+        @click="ui.setTab(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
     </nav>
 
     <main class="content">
@@ -128,20 +143,20 @@ const subtitle = computed(() => {
 }
 
 .tab {
+  border: none;
+  background: transparent;
   padding: 0.375rem 0.75rem;
   border-radius: 0.375rem;
   font-size: 0.8125rem;
   white-space: nowrap;
+  color: #64748b;
+  cursor: pointer;
 }
 
 .tab.active {
   background: #e0e7ff;
   color: #3730a3;
   font-weight: 600;
-}
-
-.tab.disabled {
-  color: #94a3b8;
 }
 
 .content {

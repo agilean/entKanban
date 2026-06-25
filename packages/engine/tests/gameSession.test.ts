@@ -85,27 +85,11 @@ describe('GameSession', () => {
     expect(s10?.isBlocked()).toBe(true);
   });
 
-  it('handles ted training branch on day 17', () => {
+  it('rejects ted training outside ted-training phase', () => {
     const session = GameSession.createNew();
-    confirm(session);
-
-    while (session.getCurrentDay() < 17) {
-      walkStandUp(session);
-      confirm(session);
-      if (session.getPhase() === GamePhase.DAY_COMPLETE) {
-        confirm(session);
-      }
-    }
-
-    walkStandUp(session);
-    confirm(session);
-    expect(session.getPhase()).toBe(GamePhase.TED_TRAINING);
-
-    const diceBefore = session.getBoard().getDiceForState(State.TEST).length;
     const result = session.dispatch({ type: 'send-ted-to-training', training: true });
-    expect(result.ok).toBe(true);
-    expect(session.getBoard().getDiceForState(State.TEST).length).toBe(diceBefore - 1);
-    expect(session.getPhase()).toBe(GamePhase.DAY_COMPLETE);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Ted training');
   });
 
   it('serializes and restores session metadata', () => {

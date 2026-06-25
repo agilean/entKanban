@@ -21,7 +21,7 @@ export type { GameSessionState, WipAdjustmentState } from './session/GameSession
 export { GameSession } from './session/GameSession.js';
 export type { GameSessionOptions } from './session/GameSession.js';
 
-export type { DaySnapshot, ColumnWipCounts } from './history/DaySnapshot.js';
+export type { DaySnapshot, ColumnWipCounts, DeployedCardMetrics } from './history/DaySnapshot.js';
 export { DaySnapshotStore } from './history/DaySnapshotStore.js';
 export { createDaySnapshot, captureWipCounts } from './history/createDaySnapshot.js';
 

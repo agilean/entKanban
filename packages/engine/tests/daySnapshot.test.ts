@@ -18,6 +18,7 @@ describe('DaySnapshot', () => {
 
     expect(snapshot.day).toBe(9);
     expect(snapshot.totalGrossProfit).toBe(200);
-    expect(snapshot.deployedCardNames).toEqual(['S1', 'S2', 'S4']);
+    expect(snapshot.deployedToday.map((card) => card.name)).toEqual(['S1', 'S2', 'S4']);
+    expect(snapshot.deployedToday[0]!.cycleTime).toBeGreaterThan(0);
   });
 });

@@ -2,11 +2,14 @@
 import { onMounted } from 'vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
 import PhaseStepper from '../components/board/PhaseStepper.vue';
+import AnalyticsView from '../components/charts/AnalyticsView.vue';
 import DecisionPanel from '../components/decisions/DecisionPanel.vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { useGameStore } from '../stores/gameStore';
+import { useUiStore } from '../stores/uiStore';
 
 const game = useGameStore();
+const ui = useUiStore();
 
 onMounted(() => {
   if (!game.hasSession) {
@@ -24,14 +27,18 @@ onMounted(() => {
     <template v-else>
       <p v-if="game.lastError" class="error">{{ game.lastError }}</p>
 
-      <PhaseStepper :phase="game.phase" :current-day="game.currentDay" />
+      <AnalyticsView v-if="ui.activeTab !== 'board'" />
 
-      <div class="game-layout">
-        <div class="board-area">
-          <KanbanBoard v-if="game.boardView" :board="game.boardView" />
+      <template v-else>
+        <PhaseStepper :phase="game.phase" :current-day="game.currentDay" />
+
+        <div class="game-layout">
+          <div class="board-area">
+            <KanbanBoard v-if="game.boardView" :board="game.boardView" />
+          </div>
+          <DecisionPanel />
         </div>
-        <DecisionPanel />
-      </div>
+      </template>
     </template>
   </AppLayout>
 </template>

@@ -8,9 +8,15 @@ export type ColumnWipCounts = {
   deployed: number;
 };
 
+export type DeployedCardMetrics = {
+  name: string;
+  cycleTime: number;
+  leadTime: number;
+};
+
 export type DaySnapshot = {
   day: number;
   wipCounts: ColumnWipCounts;
-  deployedCardNames: string[];
+  deployedToday: DeployedCardMetrics[];
   totalGrossProfit: number;
 };
