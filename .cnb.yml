@@ -1,0 +1,28 @@
+main:
+  push:
+    - name: ci
+      docker:
+        image: node:22
+      stages:
+        - name: setup
+          script: |
+            corepack enable
+            pnpm install --frozen-lockfile
+        - name: test
+          script: pnpm test
+        - name: build
+          script: pnpm build
+
+  pull_request:
+    - name: ci
+      docker:
+        image: node:22
+      stages:
+        - name: setup
+          script: |
+            corepack enable
+            pnpm install --frozen-lockfile
+        - name: test
+          script: pnpm test
+        - name: build
+          script: pnpm build
