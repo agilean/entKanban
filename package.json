@@ -4,7 +4,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "dev": "pnpm --filter @kanban-game/web dev"
+    "dev": "pnpm --filter @kanban-game/engine build && pnpm --filter @kanban-game/web dev"
   },
   "engines": {
     "node": ">=20"

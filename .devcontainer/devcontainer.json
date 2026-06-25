@@ -1,0 +1,12 @@
+{
+  "name": "kanban-game",
+  "image": "node:22",
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @kanban-game/engine build",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
