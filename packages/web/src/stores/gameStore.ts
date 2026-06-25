@@ -2,10 +2,14 @@ import {
   captureWipCounts,
   GamePhase,
   GameSession,
+  State,
+  WipLimitAdjustment,
+  type DiceAssignmentInput,
   type DispatchResult,
   type PendingAction,
   type PlayerAction,
 } from '@kanban-game/engine';
+import type { Board } from '@kanban-game/engine';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import { buildBoardView } from '../utils/buildBoardView';
@@ -28,6 +32,14 @@ export const useGameStore = defineStore('game', () => {
       return null;
     }
     return captureWipCounts(session.value.getBoard());
+  });
+  const board = computed((): Board | null => {
+    void revision.value;
+    return session.value?.getBoard() ?? null;
+  });
+  const wipAdjustments = computed(() => {
+    void revision.value;
+    return session.value?.getBoard().getWipAdjustments() ?? [];
   });
   const boardView = computed(() => {
     void revision.value;
@@ -74,6 +86,26 @@ export const useGameStore = defineStore('game', () => {
     return dispatch({ type: 'confirm-phase' });
   }
 
+  function adjustWipLimits(adjustment: WipLimitAdjustment): DispatchResult | undefined {
+    return dispatch({ type: 'adjust-wip-limits', adjustment });
+  }
+
+  function reorderBacklog(cardNames: string[]): DispatchResult | undefined {
+    return dispatch({ type: 'reorder-backlog', cardNames });
+  }
+
+  function expediteCard(state: State, cardName: string): DispatchResult | undefined {
+    return dispatch({ type: 'expedite-card', state, cardName });
+  }
+
+  function assignDice(assignments: DiceAssignmentInput[]): DispatchResult | undefined {
+    return dispatch({ type: 'assign-dice', assignments });
+  }
+
+  function sendTedToTraining(training: boolean): DispatchResult | undefined {
+    return dispatch({ type: 'send-ted-to-training', training });
+  }
+
   return {
     session,
     lastError,
@@ -82,11 +114,18 @@ export const useGameStore = defineStore('game', () => {
     phase,
     pendingActions,
     wipCounts,
+    board,
+    wipAdjustments,
     boardView,
     snapshotCount,
     isGameOver,
     startNewGame,
     dispatch,
     confirmPhase,
+    adjustWipLimits,
+    reorderBacklog,
+    expediteCard,
+    assignDice,
+    sendTedToTraining,
   };
 });
