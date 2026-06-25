@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import { ENGINE_VERSION } from '@kanban-game/engine';
-
-const title = 'getKanban Game';
+import { RouterView } from 'vue-router';
 </script>
 
 <template>
-  <main class="app">
-    <h1>{{ title }}</h1>
-    <p>Engine {{ ENGINE_VERSION }}</p>
-  </main>
+  <RouterView />
 </template>
 
-<style scoped>
-.app {
-  font-family: system-ui, sans-serif;
-  margin: 2rem;
+<style>
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f4f6f8;
 }
 </style>
