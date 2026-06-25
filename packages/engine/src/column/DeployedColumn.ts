@@ -5,6 +5,7 @@ import type { Column } from './Column.js';
 
 export class DeployedColumn implements Column {
   private readonly cards: Card[] = [];
+  private comparator: ((a: Card, b: Card) => number) | undefined;
 
   constructor(
     private readonly upstream: Column,
@@ -40,7 +41,12 @@ export class DeployedColumn implements Column {
     }
   }
 
-  orderBy(_comparator: (a: Card, b: Card) => number): void {}
+  orderBy(comparator: (a: Card, b: Card) => number): void {
+    this.comparator = comparator;
+    if (this.comparator) {
+      this.cards.sort(this.comparator);
+    }
+  }
 
   clear(): void {
     this.cards.length = 0;

@@ -9,6 +9,9 @@ export { Context } from './Context.js';
 export { Board } from './Board.js';
 export { WipLimitAdjustment } from './WipLimitAdjustment.js';
 export { runDay, runDays } from './day/runDay.js';
+export { FinancialSummary } from './finance/FinancialSummary.js';
+export { RunConfiguration } from './simulation/RunConfiguration.js';
+export { runAutoGame, defaultRunConfiguration } from './simulation/runAutoGame.js';
 
 export type { Instruction } from './instructions/Instruction.js';
 export { PeteFromPlatformTeam } from './instructions/PeteFromPlatformTeam.js';
@@ -44,8 +47,11 @@ export type { Dice } from './dice/Dice.js';
 export type { DiceAssignmentStrategy } from './policies/DiceAssignmentStrategy.js';
 export { NoCrossSkillingDiceAssignmentStrategy } from './policies/NoCrossSkillingDiceAssignmentStrategy.js';
 export { ComplexDiceAssignmentStrategy } from './policies/ComplexDiceAssignmentStrategy.js';
-export {
-  wipAgingCompare,
-  businessValueCompare,
-  intangiblesFirstCompare,
-} from './policies/prioritisation.js';
+export { expeditesCompare } from './policies/ExpeditesPrioritisationStrategy.js';
+export { fixedDateCardsCompare } from './policies/FixedDateCardsPrioritisationStrategy.js';
+export { intangiblesFirstCompare } from './policies/IntangiblesFirstPrioritisationStrategy.js';
+export { businessValuePrioritisationCompare } from './policies/BusinessValuePrioritisationStrategy.js';
+export { wipAgingCompare } from './policies/WipAgingPrioritisationStrategy.js';
+export { wsjfCompare } from './policies/WeightedShortestJobFirstPrioritisationStrategy.js';
+export { nameCompare } from './policies/nameCompare.js';
+export { businessValueCompare } from './policies/prioritisation.js';

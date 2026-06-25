@@ -41,11 +41,6 @@ export class Board {
     this.deployed = new DeployedColumn(this.readyToDeploy, this.columns.get(State.TEST)!);
 
     this.backlog.orderBy(chainComparator(intangiblesFirstCompare, businessValueCompare));
-    const activityComparator = chainComparator(intangiblesFirstCompare, businessValueCompare);
-    this.selected.orderBy(activityComparator);
-    this.columns.get(State.ANALYSIS)!.orderBy(activityComparator);
-    this.columns.get(State.DEVELOPMENT)!.orderBy(activityComparator);
-    this.columns.get(State.TEST)!.orderBy(activityComparator);
 
     this.initDice();
     this.initCards();

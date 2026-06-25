@@ -51,6 +51,10 @@ export class ReadyToDeployColumn extends AbstractColumn {
     this.deploymentFrequency = deploymentFrequency;
   }
 
+  orderBy(comparator: (a: Card, b: Card) => number): void {
+    this.cards.setComparator(comparator);
+  }
+
   getDeploymentFrequency(): number {
     return this.deploymentFrequency;
   }

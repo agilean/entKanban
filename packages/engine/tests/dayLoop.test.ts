@@ -100,8 +100,8 @@ describe('NoCrossSkillingDiceAssignmentStrategy', () => {
     new NoCrossSkillingDiceAssignmentStrategy().assignDice(board);
     board.getStateColumn(State.TEST).doTheWork(new Context(board, new Day(9)));
 
-    expect(s10.getRemainingWork(State.TEST)).toBe(0);
-    expect(s11.getRemainingWork(State.TEST)).toBe(6);
+    expect(s11.getRemainingWork(State.TEST)).toBe(0);
+    expect(s10.getRemainingWork(State.TEST)).toBe(6);
   });
 });
 
