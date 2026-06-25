@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import KanbanBoard from '../components/board/KanbanBoard.vue';
+import PhaseStepper from '../components/board/PhaseStepper.vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { useGameStore } from '../stores/gameStore';
 import { phaseLabel } from '../utils/phaseLabel';
@@ -35,28 +37,18 @@ function pendingLabel(kind: string): string {
     <template v-else>
       <p v-if="game.lastError" class="error">{{ game.lastError }}</p>
 
-      <section class="grid">
-        <article class="panel">
-          <h2>棋盘概览</h2>
-          <dl v-if="game.wipCounts" class="stats">
-            <div><dt>Backlog</dt><dd>{{ game.wipCounts.backlog }}</dd></div>
-            <div><dt>Selected</dt><dd>{{ game.wipCounts.selected }}</dd></div>
-            <div><dt>Analysis</dt><dd>{{ game.wipCounts.analysis }}</dd></div>
-            <div><dt>Development</dt><dd>{{ game.wipCounts.development }}</dd></div>
-            <div><dt>Test</dt><dd>{{ game.wipCounts.test }}</dd></div>
-            <div><dt>Ready</dt><dd>{{ game.wipCounts.readyToDeploy }}</dd></div>
-            <div><dt>Deployed</dt><dd>{{ game.wipCounts.deployed }}</dd></div>
-          </dl>
-          <p class="hint">完整看板渲染将在 PR8 实现。</p>
-        </article>
+      <PhaseStepper :phase="game.phase" :current-day="game.currentDay" />
 
+      <KanbanBoard v-if="game.boardView" :board="game.boardView" />
+
+      <section class="side-panels">
         <article class="panel">
           <h2>当前阶段</h2>
           <p class="phase">{{ phaseLabel(game.phase) }}</p>
           <p class="meta">已完成 {{ game.snapshotCount }} 个工作日</p>
         </article>
 
-        <article class="panel wide">
+        <article class="panel">
           <h2>待办操作</h2>
           <ul v-if="game.pendingActions.length > 0" class="pending-list">
             <li v-for="(action, index) in game.pendingActions" :key="index">
@@ -72,10 +64,11 @@ function pendingLabel(kind: string): string {
 </template>
 
 <style scoped>
-.grid {
+.side-panels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
+  margin-top: 1rem;
 }
 
 .panel {
@@ -85,38 +78,10 @@ function pendingLabel(kind: string): string {
   padding: 1rem 1.25rem;
 }
 
-.panel.wide {
-  grid-column: 1 / -1;
-}
-
 .panel h2 {
   margin: 0 0 0.75rem;
   font-size: 0.9375rem;
   font-weight: 600;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem 1rem;
-  margin: 0;
-}
-
-.stats div {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.stats dt {
-  color: #64748b;
-  font-size: 0.8125rem;
-}
-
-.stats dd {
-  margin: 0;
-  font-weight: 600;
-  font-size: 0.875rem;
 }
 
 .phase {
@@ -151,7 +116,7 @@ function pendingLabel(kind: string): string {
 }
 
 .hint {
-  margin: 0.75rem 0 0;
+  margin: 0;
   font-size: 0.8125rem;
   color: #94a3b8;
 }
