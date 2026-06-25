@@ -11,6 +11,15 @@ export { WipLimitAdjustment } from './WipLimitAdjustment.js';
 export { runDay, runDays } from './day/runDay.js';
 
 export type { Instruction } from './instructions/Instruction.js';
+export { PeteFromPlatformTeam } from './instructions/PeteFromPlatformTeam.js';
+export { CarlosHired } from './instructions/CarlosHired.js';
+export { CarlosFired } from './instructions/CarlosFired.js';
+export { MargaretsFeatures } from './instructions/MargaretsFeatures.js';
+export { BigCorpExpedite } from './instructions/BigCorpExpedite.js';
+export { DefectFound } from './instructions/DefectFound.js';
+export { TedsTrainingOpportunity } from './instructions/TedsTrainingOpportunity.js';
+export { GraduateGlenExpedite } from './instructions/GraduateGlenExpedite.js';
+export { TammyHired } from './instructions/TammyHired.js';
 
 export { CardSize, Blocker } from './card/Card.js';
 export type { Card } from './card/Card.js';

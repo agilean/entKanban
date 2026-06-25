@@ -7,11 +7,17 @@ import type { DiceAssignmentStrategy } from './policies/DiceAssignmentStrategy.j
 import { ComplexDiceAssignmentStrategy } from './policies/ComplexDiceAssignmentStrategy.js';
 
 export class Day {
+  private readonly diceAssignmentStrategy: DiceAssignmentStrategy;
+  private readonly instructions: Instruction[];
+
   constructor(
     private readonly ordinal: number,
-    private readonly diceAssignmentStrategy: DiceAssignmentStrategy = new ComplexDiceAssignmentStrategy(),
-    private readonly instructions: Instruction[] = [],
-  ) {}
+    diceAssignmentStrategy: DiceAssignmentStrategy = new ComplexDiceAssignmentStrategy(),
+    ...instructions: Instruction[]
+  ) {
+    this.diceAssignmentStrategy = diceAssignmentStrategy;
+    this.instructions = instructions;
+  }
 
   getOrdinal(): number {
     return this.ordinal;

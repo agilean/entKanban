@@ -35,11 +35,9 @@ describe('Day', () => {
     const board = new Board();
     expect(board.getStateColumn(State.ANALYSIS).getLimit()).toBe(2);
 
-    const day = new Day(1, new NoCrossSkillingDiceAssignmentStrategy(), [
-      {
-        execute: (b) => b.getStateColumn(State.ANALYSIS).setLimit(1),
-      },
-    ]);
+    const day = new Day(1, new NoCrossSkillingDiceAssignmentStrategy(), {
+      execute: (b) => b.getStateColumn(State.ANALYSIS).setLimit(1),
+    });
     day.endOfDay(board);
 
     expect(board.getStateColumn(State.ANALYSIS).getLimit()).toBe(1);
