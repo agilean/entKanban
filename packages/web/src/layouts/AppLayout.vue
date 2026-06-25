@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ENGINE_VERSION } from '@kanban-game/engine';
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
 import { phaseLabel } from '../utils/phaseLabel';
@@ -19,10 +20,31 @@ const tabs: Array<{ id: AppTab; label: string }> = [
 
 const subtitle = computed(() => {
   if (!game.hasSession) {
-    return '点击「新游戏」从 Day 9 开始';
+    return game.hasSavedGame ? '发现本地存档，点击「读档」继续' : '点击「新游戏」从 Day 9 开始';
   }
   return `Day ${game.currentDay} · ${phaseLabel(game.phase)}`;
 });
+
+const isDev = import.meta.env.DEV;
+
+function handleSave(): void {
+  game.persistToStorage(ui.activeTab);
+}
+
+function handleLoad(): void {
+  const tab = game.loadFromStorage();
+  if (tab) {
+    ui.setTab(tab);
+  }
+}
+
+function handleNewGame(): void {
+  if (game.hasSession && !window.confirm('开始新游戏将清除当前进度，确定吗？')) {
+    return;
+  }
+  game.resetGame();
+  ui.setTab('board');
+}
 </script>
 
 <template>
@@ -33,17 +55,31 @@ const subtitle = computed(() => {
         <p class="subtitle">{{ subtitle }}</p>
       </div>
       <div class="header-actions">
+        <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
         <span class="version">Engine {{ ENGINE_VERSION }}</span>
-        <button v-if="!game.hasSession" type="button" class="btn primary" @click="game.startNewGame()">
+        <template v-if="game.hasSession">
+          <button type="button" class="btn" @click="handleSave">存档</button>
+          <button v-if="game.hasSavedGame" type="button" class="btn" @click="handleLoad">读档</button>
+          <button type="button" class="btn" @click="handleNewGame">新游戏</button>
+          <button
+            v-if="!game.isGameOver && ui.activeTab === 'board'"
+            type="button"
+            class="btn primary"
+            @click="game.confirmPhase(ui.activeTab)"
+          >
+            下一步
+          </button>
+        </template>
+        <button v-else type="button" class="btn primary" @click="game.startNewGame()">
           新游戏
         </button>
         <button
-          v-else-if="!game.isGameOver && ui.activeTab === 'board'"
+          v-if="!game.hasSession && game.hasSavedGame"
           type="button"
           class="btn"
-          @click="game.confirmPhase()"
+          @click="handleLoad"
         >
-          下一步
+          读档
         </button>
       </div>
     </header>
@@ -107,6 +143,16 @@ const subtitle = computed(() => {
 .version {
   font-size: 0.75rem;
   color: #94a3b8;
+}
+
+.dev-link {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.dev-link:hover {
+  color: #6366f1;
 }
 
 .btn {

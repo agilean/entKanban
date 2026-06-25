@@ -18,6 +18,8 @@ export type { PendingAction } from './session/PendingAction.js';
 export type { PlayerAction, DiceAssignmentInput } from './session/PlayerAction.js';
 export type { DispatchResult } from './session/DispatchResult.js';
 export type { GameSessionState, WipAdjustmentState } from './session/GameSessionState.js';
+export type { BoardSnapshot, CardWorkSnapshot, StateColumnSlot } from './session/boardSnapshot.js';
+export { captureBoardSnapshot, applyBoardSnapshot } from './session/boardSnapshot.js';
 export { GameSession } from './session/GameSession.js';
 export type { GameSessionOptions } from './session/GameSession.js';
 

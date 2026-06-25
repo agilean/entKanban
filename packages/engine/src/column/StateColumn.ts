@@ -195,6 +195,43 @@ export class StateColumn extends LimitedColumn {
     this.stdTodo.clear();
     this.expDone.clear();
     this.stdDone.clear();
+    this.groups = [];
+    this.rolled = false;
+    this.secondaryWorkers = true;
+    this.enableLimits();
+  }
+
+  getPlacementSnapshot(): Array<{ name: string; cos: ClassOfService; done: boolean }> {
+    const slots: Array<{ name: string; cos: ClassOfService; done: boolean }> = [];
+    for (const card of this.stdTodo.stream()) {
+      slots.push({ name: card.getName(), cos: ClassOfService.STANDARD, done: false });
+    }
+    for (const card of this.stdDone.stream()) {
+      slots.push({ name: card.getName(), cos: ClassOfService.STANDARD, done: true });
+    }
+    for (const card of this.expTodo.stream()) {
+      slots.push({ name: card.getName(), cos: ClassOfService.EXPEDITE, done: false });
+    }
+    for (const card of this.expDone.stream()) {
+      slots.push({ name: card.getName(), cos: ClassOfService.EXPEDITE, done: true });
+    }
+    return slots;
+  }
+
+  restorePlacements(
+    placements: Array<{ name: string; cos: ClassOfService; done: boolean }>,
+    cardsByName: Map<string, Card>,
+  ): void {
+    for (const placement of placements) {
+      const card = cardsByName.get(placement.name);
+      if (!card) {
+        throw new Error(`Unknown card: ${placement.name}`);
+      }
+      if (placement.done && card.getRemainingWork(this.state) > 0) {
+        card.doWork(this.state, card.getRemainingWork(this.state));
+      }
+      this.addCard(card, placement.cos);
+    }
   }
 
   canAssignSecondaryWorkers(): boolean {

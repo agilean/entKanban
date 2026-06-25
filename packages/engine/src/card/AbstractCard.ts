@@ -116,6 +116,47 @@ export abstract class AbstractCard implements Card {
   abstract getSubscribers(): number;
   abstract getCostOfDelay(day: Day): number;
 
+  captureWorkSnapshot(): {
+    name: string;
+    analysis: number;
+    development: number;
+    test: number;
+    daySelected: number;
+    dayDeployed: number;
+    blockerRemaining?: number;
+  } {
+    const blocker = this.getBlocker();
+    return {
+      name: this.getName(),
+      analysis: this.getRemainingWork(State.ANALYSIS),
+      development: this.getRemainingWork(State.DEVELOPMENT),
+      test: this.getRemainingWork(State.TEST),
+      daySelected: this.daySelected,
+      dayDeployed: this.dayDeployed,
+      blockerRemaining: blocker && blocker.getRemainingWork() > 0 ? blocker.getRemainingWork() : undefined,
+    };
+  }
+
+  restoreWorkSnapshot(snapshot: {
+    analysis: number;
+    development: number;
+    test: number;
+    daySelected: number;
+    dayDeployed: number;
+    blockerRemaining?: number;
+  }): void {
+    this.work[State.ANALYSIS] = snapshot.analysis;
+    this.work[State.DEVELOPMENT] = snapshot.development;
+    this.work[State.TEST] = snapshot.test;
+    this.daySelected = snapshot.daySelected;
+    this.dayDeployed = snapshot.dayDeployed;
+    if (snapshot.blockerRemaining !== undefined && snapshot.blockerRemaining > 0) {
+      this.blocker = Blocker.withRemaining(snapshot.blockerRemaining);
+    } else {
+      this.blocker = undefined;
+    }
+  }
+
   toString(): string {
     const blocked = this.isBlocked() ? ' (BLOCKED)' : '';
     return `${this.getName()}[${this.getRemainingWork(State.ANALYSIS)}/${this.getRemainingWork(State.DEVELOPMENT)}/${this.getRemainingWork(State.TEST)}]${blocked}`;

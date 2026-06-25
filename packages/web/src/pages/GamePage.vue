@@ -4,6 +4,8 @@ import KanbanBoard from '../components/board/KanbanBoard.vue';
 import PhaseStepper from '../components/board/PhaseStepper.vue';
 import AnalyticsView from '../components/charts/AnalyticsView.vue';
 import DecisionPanel from '../components/decisions/DecisionPanel.vue';
+import SetupGuide from '../components/onboarding/SetupGuide.vue';
+import GameOverSummary from '../components/summary/GameOverSummary.vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore } from '../stores/uiStore';
@@ -12,7 +14,11 @@ const game = useGameStore();
 const ui = useUiStore();
 
 onMounted(() => {
-  if (!game.hasSession) {
+  game.refreshSavedFlag();
+  const restoredTab = game.loadFromStorage();
+  if (restoredTab) {
+    ui.setTab(restoredTab);
+  } else if (!game.hasSession) {
     game.startNewGame();
   }
 });
@@ -27,9 +33,12 @@ onMounted(() => {
     <template v-else>
       <p v-if="game.lastError" class="error">{{ game.lastError }}</p>
 
+      <GameOverSummary v-if="game.isGameOver" />
+
       <AnalyticsView v-if="ui.activeTab !== 'board'" />
 
       <template v-else>
+        <SetupGuide :phase="game.phase" :current-day="game.currentDay" />
         <PhaseStepper :phase="game.phase" :current-day="game.currentDay" />
 
         <div class="game-layout">

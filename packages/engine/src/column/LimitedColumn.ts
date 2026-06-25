@@ -21,6 +21,10 @@ export abstract class LimitedColumn implements Column {
     this.limitsEnabled = true;
   }
 
+  areLimitsEnabled(): boolean {
+    return this.limitsEnabled;
+  }
+
   abstract addCard(card: import('../card/Card.js').Card, cos: import('../ClassOfService.js').ClassOfService): void;
   abstract getCards(): import('../card/Card.js').Card[];
   abstract pull(context: import('../Context.js').Context, cos: import('../ClassOfService.js').ClassOfService): import('../card/Card.js').Card | undefined;

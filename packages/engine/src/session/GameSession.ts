@@ -14,6 +14,7 @@ import type { DiceAssignmentStrategy } from '../policies/DiceAssignmentStrategy.
 import { NoCrossSkillingDiceAssignmentStrategy } from '../policies/NoCrossSkillingDiceAssignmentStrategy.js';
 import type { DispatchResult } from './DispatchResult.js';
 import { GamePhase } from './GamePhase.js';
+import { applyBoardSnapshot, captureBoardSnapshot } from './boardSnapshot.js';
 import type { GameSessionState } from './GameSessionState.js';
 import type { PendingAction } from './PendingAction.js';
 import type { DiceAssignmentInput, PlayerAction } from './PlayerAction.js';
@@ -70,12 +71,18 @@ export class GameSession {
   }
 
   static fromJSON(state: GameSessionState): GameSession {
-    const session = GameSession.createNew();
-    session.currentDay = state.currentDay;
-    session.phase = state.phase;
-    session.training = state.training;
-    session.trainingDecided = state.trainingDecided;
-    session.board.getOptions().reorder(state.backlogOrder);
+    const board = new Board();
+    applyBoardSnapshot(board, state.board);
+    const diceStrategy = new NoCrossSkillingDiceAssignmentStrategy();
+    const session = new GameSession(
+      board,
+      diceStrategy,
+      state.training,
+      state.trainingDecided,
+      state.currentDay,
+      state.phase,
+      DaySnapshotStore.fromArray(state.snapshots),
+    );
     for (const adjustment of state.wipAdjustments) {
       session.board.putAdjustment(
         new WipLimitAdjustment(
@@ -88,9 +95,14 @@ export class GameSession {
         ),
       );
     }
-    DaySnapshotStore.fromArray(state.snapshots).getAll().forEach((snapshot) => {
-      session.snapshotStore.append(snapshot);
-    });
+    if (state.blockerRolls) {
+      session.lastBlockerRolls = [...state.blockerRolls];
+    }
+    if (state.manualDiceAssignments !== undefined) {
+      session.manualDiceAssignments = state.manualDiceAssignments
+        ? [...state.manualDiceAssignments]
+        : null;
+    }
     DayStore.setDay(session.getDaysFactory().getDay(session.currentDay));
     return session;
   }
@@ -144,6 +156,9 @@ export class GameSession {
         test: adjustment.getTest(),
       })),
       snapshots: this.snapshotStore.toArray(),
+      board: captureBoardSnapshot(this.board),
+      blockerRolls: this.lastBlockerRolls.length > 0 ? [...this.lastBlockerRolls] : undefined,
+      manualDiceAssignments: this.manualDiceAssignments,
     };
   }
 

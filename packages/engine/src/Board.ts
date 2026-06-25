@@ -173,4 +173,17 @@ export class Board {
     this.readyToDeploy.clear();
     this.deployed.clear();
   }
+
+  resetForRestore(): void {
+    this.clear();
+    this.adjustments.clear();
+    this.selected.setLimit(3);
+    this.getStateColumn(State.ANALYSIS).setLimit(2);
+    this.getStateColumn(State.DEVELOPMENT).setLimit(4);
+    const testColumn = this.getStateColumn(State.TEST);
+    testColumn.setLimit(3);
+    testColumn.enableLimits();
+    testColumn.enableSecondaryWorkers();
+    this.readyToDeploy.setDeploymentFrequency(3);
+  }
 }

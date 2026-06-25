@@ -15,6 +15,8 @@ import type { Board } from '@kanban-game/engine';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import { buildBoardView } from '../utils/buildBoardView';
+import { clearSavedGame, loadGame, saveGame, type SavedGamePayload } from '../utils/saveGame';
+import type { AppTab } from './uiStore';
 
 export const useGameStore = defineStore('game', () => {
   const session = shallowRef<GameSession | null>(null);
@@ -68,10 +70,47 @@ export const useGameStore = defineStore('game', () => {
     revision.value += 1;
   }
 
+  const hasSavedGame = ref(false);
+
+  function refreshSavedFlag(): void {
+    hasSavedGame.value = loadGame() !== null;
+  }
+
+  function persistToStorage(activeTab: AppTab = 'board'): void {
+    if (!session.value) {
+      return;
+    }
+    const payload: SavedGamePayload = {
+      session: session.value.toJSON(),
+      activeTab,
+      savedAt: new Date().toISOString(),
+    };
+    saveGame(payload);
+    refreshSavedFlag();
+  }
+
+  function loadFromStorage(): AppTab | null {
+    const payload = loadGame();
+    if (!payload) {
+      return null;
+    }
+    session.value = GameSession.fromJSON(payload.session);
+    lastError.value = null;
+    bumpRevision();
+    refreshSavedFlag();
+    return payload.activeTab ?? 'board';
+  }
+
   function startNewGame(): void {
     session.value = GameSession.createNew();
     lastError.value = null;
+    clearSavedGame();
+    refreshSavedFlag();
     bumpRevision();
+  }
+
+  function resetGame(): void {
+    startNewGame();
   }
 
   function dispatch(action: PlayerAction): DispatchResult | undefined {
@@ -89,28 +128,36 @@ export const useGameStore = defineStore('game', () => {
     return result;
   }
 
-  function confirmPhase(): DispatchResult | undefined {
-    return dispatch({ type: 'confirm-phase' });
+  function dispatchAndSave(action: PlayerAction, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    const result = dispatch(action);
+    if (result?.ok) {
+      persistToStorage(activeTab);
+    }
+    return result;
   }
 
-  function adjustWipLimits(adjustment: WipLimitAdjustment): DispatchResult | undefined {
-    return dispatch({ type: 'adjust-wip-limits', adjustment });
+  function confirmPhase(activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'confirm-phase' }, activeTab);
   }
 
-  function reorderBacklog(cardNames: string[]): DispatchResult | undefined {
-    return dispatch({ type: 'reorder-backlog', cardNames });
+  function adjustWipLimits(adjustment: WipLimitAdjustment, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'adjust-wip-limits', adjustment }, activeTab);
   }
 
-  function expediteCard(state: State, cardName: string): DispatchResult | undefined {
-    return dispatch({ type: 'expedite-card', state, cardName });
+  function reorderBacklog(cardNames: string[], activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'reorder-backlog', cardNames }, activeTab);
   }
 
-  function assignDice(assignments: DiceAssignmentInput[]): DispatchResult | undefined {
-    return dispatch({ type: 'assign-dice', assignments });
+  function expediteCard(state: State, cardName: string, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'expedite-card', state, cardName }, activeTab);
   }
 
-  function sendTedToTraining(training: boolean): DispatchResult | undefined {
-    return dispatch({ type: 'send-ted-to-training', training });
+  function assignDice(assignments: DiceAssignmentInput[], activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'assign-dice', assignments }, activeTab);
+  }
+
+  function sendTedToTraining(training: boolean, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'send-ted-to-training', training }, activeTab);
   }
 
   return {
@@ -128,8 +175,14 @@ export const useGameStore = defineStore('game', () => {
     financialSummary,
     snapshotCount,
     isGameOver,
+    hasSavedGame,
     startNewGame,
+    resetGame,
+    persistToStorage,
+    loadFromStorage,
+    refreshSavedFlag,
     dispatch,
+    dispatchAndSave,
     confirmPhase,
     adjustWipLimits,
     reorderBacklog,

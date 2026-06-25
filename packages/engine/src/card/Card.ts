@@ -47,6 +47,12 @@ export interface Card {
 export class Blocker {
   private work = 7;
 
+  static withRemaining(work: number): Blocker {
+    const blocker = new Blocker();
+    blocker.work = work;
+    return blocker;
+  }
+
   getRemainingWork(): number {
     return this.work;
   }
