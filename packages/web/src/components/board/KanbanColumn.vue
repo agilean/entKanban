@@ -384,19 +384,6 @@ const interactive = () => isColumnInteractive(props.column.id);
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
     </header>
 
-    <div
-      v-if="advanceDropState === 'valid' && canReceiveAdvanceDrop"
-      class="advance-placeholder"
-    >
-      放置卡片
-    </div>
-    <p
-      v-else-if="advanceDropState === 'invalid' && advanceDropReason"
-      class="drop-reject-hint"
-    >
-      {{ advanceDropReason }}
-    </p>
-
     <!-- Backlog: sort + drag to Selected -->
     <template v-if="column.id === 'backlog'">
       <draggable
@@ -487,7 +474,7 @@ const interactive = () => isColumnInteractive(props.column.id);
         </div>
       </div>
 
-      <div class="zone standard-zone">
+      <div class="zone standard-zone" :class="{ 'zone-drop-preview': advanceDropState === 'valid' }">
         <span class="zone-label">Standard</span>
         <div class="zone-cards">
           <div
@@ -510,6 +497,11 @@ const interactive = () => isColumnInteractive(props.column.id);
               @dice-drop="onCardDiceDrop"
             />
           </div>
+          <div
+            v-if="advanceDropState === 'valid'"
+            class="advance-slot"
+            aria-hidden="true"
+          />
         </div>
       </div>
 
@@ -547,11 +539,17 @@ const interactive = () => isColumnInteractive(props.column.id);
         骰子可在列底、卡片间拖放，或拖回顶栏取消分配
       </p>
       <p v-else-if="canAdvanceFlow" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
+      <p
+        v-if="advanceDropState === 'invalid' && advanceDropReason && column.zones"
+        class="drop-reject-hint"
+      >
+        {{ advanceDropReason }}
+      </p>
     </template>
 
     <!-- Simple columns (Ready, Deployed) -->
     <template v-else>
-      <div class="cards">
+      <div class="cards" :class="{ 'cards-drop-preview': advanceDropState === 'valid' }">
         <CardTile
           v-for="card in column.cards"
           :key="card.id"
@@ -560,8 +558,19 @@ const interactive = () => isColumnInteractive(props.column.id);
           :from-column="column.id"
           :effort-highlight="effortHighlightFor(card.name)"
         />
+        <div
+          v-if="advanceDropState === 'valid'"
+          class="advance-slot"
+          aria-hidden="true"
+        />
       </div>
       <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">可将卡片拖入已部署列</p>
+      <p
+        v-if="advanceDropState === 'invalid' && advanceDropReason"
+        class="drop-reject-hint"
+      >
+        {{ advanceDropReason }}
+      </p>
     </template>
   </section>
 </template>
@@ -604,16 +613,32 @@ const interactive = () => isColumnInteractive(props.column.id);
   box-shadow: inset 0 0 0 2px #fecaca;
 }
 
-.advance-placeholder {
-  margin-bottom: 0.375rem;
-  padding: 0.625rem 0.5rem;
+.advance-slot {
+  min-height: 3.25rem;
   border: 2px dashed #16a34a;
   border-radius: 0.5rem;
-  background: rgb(240 253 244 / 80%);
+  background: rgb(240 253 244 / 70%);
+  box-shadow: inset 0 0 0 1px rgb(22 163 74 / 15%);
+}
+
+.advance-slot::after {
+  content: '放置于此';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
   color: #15803d;
   font-size: 0.6875rem;
   font-weight: 700;
-  text-align: center;
+}
+
+.zone-drop-preview,
+.cards-drop-preview {
+  border-radius: 0.375rem;
+}
+
+.standard-zone.zone-drop-preview {
+  background: rgb(240 253 244 / 35%);
 }
 
 .drop-reject-hint {

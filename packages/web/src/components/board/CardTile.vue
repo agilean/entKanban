@@ -68,6 +68,19 @@ const hasEffortUpdate = computed(() => {
   return Boolean(highlight && Object.keys(highlight).length > 0);
 });
 
+const businessValueClass = computed(() => {
+  if (!props.card.businessValue) {
+    return null;
+  }
+  const tierMap: Record<string, string> = {
+    很高: 'very-high',
+    高: 'high',
+    中: 'medium',
+    低: 'low',
+  };
+  return tierMap[props.card.businessValue] ?? null;
+});
+
 function handleDragStart(event: DragEvent): void {
   if (isForwardDragEnabled.value) {
     beginCardDrag(props.card.name, props.fromColumn ?? '');
@@ -164,6 +177,14 @@ function closeDetail(): void {
     <header class="card-header">
       <div class="card-title-row">
         <span class="card-name">{{ card.name }}</span>
+        <span
+          v-if="card.businessValue"
+          class="business-value"
+          :class="businessValueClass ? `value-${businessValueClass}` : undefined"
+          title="价值"
+        >
+          {{ card.businessValue }}
+        </span>
         <span
           v-if="wipAgeLabel"
           class="wip-age"
@@ -330,6 +351,37 @@ function closeDetail(): void {
 .card-name {
   font-weight: 700;
   color: #1e293b;
+}
+
+.business-value {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.business-value.value-very-high {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.business-value.value-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.business-value.value-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.business-value.value-low {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .wip-age {

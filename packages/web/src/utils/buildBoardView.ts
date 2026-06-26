@@ -7,6 +7,7 @@ import {
   type Board,
   type Card,
 } from '@kanban-game/engine';
+import { formatBusinessValue } from './cardValue';
 import { computeWipAge, type WipAgeKind } from './wipAge';
 
 export type CardCosKind = 'standard' | 'expedite' | 'fixed-date' | 'intangible';
@@ -26,6 +27,7 @@ export type CardView = {
   dueDate?: number;
   wipDays?: number;
   wipDaysKind?: WipAgeKind;
+  businessValue?: string;
 };
 
 export type DiceView = {
@@ -115,6 +117,13 @@ function mapCard(card: Card, columnId: string | undefined, currentDay: number): 
   if (wipAge) {
     view.wipDays = wipAge.days;
     view.wipDaysKind = wipAge.kind;
+  }
+
+  if (view.kind === 'standard') {
+    const value = formatBusinessValue(card.getSize());
+    if (value) {
+      view.businessValue = value;
+    }
   }
 
   return view;
