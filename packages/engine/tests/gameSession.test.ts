@@ -10,17 +10,20 @@ function confirm(session: GameSession): void {
   expect(result.ok).toBe(true);
 }
 
-function walkStandUp(session: GameSession): void {
+/** 一次确认：准备 → 掷骰工作 → 日终 → 下一天准备 */
+function rollAndAdvanceDay(session: GameSession): void {
   confirm(session);
 }
 
 describe('GameSession', () => {
-  it('starts at day 9 setup with initial board', () => {
+  it('starts at day 9 replenish with initial board', () => {
     const session = GameSession.createNew();
     expect(session.getCurrentDay()).toBe(9);
-    expect(session.getPhase()).toBe(GamePhase.SETUP);
+    expect(session.getPhase()).toBe(GamePhase.REPLENISH);
     expect(session.getBoard().getDeployed().getCards().length).toBe(3);
-    expect(session.getPendingActions().some((a) => a.kind === 'confirm')).toBe(true);
+    const confirmAction = session.getPendingActions().find((a) => a.kind === 'confirm');
+    expect(confirmAction).toBeDefined();
+    expect(confirmAction && 'label' in confirmAction ? confirmAction.label : null).toBe('do-work');
   });
 
   it('rejects the fourth wip adjustment', () => {
@@ -37,21 +40,7 @@ describe('GameSession', () => {
 
   it('reorders backlog during replenish', () => {
     const session = GameSession.createNew();
-    confirm(session);
-
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
-    expect(session.getCurrentDay()).toBe(10);
-    const original = session.getBoard().getOptions().getCards().map((c) => c.getName());
-    const reversed = [...original].reverse();
-    const result = session.dispatch({ type: 'reorder-backlog', cardNames: reversed });
-    expect(result.ok).toBe(true);
-    expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(reversed);
-  });
-
-  it('reorders backlog during setup', () => {
-    const session = GameSession.createNew();
-
-    expect(session.getPhase()).toBe(GamePhase.SETUP);
     const original = session.getBoard().getOptions().getCards().map((c) => c.getName());
     const reversed = [...original].reverse();
     const result = session.dispatch({ type: 'reorder-backlog', cardNames: reversed });
@@ -61,7 +50,6 @@ describe('GameSession', () => {
 
   it('pulls a backlog card into selected during replenish', () => {
     const session = GameSession.createNew();
-    confirm(session);
 
     const topCard = session.getBoard().getOptions().getCards()[0]!.getName();
     const result = session.dispatch({ type: 'pull-to-selected', cardName: topCard });
@@ -70,19 +58,8 @@ describe('GameSession', () => {
     expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).not.toContain(topCard);
   });
 
-  it('pulls a backlog card into selected during setup', () => {
-    const session = GameSession.createNew();
-    expect(session.getPhase()).toBe(GamePhase.SETUP);
-
-    const topCard = session.getBoard().getOptions().getCards()[0]!.getName();
-    const result = session.dispatch({ type: 'pull-to-selected', cardName: topCard });
-    expect(result.ok).toBe(true);
-    expect(session.getBoard().getSelected().getCards().map((c) => c.getName())).toContain(topCard);
-  });
-
   it('reorders selected during replenish', () => {
     const session = GameSession.createNew();
-    confirm(session);
 
     while (session.getBoard().getSelected().getCards().length < 2) {
       const next = session.getBoard().getOptions().getCards()[0]?.getName();
@@ -104,7 +81,6 @@ describe('GameSession', () => {
 
   it('rejects pull to selected when wip is full', () => {
     const session = GameSession.createNew();
-    confirm(session);
 
     const limit = session.getBoard().getSelected().getLimit();
     while (session.getBoard().getSelected().getCards().length < limit) {
@@ -128,8 +104,6 @@ describe('GameSession', () => {
 
   it('advances a done development card to test during replenish', () => {
     const session = GameSession.createNew();
-    confirm(session);
-
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
     const result = session.dispatch({
       type: 'advance-card',
@@ -148,10 +122,11 @@ describe('GameSession', () => {
 
   it('rejects illegal actions in wrong phase', () => {
     const session = GameSession.createNew();
-    confirm(session);
-    walkStandUp(session);
+    const json = session.toJSON();
+    json.phase = GamePhase.DO_WORK;
+    const restored = GameSession.fromJSON(json);
 
-    const result = session.dispatch({
+    const result = restored.dispatch({
       type: 'expedite-card',
       state: State.TEST,
       cardName: 'S3',
@@ -161,11 +136,9 @@ describe('GameSession', () => {
 
   it('allows expedite and dice assignment during preparation', () => {
     const session = GameSession.createNew();
-    confirm(session);
-
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
 
-    const day = new DaysFactory(false).getDay(10);
+    const day = new DaysFactory(false).getDay(9);
     const analysisCard = session
       .getBoard()
       .getStateColumn(State.ANALYSIS)
@@ -188,27 +161,22 @@ describe('GameSession', () => {
     expect(assign.ok).toBe(true);
   });
 
-  it('walks through a full day step by step', () => {
+  it('rolls dice and auto-advances to next day replenish', () => {
     const session = GameSession.createNew();
-    confirm(session);
-    expect(session.getCurrentDay()).toBe(10);
+    expect(session.getCurrentDay()).toBe(9);
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
 
-    walkStandUp(session);
-    expect(session.getPhase()).toBe(GamePhase.DO_WORK);
-
-    confirm(session);
-    expect(session.getPhase()).toBe(GamePhase.DAY_COMPLETE);
+    rollAndAdvanceDay(session);
+    expect(session.getPhase()).toBe(GamePhase.REPLENISH);
+    expect(session.getCurrentDay()).toBe(10);
     expect(session.getSnapshots().length).toBe(1);
-    expect(session.getSnapshots()[0]!.day).toBe(10);
+    expect(session.getSnapshots()[0]!.day).toBe(9);
   });
 
-  it('starts each new day at replenish', () => {
+  it('starts each new day at replenish after roll', () => {
     const session = GameSession.createNew();
-    confirm(session);
-    walkStandUp(session);
-    confirm(session);
-    confirm(session);
+    rollAndAdvanceDay(session);
+    rollAndAdvanceDay(session);
 
     expect(session.getCurrentDay()).toBe(11);
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
@@ -216,9 +184,8 @@ describe('GameSession', () => {
 
   it('applies pete blocker on day 10 end of day', () => {
     const session = GameSession.createNew();
-    confirm(session);
-    walkStandUp(session);
-    confirm(session);
+    rollAndAdvanceDay(session);
+    rollAndAdvanceDay(session);
 
     const s10 = session.getBoard().findCardByName('S10');
     expect(s10?.isBlocked()).toBe(true);
@@ -237,7 +204,7 @@ describe('GameSession', () => {
       type: 'adjust-wip-limits',
       adjustment: new WipLimitAdjustment(11, 0, 2, 2, 4, 3),
     });
-    confirm(session);
+    rollAndAdvanceDay(session);
 
     const json = session.toJSON();
     const restored = GameSession.fromJSON(json);
@@ -252,9 +219,17 @@ describe('GameSession', () => {
 
   it('migrates saved adjust-wip phase to replenish on load', () => {
     const session = GameSession.createNew();
-    confirm(session);
     const json = session.toJSON();
     json.phase = GamePhase.ADJUST_WIP;
+
+    const restored = GameSession.fromJSON(json);
+    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
+  });
+
+  it('migrates saved setup phase to replenish on load', () => {
+    const session = GameSession.createNew();
+    const json = session.toJSON();
+    json.phase = GamePhase.SETUP;
 
     const restored = GameSession.fromJSON(json);
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);

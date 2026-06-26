@@ -10,7 +10,7 @@ function confirm(session: GameSession): void {
   expect(result.ok).toBe(true);
 }
 
-function walkStandUp(session: GameSession): void {
+function rollAndAdvanceDay(session: GameSession): void {
   confirm(session);
 }
 
@@ -24,23 +24,22 @@ describe('GameSession serialization', () => {
     const restored = GameSession.fromJSON(session.toJSON());
     expect(boardSignature(restored)).toBe(boardSignature(session));
     expect(restored.getCurrentDay()).toBe(9);
-    expect(restored.getPhase()).toBe(GamePhase.SETUP);
+    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
   });
 
   it('round-trips mid-game board with blocker and snapshots', () => {
     const session = GameSession.createNew();
-    confirm(session);
-    walkStandUp(session);
-    confirm(session);
+    rollAndAdvanceDay(session);
+    rollAndAdvanceDay(session);
 
     expect(session.getBoard().findCardByName('S10')?.isBlocked()).toBe(true);
-    expect(session.getSnapshots().length).toBe(1);
+    expect(session.getSnapshots().length).toBe(2);
 
     const restored = GameSession.fromJSON(session.toJSON());
     expect(boardSignature(restored)).toBe(boardSignature(session));
     expect(restored.getCurrentDay()).toBe(session.getCurrentDay());
     expect(restored.getPhase()).toBe(session.getPhase());
-    expect(restored.getSnapshots().length).toBe(1);
+    expect(restored.getSnapshots().length).toBe(2);
     expect(restored.getBoard().findCardByName('S10')?.isBlocked()).toBe(true);
     expect(restored.getPendingActions()).toEqual(session.getPendingActions());
   });
@@ -51,7 +50,7 @@ describe('GameSession serialization', () => {
       type: 'adjust-wip-limits',
       adjustment: new WipLimitAdjustment(11, 0, 2, 2, 4, 3),
     });
-    confirm(session);
+    rollAndAdvanceDay(session);
 
     const json = session.toJSON();
     const restored = GameSession.fromJSON(json);
@@ -79,8 +78,6 @@ describe('GameSession serialization', () => {
 
   it('round-trips manual dice assignments during preparation phase', () => {
     const session = GameSession.createNew();
-    confirm(session);
-
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
 
     const analysisCard = session
@@ -106,7 +103,6 @@ describe('GameSession serialization', () => {
 
   it('migrates saved assign-dice phase to preparation on load', () => {
     const session = GameSession.createNew();
-    confirm(session);
     const json = session.toJSON();
     json.phase = GamePhase.ASSIGN_DICE;
 

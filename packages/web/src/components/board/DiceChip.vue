@@ -2,7 +2,8 @@
 import { State } from '@kanban-game/engine';
 import { computed } from 'vue';
 import type { DiceView } from '../../utils/buildBoardView';
-import { CARD_NAME_MIME, DICE_INDEX_MIME } from '../../utils/dragPayload';
+import { beginDiceDrag, endDiceDrag } from '../../utils/diceDragState';
+import { DICE_INDEX_MIME } from '../../utils/dragPayload';
 
 const props = defineProps<{
   dice: DiceView;
@@ -26,12 +27,18 @@ function handleDragStart(event: DragEvent): void {
     event.preventDefault();
     return;
   }
+  event.stopPropagation();
+  beginDiceDrag(props.dice.index);
   event.dataTransfer?.setData(DICE_INDEX_MIME, String(props.dice.index));
-  event.dataTransfer?.setData(CARD_NAME_MIME, '');
+  event.dataTransfer?.setData('text/plain', String(props.dice.index));
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
   }
   emit('dragStart', event, props.dice.index);
+}
+
+function handleDragEnd(): void {
+  endDiceDrag();
 }
 </script>
 
@@ -42,6 +49,7 @@ function handleDragStart(event: DragEvent): void {
     :title="dice.state"
     :draggable="isDraggable"
     @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
   >
     {{ dice.label }}
   </span>
@@ -59,10 +67,13 @@ function handleDragStart(event: DragEvent): void {
   font-weight: 700;
   color: #fff;
   box-shadow: 0 1px 2px rgb(15 23 42 / 15%);
+  touch-action: none;
 }
 
 .dice-chip.draggable {
   cursor: grab;
+  position: relative;
+  z-index: 2;
 }
 
 .dice-chip.draggable:active {

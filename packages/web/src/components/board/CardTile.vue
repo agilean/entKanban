@@ -185,7 +185,11 @@ function closeDetail(): void {
       </span>
     </div>
 
-    <div v-if="assignedDice && assignedDice.length > 0" class="assigned-dice">
+    <div
+      v-if="assignedDice && assignedDice.length > 0"
+      class="assigned-dice"
+      @mousedown.stop
+    >
       <DiceChip
         v-for="die in assignedDice"
         :key="die.index"

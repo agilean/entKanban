@@ -33,6 +33,8 @@ const {
   canReceiveAdvance,
 } = useDragPolicy();
 
+const STATE_COLUMN_IDS = new Set(['analysis', 'development', 'test']);
+
 const ADVANCE_DROP_COLUMNS = new Set(['analysis', 'development', 'test', 'ready', 'deployed']);
 
 const canReceiveAdvanceDrop = computed(
@@ -160,6 +162,24 @@ function onAdvanceDragOver(event: DragEvent): void {
   }
 }
 
+function onColumnDragOver(event: DragEvent): void {
+  if (isDiceDrag(event) && canAssignDice.value && STATE_COLUMN_IDS.has(props.column.id)) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    return;
+  }
+  onAdvanceDragOver(event);
+}
+
+function onColumnDrop(event: DragEvent): void {
+  if (isDiceDrag(event)) {
+    return;
+  }
+  onAdvanceDrop(event);
+}
+
 function onAdvanceDragLeave(): void {
   advanceDragOver.value = false;
 }
@@ -249,6 +269,23 @@ function onDiceRowDrop(event: DragEvent): void {
   game.unassignDice(diceIndex);
 }
 
+function onCardZoneDragOver(event: DragEvent): void {
+  if (!canAssignDice.value || !isDiceDrag(event)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function onCardZoneDrop(event: DragEvent, cardName: string): void {
+  event.preventDefault();
+  event.stopPropagation();
+  onCardDiceDrop(event, cardName);
+}
+
 function isCardDraggable(cardName: string): boolean {
   return isExpediteEligible(props.column.id, cardName);
 }
@@ -267,9 +304,9 @@ const interactive = () => isColumnInteractive(props.column.id);
       interactive: interactive(),
       'advance-drop-target': advanceDragOver,
     }"
-    @dragover="onAdvanceDragOver"
+    @dragover="onColumnDragOver"
     @dragleave="onAdvanceDragLeave"
-    @drop="onAdvanceDrop"
+    @drop="onColumnDrop"
   >
     <header class="column-header">
       <h3>{{ column.title }}</h3>
@@ -343,17 +380,23 @@ const interactive = () => isColumnInteractive(props.column.id);
       >
         <span class="zone-label">Expedite</span>
         <div class="zone-cards">
-          <CardTile
+          <div
             v-for="card in column.zones.expedite"
             :key="card.id"
-            :card="card"
-            :forward-draggable="isForwardDraggable(card)"
-            :from-column="column.id"
-            :droppable="isCardDroppable(card.name)"
-            :dice-draggable="canAssignDice"
-            :assigned-dice="assignedDiceFor(card.name)"
-            @dice-drop="onCardDiceDrop"
-          />
+            class="card-dice-target"
+            @dragover="onCardZoneDragOver"
+            @drop="onCardZoneDrop($event, card.name)"
+          >
+            <CardTile
+              :card="card"
+              :forward-draggable="isForwardDraggable(card)"
+              :from-column="column.id"
+              :droppable="isCardDroppable(card.name)"
+              :dice-draggable="canAssignDice"
+              :assigned-dice="assignedDiceFor(card.name)"
+              @dice-drop="onCardDiceDrop"
+            />
+          </div>
           <p v-if="column.zones.expedite.length === 0" class="zone-empty">拖入可 Expedite 的标准卡</p>
         </div>
       </div>
@@ -361,19 +404,25 @@ const interactive = () => isColumnInteractive(props.column.id);
       <div class="zone standard-zone">
         <span class="zone-label">Standard</span>
         <div class="zone-cards">
-          <CardTile
+          <div
             v-for="card in column.zones.standard"
             :key="card.id"
-            :card="card"
-            :draggable="isCardDraggable(card.name)"
-            :forward-draggable="isForwardDraggable(card)"
-            :from-column="column.id"
-            :droppable="isCardDroppable(card.name)"
-            :dice-draggable="canAssignDice"
-            :assigned-dice="assignedDiceFor(card.name)"
-            @drag-start="onCardDragStart"
-            @dice-drop="onCardDiceDrop"
-          />
+            class="card-dice-target"
+            @dragover="onCardZoneDragOver"
+            @drop="onCardZoneDrop($event, card.name)"
+          >
+            <CardTile
+              :card="card"
+              :draggable="isCardDraggable(card.name)"
+              :forward-draggable="isForwardDraggable(card)"
+              :from-column="column.id"
+              :droppable="isCardDroppable(card.name)"
+              :dice-draggable="canAssignDice"
+              :assigned-dice="assignedDiceFor(card.name)"
+              @drag-start="onCardDragStart"
+              @dice-drop="onCardDiceDrop"
+            />
+          </div>
         </div>
       </div>
 
@@ -535,6 +584,10 @@ const interactive = () => isColumnInteractive(props.column.id);
   flex-direction: column;
   gap: 0.375rem;
   min-height: 1.5rem;
+}
+
+.card-dice-target {
+  border-radius: 0.5rem;
 }
 
 .expedite-zone {

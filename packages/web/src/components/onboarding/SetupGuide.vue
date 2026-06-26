@@ -7,7 +7,7 @@ const props = defineProps<{
   currentDay: number;
 }>();
 
-const visible = computed(() => props.currentDay === 9 && props.phase === GamePhase.SETUP);
+const visible = computed(() => props.currentDay === 9 && props.phase === GamePhase.REPLENISH);
 </script>
 
 <template>
@@ -17,7 +17,7 @@ const visible = computed(() => props.currentDay === 9 && props.phase === GamePha
     <ul>
       <li>浏览各列 WIP 与卡片位置，点击卡片右上角 ⓘ 查看详情。</li>
       <li>准备阶段可填充优先列、拖入 Expedite 加速、将列底骰子拖到卡片上分配。</li>
-      <li>分配完成后点击「掷骰子」开始工作；Day 9 点击「开始 Day 10」进入正式循环。</li>
+      <li>分配完成后点击「掷骰子」：动画结束后自动结算并进入下一天。</li>
     </ul>
   </aside>
 </template>

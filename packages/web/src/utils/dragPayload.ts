@@ -1,25 +1,48 @@
+import { activeDiceDragIndex } from './diceDragState';
+
 export const DICE_INDEX_MIME = 'text/dice-index';
 export const CARD_NAME_MIME = 'text/card-name';
 export const FROM_COLUMN_MIME = 'text/from-column';
 
+function transferTypes(event: DragEvent): string[] {
+  const types = event.dataTransfer?.types;
+  if (!types) {
+    return [];
+  }
+  return Array.from(types);
+}
+
 export function isDiceDrag(event: DragEvent): boolean {
-  return event.dataTransfer?.types.includes(DICE_INDEX_MIME) ?? false;
+  if (activeDiceDragIndex.value !== null) {
+    return true;
+  }
+  return transferTypes(event).includes(DICE_INDEX_MIME);
 }
 
 export function isCardAdvanceDrag(event: DragEvent): boolean {
-  return event.dataTransfer?.types.includes(FROM_COLUMN_MIME) ?? false;
+  return transferTypes(event).includes(FROM_COLUMN_MIME);
 }
 
 export function isExpediteCardDrag(event: DragEvent): boolean {
-  const types = event.dataTransfer?.types ?? [];
-  return types.includes(CARD_NAME_MIME) && !types.includes(FROM_COLUMN_MIME) && !types.includes(DICE_INDEX_MIME);
+  const types = transferTypes(event);
+  return (
+    types.includes(CARD_NAME_MIME) &&
+    !types.includes(FROM_COLUMN_MIME) &&
+    !types.includes(DICE_INDEX_MIME) &&
+    activeDiceDragIndex.value === null
+  );
 }
 
 export function readDiceIndex(event: DragEvent): number | null {
   const raw = event.dataTransfer?.getData(DICE_INDEX_MIME);
-  if (!raw) {
-    return null;
+  if (raw) {
+    const index = Number.parseInt(raw, 10);
+    if (!Number.isNaN(index)) {
+      return index;
+    }
   }
-  const index = Number.parseInt(raw, 10);
-  return Number.isNaN(index) ? null : index;
+  if (activeDiceDragIndex.value !== null) {
+    return activeDiceDragIndex.value;
+  }
+  return null;
 }

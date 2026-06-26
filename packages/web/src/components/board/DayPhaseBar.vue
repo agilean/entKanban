@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { GamePhase } from '@kanban-game/engine';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
 import { confirmLabel } from '../../utils/confirmLabel';
@@ -9,6 +9,7 @@ import {
   isPhaseComplete,
   stepsForPhase,
 } from '../../utils/phaseSteps';
+import DiceRollOverlay from './DiceRollOverlay.vue';
 
 defineProps<{
   phase: GamePhase;
@@ -24,12 +25,40 @@ const confirmAction = computed(() =>
   game.pendingActions.find((action) => action.kind === 'confirm'),
 );
 
-function handleConfirm(): void {
+const overlayPhase = ref<'rolling' | 'settling' | null>(null);
+const busy = computed(() => overlayPhase.value !== null);
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function handleConfirm(): Promise<void> {
+  if (busy.value) {
+    return;
+  }
+  const action = confirmAction.value;
+  if (action?.label === 'do-work') {
+    overlayPhase.value = 'rolling';
+    await delay(1500);
+    overlayPhase.value = 'settling';
+    await delay(900);
+    game.confirmPhase(ui.activeTab);
+    overlayPhase.value = null;
+    return;
+  }
   game.confirmPhase(ui.activeTab);
 }
 </script>
 
 <template>
+  <DiceRollOverlay
+    v-if="overlayPhase"
+    :phase="overlayPhase"
+    :current-day="currentDay"
+  />
+
   <nav class="day-phase-bar" aria-label="日阶段进度">
     <div class="day-label">
       <span class="day-number">Day {{ currentDay }}</span>
@@ -55,6 +84,7 @@ function handleConfirm(): void {
         v-if="confirmAction && !game.isGameOver"
         type="button"
         class="btn-next"
+        :disabled="busy"
         @click="handleConfirm"
       >
         {{ confirmLabel(confirmAction.label) }}
@@ -147,6 +177,11 @@ function handleConfirm(): void {
 
 .btn-next:hover {
   background: #1d4ed8;
+}
+
+.btn-next:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 @media (max-width: 768px) {

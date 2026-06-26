@@ -64,7 +64,7 @@ export class GameSession {
       false,
       false,
       9,
-      GamePhase.SETUP,
+      GamePhase.REPLENISH,
       new DaySnapshotStore(),
     );
     DayStore.setDay(session.getDaysFactory().getDay(9));
@@ -228,13 +228,17 @@ export class GameSession {
   }
 
   private migrateLegacyPhase(): void {
-    if (this.phase === GamePhase.EXPEDITE || this.phase === GamePhase.ASSIGN_DICE) {
+    if (
+      this.phase === GamePhase.SETUP ||
+      this.phase === GamePhase.EXPEDITE ||
+      this.phase === GamePhase.ASSIGN_DICE
+    ) {
       this.phase = GamePhase.REPLENISH;
     }
   }
 
   private handleAdjustWip(adjustment: WipLimitAdjustment): DispatchResult {
-    if (this.phase !== GamePhase.SETUP) {
+    if (!this.isPreparationPhase()) {
       return { ok: false, error: 'WIP adjustment not allowed in current phase' };
     }
     this.board.putAdjustment(adjustment);
@@ -327,18 +331,8 @@ export class GameSession {
 
   private handleConfirmPhase(): DispatchResult {
     switch (this.phase) {
-      case GamePhase.SETUP:
-        this.currentDay = 10;
-        DayStore.setDay(this.getDaysFactory().getDay(10));
-        this.beginReplenishPhase();
-        return this.success();
       case GamePhase.REPLENISH:
-        this.getCurrentDayObject().replenishSelected(this.board);
-        this.lastBlockerRolls = [];
-        this.getCurrentDayObject().expediteTickets(this.board);
-        this.applyDiceAssignments();
-        this.phase = GamePhase.DO_WORK;
-        return this.success();
+        return this.finishPreparationAndAdvanceDay();
       case GamePhase.DO_WORK:
         this.getCurrentDayObject().doTheWork(new Context(this.board, this.getCurrentDayObject()));
         if (this.currentDay === 17 && !this.trainingDecided) {
@@ -352,6 +346,24 @@ export class GameSession {
       default:
         return { ok: false, error: `Cannot confirm phase: ${this.phase}` };
     }
+  }
+
+  /** 完成准备 → 掷骰工作 → 日终结算 → 自动进入下一天准备（legacy 存档仍可在 DO_WORK 单独确认） */
+  private finishPreparationAndAdvanceDay(): DispatchResult {
+    this.getCurrentDayObject().replenishSelected(this.board);
+    this.lastBlockerRolls = [];
+    this.getCurrentDayObject().expediteTickets(this.board);
+    this.applyDiceAssignments();
+    this.getCurrentDayObject().doTheWork(new Context(this.board, this.getCurrentDayObject()));
+    if (this.currentDay === 17 && !this.trainingDecided) {
+      this.phase = GamePhase.TED_TRAINING;
+      return this.success();
+    }
+    this.finishEndOfDay();
+    if (this.phase === GamePhase.GAME_OVER) {
+      return this.success();
+    }
+    return this.startNextDay();
   }
 
   private applyDiceAssignments(): void {
@@ -432,24 +444,7 @@ export class GameSession {
           }
         }
         pending.push({ kind: 'assign-dice', diceCount: this.board.getDice().length });
-        pending.push({ kind: 'confirm', label: 'finish-prep' });
-        break;
-      }
-      case GamePhase.SETUP: {
-        for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
-          const eligible = this.board
-            .getStateColumn(state)
-            .getExpeditableStandardCards(day)
-            .map((card) => card.getName());
-          if (eligible.length > 0) {
-            pending.push({ kind: 'expedite', state, eligibleCards: eligible });
-          }
-        }
-        pending.push({ kind: 'assign-dice', diceCount: this.board.getDice().length });
-        pending.push({
-          kind: 'confirm',
-          label: 'start-day-10',
-        });
+        pending.push({ kind: 'confirm', label: 'do-work' });
         break;
       }
       case GamePhase.DO_WORK:

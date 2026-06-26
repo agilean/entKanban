@@ -65,7 +65,7 @@ export const useGameStore = defineStore('game', () => {
 
   const hasSession = computed(() => session.value !== null);
   const currentDay = computed(() => session.value?.getCurrentDay() ?? 9);
-  const phase = computed(() => session.value?.getPhase() ?? GamePhase.SETUP);
+  const phase = computed(() => session.value?.getPhase() ?? GamePhase.REPLENISH);
   const pendingActions = computed((): readonly PendingAction[] => {
     void revision.value;
     return session.value?.getPendingActions() ?? [];
