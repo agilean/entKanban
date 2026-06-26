@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useDragPolicy } from '../../composables/useDragPolicy';
 import { useGameStore } from '../../stores/gameStore';
 import type { BoardView, DiceView } from '../../utils/buildBoardView';
-import { DICE_INDEX_MIME } from '../../utils/dragPayload';
+import { DICE_INDEX_MIME, isDiceDrag, readDiceIndex } from '../../utils/dragPayload';
 import DiceChip from './DiceChip.vue';
 
 defineProps<{
@@ -12,6 +12,7 @@ defineProps<{
 
 const game = useGameStore();
 const { canAssignDice } = useDragPolicy();
+const poolDragOver = ref(false);
 
 const assignedIndices = computed(() => {
   const indices = new Set<number>();
@@ -33,15 +34,58 @@ const availableDice = computed((): DiceView[] => {
 function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
   event.dataTransfer?.setData(DICE_INDEX_MIME, String(diceIndex));
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.effectAllowed = 'move';
   }
+}
+
+function onPoolDragOver(event: DragEvent): void {
+  if (!canAssignDice.value || !isDiceDrag(event)) {
+    return;
+  }
+  event.preventDefault();
+  poolDragOver.value = true;
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function onPoolDragLeave(event: DragEvent): void {
+  const next = event.relatedTarget as Node | null;
+  const current = event.currentTarget as HTMLElement;
+  if (next && current.contains(next)) {
+    return;
+  }
+  poolDragOver.value = false;
+}
+
+function onPoolDrop(event: DragEvent): void {
+  event.preventDefault();
+  poolDragOver.value = false;
+  if (!canAssignDice.value) {
+    return;
+  }
+  const diceIndex = readDiceIndex(event);
+  if (diceIndex === null) {
+    return;
+  }
+  if (!assignedIndices.value.has(diceIndex)) {
+    return;
+  }
+  game.unassignDice(diceIndex);
 }
 </script>
 
 <template>
-  <section v-if="canAssignDice && availableDice.length > 0" class="dice-pool">
+  <section
+    v-if="canAssignDice"
+    class="dice-pool"
+    :class="{ 'drag-over': poolDragOver, empty: availableDice.length === 0 }"
+    @dragover="onPoolDragOver"
+    @dragleave="onPoolDragLeave"
+    @drop="onPoolDrop"
+  >
     <h3 class="pool-title">分配骰子</h3>
-    <p class="pool-hint">也可从各列底部的骰子拖到对应卡片上</p>
+    <p class="pool-hint">拖到卡片上分配；从卡片或列底拖回此处可取消分配</p>
     <div class="dice-list">
       <DiceChip
         v-for="die in availableDice"
@@ -50,6 +94,7 @@ function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
         draggable
         @drag-start="handleDiceDragStart"
       />
+      <span v-if="availableDice.length === 0" class="pool-empty">拖回已分配的骰子</span>
     </div>
   </section>
 </template>
@@ -61,6 +106,17 @@ function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
   background: #fff;
   border: 1px dashed #93c5fd;
   border-radius: 0.75rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dice-pool.drag-over {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2px #dbeafe;
+}
+
+.dice-pool.empty {
+  min-height: 3rem;
 }
 
 .pool-title {
@@ -80,5 +136,13 @@ function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.pool-empty {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 </style>

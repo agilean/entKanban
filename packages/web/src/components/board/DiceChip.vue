@@ -29,7 +29,7 @@ function handleDragStart(event: DragEvent): void {
   event.dataTransfer?.setData(DICE_INDEX_MIME, String(props.dice.index));
   event.dataTransfer?.setData(CARD_NAME_MIME, '');
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.effectAllowed = 'move';
   }
   emit('dragStart', event, props.dice.index);
 }

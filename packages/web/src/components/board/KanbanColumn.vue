@@ -42,6 +42,7 @@ const canReceiveAdvanceDrop = computed(
 const localCards = ref<CardView[]>([...props.column.cards]);
 const expediteDragOver = ref(false);
 const advanceDragOver = ref(false);
+const diceRowDragOver = ref(false);
 const pendingPullCardName = ref<string | null>(null);
 
 watch(
@@ -180,8 +181,8 @@ function onAdvanceDrop(event: DragEvent): void {
   game.advanceCard(fromColumn, props.column.id, cardName);
 }
 
-function assignedDiceFor(cardName: string): string[] {
-  return game.getAssignedDiceLabels(cardName);
+function assignedDiceFor(cardName: string) {
+  return game.getAssignedDiceForCard(cardName);
 }
 
 const assignedDiceIndices = computed(() => {
@@ -205,8 +206,47 @@ function isDiceDraggable(diceIndex: number): boolean {
 function onDiceDragStart(event: DragEvent, diceIndex: number): void {
   event.dataTransfer?.setData(DICE_INDEX_MIME, String(diceIndex));
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.effectAllowed = 'move';
   }
+}
+
+function onDiceRowDragOver(event: DragEvent): void {
+  if (!canAssignDice.value || !isDiceDrag(event)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  diceRowDragOver.value = true;
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function onDiceRowDragLeave(event: DragEvent): void {
+  const next = event.relatedTarget as Node | null;
+  const current = event.currentTarget as HTMLElement;
+  if (next && current.contains(next)) {
+    return;
+  }
+  diceRowDragOver.value = false;
+}
+
+function onDiceRowDrop(event: DragEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  diceRowDragOver.value = false;
+  if (!canAssignDice.value || !props.column.state) {
+    return;
+  }
+  const diceIndex = readDiceIndex(event);
+  if (diceIndex === null) {
+    return;
+  }
+  const die = game.boardView?.unassignedDice.find((item) => item.index === diceIndex);
+  if (!die || die.state !== props.column.state) {
+    return;
+  }
+  game.unassignDice(diceIndex);
 }
 
 function isCardDraggable(cardName: string): boolean {
@@ -310,6 +350,7 @@ const interactive = () => isColumnInteractive(props.column.id);
             :forward-draggable="isForwardDraggable(card)"
             :from-column="column.id"
             :droppable="isCardDroppable(card.name)"
+            :dice-draggable="canAssignDice"
             :assigned-dice="assignedDiceFor(card.name)"
             @dice-drop="onCardDiceDrop"
           />
@@ -328,6 +369,7 @@ const interactive = () => isColumnInteractive(props.column.id);
             :forward-draggable="isForwardDraggable(card)"
             :from-column="column.id"
             :droppable="isCardDroppable(card.name)"
+            :dice-draggable="canAssignDice"
             :assigned-dice="assignedDiceFor(card.name)"
             @drag-start="onCardDragStart"
             @dice-drop="onCardDiceDrop"
@@ -348,7 +390,14 @@ const interactive = () => isColumnInteractive(props.column.id);
         </div>
       </div>
 
-      <footer v-if="availableColumnDice.length > 0" class="dice-row">
+      <footer
+        v-if="canAssignDice && column.dice.length > 0"
+        class="dice-row"
+        :class="{ 'drag-over': diceRowDragOver }"
+        @dragover="onDiceRowDragOver"
+        @dragleave="onDiceRowDragLeave"
+        @drop="onDiceRowDrop"
+      >
         <DiceChip
           v-for="die in availableColumnDice"
           :key="die.id"
@@ -357,7 +406,9 @@ const interactive = () => isColumnInteractive(props.column.id);
           @drag-start="onDiceDragStart"
         />
       </footer>
-      <p v-if="canAssignDice" class="column-hint">将列底骰子拖到本列卡片上</p>
+      <p v-if="canAssignDice" class="column-hint">
+        骰子可在列底、卡片间拖放，或拖回顶栏取消分配
+      </p>
       <p v-else-if="canAdvanceFlow" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
     </template>
 
@@ -525,7 +576,16 @@ const interactive = () => isColumnInteractive(props.column.id);
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  padding-top: 0.25rem;
+  padding: 0.375rem;
+  min-height: 2rem;
   border-top: 1px dashed #e2e8f0;
+  border-radius: 0.375rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dice-row.drag-over {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px #dbeafe;
 }
 </style>

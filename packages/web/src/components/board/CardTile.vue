@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import type { AssignedDiceView } from '../../stores/gameStore';
 import type { CardView } from '../../utils/buildBoardView';
 import { isDiceDrag } from '../../utils/dragPayload';
 import { wipAgeSeverity } from '../../utils/wipAge';
 import CardDetailPopover from './CardDetailPopover.vue';
+import DiceChip from './DiceChip.vue';
 
 const props = defineProps<{
   card: CardView;
@@ -11,7 +13,8 @@ const props = defineProps<{
   forwardDraggable?: boolean;
   fromColumn?: string;
   droppable?: boolean;
-  assignedDice?: string[];
+  diceDraggable?: boolean;
+  assignedDice?: AssignedDiceView[];
 }>();
 
 const emit = defineEmits<{
@@ -32,6 +35,7 @@ const isForwardDragEnabled = computed(
 );
 const isAnyDragEnabled = computed(() => isDragEnabled.value || isForwardDragEnabled.value);
 const isDropEnabled = computed(() => props.droppable === true);
+const isDiceDragEnabled = computed(() => props.diceDraggable === true);
 const diceDragActive = ref(false);
 const showDetail = ref(false);
 const anchorRect = ref<DOMRect | null>(null);
@@ -98,7 +102,7 @@ function handleDragOver(event: DragEvent): void {
   event.stopPropagation();
   diceDragActive.value = true;
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'copy';
+    event.dataTransfer.dropEffect = 'move';
   }
 }
 
@@ -182,7 +186,17 @@ function closeDetail(): void {
     </div>
 
     <div v-if="assignedDice && assignedDice.length > 0" class="assigned-dice">
-      <span v-for="(label, idx) in assignedDice" :key="idx" class="dice-badge">{{ label }}</span>
+      <DiceChip
+        v-for="die in assignedDice"
+        :key="die.index"
+        :dice="{
+          id: `assigned-${die.index}`,
+          index: die.index,
+          state: die.state,
+          label: die.label,
+        }"
+        :draggable="isDiceDragEnabled"
+      />
     </div>
 
     <footer v-if="card.blocked || card.dueDate" class="card-footer">
@@ -377,20 +391,6 @@ function closeDetail(): void {
   flex-wrap: wrap;
   gap: 0.25rem;
   margin-top: 0.375rem;
-}
-
-.dice-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: #334155;
-  color: #fff;
-  font-size: 0.625rem;
-  font-weight: 700;
 }
 
 .card-footer {

@@ -18,6 +18,45 @@ import { buildBoardView } from '../utils/buildBoardView';
 import { clearSavedGame, loadGame, saveGame, type SavedGamePayload } from '../utils/saveGame';
 import type { AppTab } from './uiStore';
 
+export type AssignedDiceView = {
+  index: number;
+  label: string;
+  state: State;
+};
+
+function removeDiceFromAssignments(
+  assignments: DiceAssignmentInput[],
+  diceIndex: number,
+): DiceAssignmentInput[] {
+  const result: DiceAssignmentInput[] = [];
+  for (const assignment of assignments) {
+    const diceIndices = assignment.diceIndices.filter((index) => index !== diceIndex);
+    if (diceIndices.length > 0) {
+      result.push({ ...assignment, diceIndices });
+    }
+  }
+  return result;
+}
+
+function appendDiceToCard(
+  assignments: DiceAssignmentInput[],
+  state: State,
+  cardName: string,
+  diceIndex: number,
+): DiceAssignmentInput[] {
+  const without = removeDiceFromAssignments(assignments, diceIndex);
+  const existing = without.find((a) => a.state === state && a.cardName === cardName);
+  if (existing) {
+    if (existing.diceIndices.includes(diceIndex)) {
+      return without;
+    }
+    return without.map((a) =>
+      a === existing ? { ...a, diceIndices: [...a.diceIndices, diceIndex] } : a,
+    );
+  }
+  return [...without, { state, cardName, diceIndices: [diceIndex] }];
+}
+
 export const useGameStore = defineStore('game', () => {
   const session = shallowRef<GameSession | null>(null);
   const lastError = ref<string | null>(null);
@@ -183,6 +222,16 @@ export const useGameStore = defineStore('game', () => {
     return dispatchAndSave({ type: 'send-ted-to-training', training }, activeTab);
   }
 
+  function unassignDice(diceIndex: number, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    const die = boardView.value?.unassignedDice.find((item) => item.index === diceIndex);
+    if (!die) {
+      lastError.value = '找不到该骰子';
+      return { ok: false, error: '找不到该骰子' };
+    }
+    const updated = removeDiceFromAssignments([...pendingDiceAssignments.value], diceIndex);
+    return assignDice(updated, activeTab);
+  }
+
   function addDiceToCard(
     state: State,
     cardName: string,
@@ -198,35 +247,32 @@ export const useGameStore = defineStore('game', () => {
       lastError.value = '骰子类型与列不匹配';
       return { ok: false, error: '骰子类型与列不匹配' };
     }
-    const current = [...pendingDiceAssignments.value];
-    const existing = current.find((a) => a.state === state && a.cardName === cardName);
-    if (existing?.diceIndices.includes(diceIndex)) {
-      return undefined;
-    }
-    const alreadyAssigned = current.some((a) => a.diceIndices.includes(diceIndex));
-    if (alreadyAssigned) {
-      lastError.value = '该骰子已分配';
-      return { ok: false, error: '该骰子已分配' };
-    }
-    let updated: DiceAssignmentInput[];
-    if (existing) {
-      updated = current.map((a) =>
-        a === existing ? { ...a, diceIndices: [...a.diceIndices, diceIndex] } : a,
-      );
-    } else {
-      updated = [...current, { state, cardName, diceIndices: [diceIndex] }];
-    }
+    const updated = appendDiceToCard(
+      [...pendingDiceAssignments.value],
+      state,
+      cardName,
+      diceIndex,
+    );
     return assignDice(updated, activeTab);
   }
 
-  function getAssignedDiceLabels(cardName: string): string[] {
+  function getAssignedDiceForCard(cardName: string): AssignedDiceView[] {
     if (!boardView.value) {
       return [];
     }
-    const indices = pendingDiceAssignments.value
-      .filter((a) => a.cardName === cardName)
-      .flatMap((a) => a.diceIndices);
-    return indices.map((index) => boardView.value!.unassignedDice[index]?.label ?? String(index));
+    const result: AssignedDiceView[] = [];
+    for (const assignment of pendingDiceAssignments.value) {
+      if (assignment.cardName !== cardName) {
+        continue;
+      }
+      for (const index of assignment.diceIndices) {
+        const die = boardView.value.unassignedDice[index];
+        if (die) {
+          result.push({ index, label: die.label, state: die.state });
+        }
+      }
+    }
+    return result;
   }
 
   return {
@@ -264,6 +310,7 @@ export const useGameStore = defineStore('game', () => {
     assignDice,
     sendTedToTraining,
     addDiceToCard,
-    getAssignedDiceLabels,
+    unassignDice,
+    getAssignedDiceForCard,
   };
 });
