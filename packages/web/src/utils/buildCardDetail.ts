@@ -8,6 +8,7 @@ import {
   type Day,
 } from '@kanban-game/engine';
 import { getCardCatalogEntry } from './cardCatalog';
+import { computeWipAge } from './wipAge';
 
 export type CardDetailMetric = {
   label: string;
@@ -82,6 +83,10 @@ export function buildCardDetail(card: Card, currentDay: number, day: Day): CardD
 
   if (card.getDaySelected() > 0) {
     push(safeMetric('选中于', `Day ${card.getDaySelected()}`));
+    const wipAge = computeWipAge(card, currentDay);
+    if (wipAge?.kind === 'flow') {
+      push(safeMetric('已流动', `${wipAge.days} 天`));
+    }
   }
   if (card.getDayDeployed() > 0) {
     push(safeMetric('部署于', `Day ${card.getDayDeployed()}`));

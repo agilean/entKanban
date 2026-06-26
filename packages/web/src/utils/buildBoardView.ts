@@ -7,6 +7,7 @@ import {
   type Board,
   type Card,
 } from '@kanban-game/engine';
+import { computeWipAge, type WipAgeKind } from './wipAge';
 
 export type CardCosKind = 'standard' | 'expedite' | 'fixed-date' | 'intangible';
 
@@ -23,6 +24,8 @@ export type CardView = {
     test: number;
   };
   dueDate?: number;
+  wipDays?: number;
+  wipDaysKind?: WipAgeKind;
 };
 
 export type DiceView = {
@@ -83,7 +86,7 @@ function isCardAdvanceable(card: Card, columnId: string): boolean {
   }
 }
 
-function mapCard(card: Card, columnId?: string): CardView {
+function mapCard(card: Card, columnId: string | undefined, currentDay: number): CardView {
   const view: CardView = {
     id: card.getName(),
     name: card.getName(),
@@ -108,6 +111,12 @@ function mapCard(card: Card, columnId?: string): CardView {
     view.advanceable = isCardAdvanceable(card, columnId);
   }
 
+  const wipAge = computeWipAge(card, currentDay);
+  if (wipAge) {
+    view.wipDays = wipAge.days;
+    view.wipDaysKind = wipAge.kind;
+  }
+
   return view;
 }
 
@@ -128,7 +137,7 @@ function mapDiceForState(allDice: DiceView[], state: State): DiceView[] {
   return allDice.filter((die) => die.state === state);
 }
 
-function buildStateZones(board: Board, state: State, columnId: string): ColumnZones {
+function buildStateZones(board: Board, state: State, columnId: string, currentDay: number): ColumnZones {
   const column = board.getStateColumn(state);
   const standard: CardView[] = [];
   const expedite: CardView[] = [];
@@ -139,7 +148,7 @@ function buildStateZones(board: Board, state: State, columnId: string): ColumnZo
     if (!card) {
       continue;
     }
-    const view = mapCard(card, columnId);
+    const view = mapCard(card, columnId, currentDay);
     if (slot.done) {
       done.push(view);
     } else if (slot.cos === ClassOfService.EXPEDITE) {
@@ -152,10 +161,16 @@ function buildStateZones(board: Board, state: State, columnId: string): ColumnZo
   return { standard, expedite, done };
 }
 
-function buildStateColumn(board: Board, state: State, id: string, title: string): ColumnView {
+function buildStateColumn(
+  board: Board,
+  state: State,
+  id: string,
+  title: string,
+  currentDay: number,
+): ColumnView {
   const column = board.getStateColumn(state);
   const allDice = mapAllDice(board);
-  const zones = buildStateZones(board, state, id);
+  const zones = buildStateZones(board, state, id, currentDay);
   const cards = [...zones.expedite, ...zones.standard, ...zones.done];
 
   return {
@@ -170,7 +185,7 @@ function buildStateColumn(board: Board, state: State, id: string, title: string)
   };
 }
 
-export function buildBoardView(board: Board): BoardView {
+export function buildBoardView(board: Board, currentDay: number): BoardView {
   const allDice = mapAllDice(board);
 
   const columns: ColumnView[] = [
@@ -179,7 +194,7 @@ export function buildBoardView(board: Board): BoardView {
       title: '存量',
       limitLabel: '∞',
       count: board.getOptions().getCards().length,
-      cards: board.getOptions().getCards().map((c) => mapCard(c, 'backlog')),
+      cards: board.getOptions().getCards().map((c) => mapCard(c, 'backlog', currentDay)),
       dice: [],
     },
     {
@@ -187,18 +202,18 @@ export function buildBoardView(board: Board): BoardView {
       title: '优先',
       limitLabel: formatLimit(board.getSelected().getLimit()),
       count: board.getSelected().getCards().length,
-      cards: board.getSelected().getCards().map((c) => mapCard(c, 'selected')),
+      cards: board.getSelected().getCards().map((c) => mapCard(c, 'selected', currentDay)),
       dice: [],
     },
-    buildStateColumn(board, State.ANALYSIS, 'analysis', '分析'),
-    buildStateColumn(board, State.DEVELOPMENT, 'development', '开发'),
-    buildStateColumn(board, State.TEST, 'test', '测试'),
+    buildStateColumn(board, State.ANALYSIS, 'analysis', '分析', currentDay),
+    buildStateColumn(board, State.DEVELOPMENT, 'development', '开发', currentDay),
+    buildStateColumn(board, State.TEST, 'test', '测试', currentDay),
     {
       id: 'ready',
       title: '就绪',
       limitLabel: '∞',
       count: board.getReadyToDeploy().getCards().length,
-      cards: board.getReadyToDeploy().getCards().map((c) => mapCard(c, 'ready')),
+      cards: board.getReadyToDeploy().getCards().map((c) => mapCard(c, 'ready', currentDay)),
       dice: [],
     },
     {
@@ -206,7 +221,7 @@ export function buildBoardView(board: Board): BoardView {
       title: '已部署',
       limitLabel: '∞',
       count: board.getDeployed().getCards().length,
-      cards: board.getDeployed().getCards().map((c) => mapCard(c, 'deployed')),
+      cards: board.getDeployed().getCards().map((c) => mapCard(c, 'deployed', currentDay)),
       dice: [],
     },
   ];

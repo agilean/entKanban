@@ -86,7 +86,7 @@ export function useDragPolicy() {
     return canAdvanceFlow.value && isValidAdvance(fromColumn, toColumn);
   }
 
-  function canDropDiceOnCard(columnId: string, cardName: string): boolean {
+  function canDropDiceOnCard(columnId: string, cardName: string, diceIndex?: number): boolean {
     if (!canAssignDice.value) {
       return false;
     }
@@ -99,7 +99,14 @@ export function useDragPolicy() {
       return false;
     }
     const incomplete = [...column.zones.standard, ...column.zones.expedite];
-    return incomplete.some((card) => card.name === cardName);
+    if (!incomplete.some((card) => card.name === cardName)) {
+      return false;
+    }
+    if (diceIndex === undefined) {
+      return true;
+    }
+    const die = game.boardView?.unassignedDice.find((item) => item.index === diceIndex);
+    return die?.state === state;
   }
 
   return {

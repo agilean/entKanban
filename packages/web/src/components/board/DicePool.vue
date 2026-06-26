@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useDragPolicy } from '../../composables/useDragPolicy';
 import { useGameStore } from '../../stores/gameStore';
 import type { BoardView, DiceView } from '../../utils/buildBoardView';
+import { DICE_INDEX_MIME } from '../../utils/dragPayload';
 import DiceChip from './DiceChip.vue';
 
 defineProps<{
@@ -30,7 +31,7 @@ const availableDice = computed((): DiceView[] => {
 });
 
 function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
-  event.dataTransfer?.setData('text/dice-index', String(diceIndex));
+  event.dataTransfer?.setData(DICE_INDEX_MIME, String(diceIndex));
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy';
   }

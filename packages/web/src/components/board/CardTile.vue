@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { CardView } from '../../utils/buildBoardView';
+import { isDiceDrag } from '../../utils/dragPayload';
+import { wipAgeSeverity } from '../../utils/wipAge';
 import CardDetailPopover from './CardDetailPopover.vue';
 
 const props = defineProps<{
@@ -30,8 +32,29 @@ const isForwardDragEnabled = computed(
 );
 const isAnyDragEnabled = computed(() => isDragEnabled.value || isForwardDragEnabled.value);
 const isDropEnabled = computed(() => props.droppable === true);
+const diceDragActive = ref(false);
 const showDetail = ref(false);
 const anchorRect = ref<DOMRect | null>(null);
+
+const wipAgeLabel = computed(() => {
+  if (props.card.wipDays === undefined || props.card.wipDaysKind === undefined) {
+    return null;
+  }
+  if (props.card.wipDaysKind === 'cycle') {
+    return `周期 ${props.card.wipDays}天`;
+  }
+  return `${props.card.wipDays}天`;
+});
+
+const wipAgeClass = computed(() => {
+  if (props.card.wipDays === undefined || props.card.wipDaysKind === undefined) {
+    return null;
+  }
+  if (props.card.wipDaysKind === 'cycle') {
+    return 'cycle';
+  }
+  return wipAgeSeverity(props.card.wipDays, 'flow');
+});
 
 function handleDragStart(event: DragEvent): void {
   if (isForwardDragEnabled.value) {
@@ -49,21 +72,43 @@ function handleDragStart(event: DragEvent): void {
   emit('dragStart', event, props.card.name);
 }
 
-function handleDragOver(event: DragEvent): void {
-  if (!isDropEnabled.value) {
+function handleDragEnter(event: DragEvent): void {
+  if (!isDropEnabled.value || !isDiceDrag(event)) {
     return;
   }
   event.preventDefault();
+  event.stopPropagation();
+  diceDragActive.value = true;
+}
+
+function handleDragLeave(event: DragEvent): void {
+  const next = event.relatedTarget as Node | null;
+  const current = event.currentTarget as HTMLElement;
+  if (next && current.contains(next)) {
+    return;
+  }
+  diceDragActive.value = false;
+}
+
+function handleDragOver(event: DragEvent): void {
+  if (!isDropEnabled.value || !isDiceDrag(event)) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  diceDragActive.value = true;
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'copy';
   }
 }
 
 function handleDrop(event: DragEvent): void {
-  if (!isDropEnabled.value) {
+  diceDragActive.value = false;
+  if (!isDropEnabled.value || !isDiceDrag(event)) {
     return;
   }
   event.preventDefault();
+  event.stopPropagation();
   emit('diceDrop', event, props.card.name);
 }
 
@@ -88,14 +133,27 @@ function closeDetail(): void {
       [`kind-${card.kind}`]: true,
       draggable: isAnyDragEnabled,
       droppable: isDropEnabled,
+      'dice-drop-active': diceDragActive,
     }"
     :draggable="isAnyDragEnabled"
     @dragstart="handleDragStart"
+    @dragenter="handleDragEnter"
+    @dragleave="handleDragLeave"
     @dragover="handleDragOver"
     @drop="handleDrop"
   >
     <header class="card-header">
-      <span class="card-name">{{ card.name }}</span>
+      <div class="card-title-row">
+        <span class="card-name">{{ card.name }}</span>
+        <span
+          v-if="wipAgeLabel"
+          class="wip-age"
+          :class="wipAgeClass ? `wip-age-${wipAgeClass}` : undefined"
+          :title="card.wipDaysKind === 'cycle' ? '交付周期' : '自选中以来已流动天数'"
+        >
+          {{ wipAgeLabel }}
+        </span>
+      </div>
       <div class="header-actions">
         <button
           type="button"
@@ -167,9 +225,15 @@ function closeDetail(): void {
   transition: outline-color 0.15s, background 0.15s;
 }
 
-.card-tile.droppable:hover {
+.card-tile.droppable:hover,
+.card-tile.dice-drop-active {
   outline-color: #93c5fd;
   background: #f0f9ff;
+}
+
+.card-tile.dice-drop-active {
+  outline: 2px dashed #2563eb;
+  box-shadow: 0 0 0 2px #dbeafe;
 }
 
 .kind-standard {
@@ -195,13 +259,53 @@ function closeDetail(): void {
 .card-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.card-title-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .card-name {
   font-weight: 700;
   color: #1e293b;
+}
+
+.wip-age {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wip-age-flow,
+.wip-age-fresh {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.wip-age-aging {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.wip-age-stale {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.wip-age-cycle {
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .header-actions {

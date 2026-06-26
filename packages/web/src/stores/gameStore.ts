@@ -51,7 +51,7 @@ export const useGameStore = defineStore('game', () => {
     if (!session.value) {
       return null;
     }
-    return buildBoardView(session.value.getBoard());
+    return buildBoardView(session.value.getBoard(), session.value.getCurrentDay());
   });
   const snapshots = computed((): readonly DaySnapshot[] => {
     void revision.value;
@@ -189,6 +189,15 @@ export const useGameStore = defineStore('game', () => {
     diceIndex: number,
     activeTab: AppTab = 'board',
   ): DispatchResult | undefined {
+    const die = boardView.value?.unassignedDice.find((item) => item.index === diceIndex);
+    if (!die) {
+      lastError.value = '找不到该骰子';
+      return { ok: false, error: '找不到该骰子' };
+    }
+    if (die.state !== state) {
+      lastError.value = '骰子类型与列不匹配';
+      return { ok: false, error: '骰子类型与列不匹配' };
+    }
     const current = [...pendingDiceAssignments.value];
     const existing = current.find((a) => a.state === state && a.cardName === cardName);
     if (existing?.diceIndices.includes(diceIndex)) {

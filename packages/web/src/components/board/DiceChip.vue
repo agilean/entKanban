@@ -2,6 +2,7 @@
 import { State } from '@kanban-game/engine';
 import { computed } from 'vue';
 import type { DiceView } from '../../utils/buildBoardView';
+import { CARD_NAME_MIME, DICE_INDEX_MIME } from '../../utils/dragPayload';
 
 const props = defineProps<{
   dice: DiceView;
@@ -24,6 +25,11 @@ function handleDragStart(event: DragEvent): void {
   if (!isDraggable.value) {
     event.preventDefault();
     return;
+  }
+  event.dataTransfer?.setData(DICE_INDEX_MIME, String(props.dice.index));
+  event.dataTransfer?.setData(CARD_NAME_MIME, '');
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy';
   }
   emit('dragStart', event, props.dice.index);
 }

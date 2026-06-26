@@ -4,6 +4,15 @@ import draggable from 'vuedraggable';
 import { useDragPolicy } from '../../composables/useDragPolicy';
 import { useGameStore } from '../../stores/gameStore';
 import type { CardView, ColumnView } from '../../utils/buildBoardView';
+import {
+  CARD_NAME_MIME,
+  DICE_INDEX_MIME,
+  FROM_COLUMN_MIME,
+  isCardAdvanceDrag,
+  isDiceDrag,
+  isExpediteCardDrag,
+  readDiceIndex,
+} from '../../utils/dragPayload';
 import CardTile from './CardTile.vue';
 import DiceChip from './DiceChip.vue';
 
@@ -85,17 +94,18 @@ function onSelectedDragEnd(event: { from: HTMLElement; to: HTMLElement }): void 
 }
 
 function onCardDragStart(event: DragEvent, cardName: string): void {
-  event.dataTransfer?.setData('text/card-name', cardName);
+  event.dataTransfer?.setData(CARD_NAME_MIME, cardName);
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
   }
 }
 
 function onExpediteDragOver(event: DragEvent): void {
-  if (!canExpedite.value) {
+  if (!canExpedite.value || !isExpediteCardDrag(event)) {
     return;
   }
   event.preventDefault();
+  event.stopPropagation();
   expediteDragOver.value = true;
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move';
@@ -108,11 +118,12 @@ function onExpediteDragLeave(): void {
 
 function onExpediteDrop(event: DragEvent): void {
   event.preventDefault();
+  event.stopPropagation();
   expediteDragOver.value = false;
-  if (!canExpedite.value || !props.column.state) {
+  if (!canExpedite.value || !props.column.state || isDiceDrag(event)) {
     return;
   }
-  const cardName = event.dataTransfer?.getData('text/card-name');
+  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
   if (!cardName) {
     return;
   }
@@ -123,12 +134,11 @@ function onCardDiceDrop(event: DragEvent, cardName: string): void {
   if (!canAssignDice.value || !props.column.state) {
     return;
   }
-  const indexStr = event.dataTransfer?.getData('text/dice-index');
-  if (!indexStr) {
+  const diceIndex = readDiceIndex(event);
+  if (diceIndex === null) {
     return;
   }
-  const diceIndex = Number.parseInt(indexStr, 10);
-  if (Number.isNaN(diceIndex)) {
+  if (!canDropDiceOnCard(props.column.id, cardName, diceIndex)) {
     return;
   }
   game.addDiceToCard(props.column.state, cardName, diceIndex);
@@ -139,7 +149,7 @@ function isForwardDraggable(card: CardView): boolean {
 }
 
 function onAdvanceDragOver(event: DragEvent): void {
-  if (!canReceiveAdvanceDrop.value) {
+  if (!canReceiveAdvanceDrop.value || !isCardAdvanceDrag(event)) {
     return;
   }
   event.preventDefault();
@@ -156,11 +166,11 @@ function onAdvanceDragLeave(): void {
 function onAdvanceDrop(event: DragEvent): void {
   event.preventDefault();
   advanceDragOver.value = false;
-  if (!canReceiveAdvanceDrop.value) {
+  if (!canReceiveAdvanceDrop.value || isDiceDrag(event)) {
     return;
   }
-  const cardName = event.dataTransfer?.getData('text/card-name');
-  const fromColumn = event.dataTransfer?.getData('text/from-column');
+  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
+  const fromColumn = event.dataTransfer?.getData(FROM_COLUMN_MIME);
   if (!cardName || !fromColumn) {
     return;
   }
@@ -193,7 +203,7 @@ function isDiceDraggable(diceIndex: number): boolean {
 }
 
 function onDiceDragStart(event: DragEvent, diceIndex: number): void {
-  event.dataTransfer?.setData('text/dice-index', String(diceIndex));
+  event.dataTransfer?.setData(DICE_INDEX_MIME, String(diceIndex));
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy';
   }
