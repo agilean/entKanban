@@ -44,7 +44,12 @@ export function useDragPolicy() {
       game.phase === GamePhase.ADJUST_WIP,
   );
 
-  const canPullToSelected = computed(() => game.phase === GamePhase.REPLENISH);
+  const canPullToSelected = computed(
+    () =>
+      game.phase === GamePhase.REPLENISH ||
+      game.phase === GamePhase.SETUP ||
+      game.phase === GamePhase.ADJUST_WIP,
+  );
 
   const canExpedite = computed(() => game.phase === GamePhase.EXPEDITE);
 

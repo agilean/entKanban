@@ -229,7 +229,11 @@ export class GameSession {
   }
 
   private handlePullToSelected(cardName: string): DispatchResult {
-    if (this.phase !== GamePhase.REPLENISH) {
+    if (
+      this.phase !== GamePhase.SETUP &&
+      this.phase !== GamePhase.ADJUST_WIP &&
+      this.phase !== GamePhase.REPLENISH
+    ) {
       return { ok: false, error: 'Pull to selected not allowed in current phase' };
     }
     const selected = this.board.getSelected();

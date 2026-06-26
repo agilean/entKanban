@@ -74,6 +74,16 @@ describe('GameSession', () => {
     expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).not.toContain(topCard);
   });
 
+  it('pulls a backlog card into selected during setup', () => {
+    const session = GameSession.createNew();
+    expect(session.getPhase()).toBe(GamePhase.SETUP);
+
+    const topCard = session.getBoard().getOptions().getCards()[0]!.getName();
+    const result = session.dispatch({ type: 'pull-to-selected', cardName: topCard });
+    expect(result.ok).toBe(true);
+    expect(session.getBoard().getSelected().getCards().map((c) => c.getName())).toContain(topCard);
+  });
+
   it('rejects pull to selected when wip is full', () => {
     const session = GameSession.createNew();
     confirm(session);

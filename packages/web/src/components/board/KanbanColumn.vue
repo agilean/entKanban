@@ -24,6 +24,7 @@ const {
 
 const localCards = ref<CardView[]>([...props.column.cards]);
 const expediteDragOver = ref(false);
+const pendingPullCardName = ref<string | null>(null);
 
 watch(
   [() => props.column.cards, () => game.boardEpoch],
@@ -44,19 +45,25 @@ const selectedGroup = computed(() => ({
   put: canPullToSelected.value,
 }));
 
+function onBacklogDragStart(event: { oldIndex: number }): void {
+  pendingPullCardName.value = localCards.value[event.oldIndex]?.name ?? null;
+}
+
 function onBacklogDragEnd(event: { from: HTMLElement; to: HTMLElement }): void {
   if (event.from !== event.to) {
+    const cardName = pendingPullCardName.value;
+    pendingPullCardName.value = null;
+    if (cardName && canPullToSelected.value) {
+      game.pullToSelected(cardName);
+    }
     return;
   }
+  pendingPullCardName.value = null;
   game.reorderBacklog(localCards.value.map((item) => item.name));
 }
 
-function onSelectedAdd(event: { newIndex: number }): void {
-  const added = localCards.value[event.newIndex];
-  if (!added) {
-    return;
-  }
-  game.pullToSelected(added.name);
+function onSelectedAdd(): void {
+  pendingPullCardName.value = null;
 }
 
 function onCardDragStart(event: DragEvent, cardName: string): void {
@@ -145,16 +152,17 @@ const interactive = () => isColumnInteractive(props.column.id);
         :animation="150"
         ghost-class="sortable-ghost"
         drag-class="sortable-drag"
+        @start="onBacklogDragStart"
         @end="onBacklogDragEnd"
       >
         <template #item="{ element }">
-          <div class="sortable-card-wrap">
+          <div class="sortable-card-wrap" :data-card-name="element.name">
             <CardTile :card="element" />
           </div>
         </template>
       </draggable>
       <p v-if="canReorderBacklog" class="column-hint">
-        {{ canPullToSelected ? '拖拽排序，或拖入 Selected' : '拖拽调整 Backlog 顺序' }}
+        {{ canPullToSelected ? '拖拽排序，或拖入 Selected 填充' : '拖拽调整 Backlog 顺序' }}
       </p>
     </template>
 
