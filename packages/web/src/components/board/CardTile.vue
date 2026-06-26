@@ -1,8 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { CardView } from '../../utils/buildBoardView';
 
-defineProps<{
+const props = defineProps<{
   card: CardView;
+  draggable?: boolean;
+  droppable?: boolean;
+  assignedDice?: string[];
+}>();
+
+const emit = defineEmits<{
+  dragStart: [event: DragEvent, cardName: string];
+  diceDrop: [event: DragEvent, cardName: string];
 }>();
 
 const kindLabels: Record<CardView['kind'], string> = {
@@ -11,10 +20,50 @@ const kindLabels: Record<CardView['kind'], string> = {
   'fixed-date': 'Fix',
   intangible: 'Int',
 };
+
+const isDragEnabled = computed(() => props.draggable === true);
+const isDropEnabled = computed(() => props.droppable === true);
+
+function handleDragStart(event: DragEvent): void {
+  if (!isDragEnabled.value) {
+    event.preventDefault();
+    return;
+  }
+  emit('dragStart', event, props.card.name);
+}
+
+function handleDragOver(event: DragEvent): void {
+  if (!isDropEnabled.value) {
+    return;
+  }
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy';
+  }
+}
+
+function handleDrop(event: DragEvent): void {
+  if (!isDropEnabled.value) {
+    return;
+  }
+  event.preventDefault();
+  emit('diceDrop', event, props.card.name);
+}
 </script>
 
 <template>
-  <article class="card-tile" :class="`kind-${card.kind}`">
+  <article
+    class="card-tile"
+    :class="{
+      [`kind-${card.kind}`]: true,
+      draggable: isDragEnabled,
+      droppable: isDropEnabled,
+    }"
+    :draggable="isDragEnabled"
+    @dragstart="handleDragStart"
+    @dragover="handleDragOver"
+    @drop="handleDrop"
+  >
     <header class="card-header">
       <span class="card-name">{{ card.name }}</span>
       <span class="card-kind">{{ kindLabels[card.kind] }}</span>
@@ -32,6 +81,10 @@ const kindLabels: Record<CardView['kind'], string> = {
       </span>
     </div>
 
+    <div v-if="assignedDice && assignedDice.length > 0" class="assigned-dice">
+      <span v-for="(label, idx) in assignedDice" :key="idx" class="dice-badge">{{ label }}</span>
+    </div>
+
     <footer v-if="card.blocked || card.dueDate" class="card-footer">
       <span v-if="card.blocked" class="blocker">Blocker {{ card.blockerRemaining }}</span>
       <span v-if="card.dueDate" class="due-date">Due D{{ card.dueDate }}</span>
@@ -47,6 +100,25 @@ const kindLabels: Record<CardView['kind'], string> = {
   padding: 0.5rem 0.625rem;
   font-size: 0.75rem;
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.card-tile.draggable {
+  cursor: grab;
+}
+
+.card-tile.draggable:active {
+  cursor: grabbing;
+  opacity: 0.75;
+}
+
+.card-tile.droppable {
+  outline: 1px dashed transparent;
+  transition: outline-color 0.15s, background 0.15s;
+}
+
+.card-tile.droppable:hover {
+  outline-color: #93c5fd;
+  background: #f0f9ff;
 }
 
 .kind-standard {
@@ -118,6 +190,27 @@ const kindLabels: Record<CardView['kind'], string> = {
 
 .effort-done {
   color: #16a34a;
+  font-weight: 700;
+}
+
+.assigned-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.dice-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #334155;
+  color: #fff;
+  font-size: 0.625rem;
   font-weight: 700;
 }
 

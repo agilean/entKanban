@@ -61,14 +61,6 @@ function handleNewGame(): void {
           <button type="button" class="btn" @click="handleSave">存档</button>
           <button v-if="game.hasSavedGame" type="button" class="btn" @click="handleLoad">读档</button>
           <button type="button" class="btn" @click="handleNewGame">新游戏</button>
-          <button
-            v-if="!game.isGameOver && ui.activeTab === 'board'"
-            type="button"
-            class="btn primary"
-            @click="game.confirmPhase(ui.activeTab)"
-          >
-            下一步
-          </button>
         </template>
         <button v-else type="button" class="btn primary" @click="game.startNewGame()">
           新游戏

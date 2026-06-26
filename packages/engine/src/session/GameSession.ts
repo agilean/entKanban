@@ -1,4 +1,5 @@
 import { Board } from '../Board.js';
+import { ClassOfService } from '../ClassOfService.js';
 import { Context } from '../Context.js';
 import type { BlockerRollResult, Day } from '../Day.js';
 import { DaysFactory } from '../DaysFactory.js';
@@ -123,6 +124,10 @@ export class GameSession {
     return this.buildPendingActions();
   }
 
+  getManualDiceAssignments(): readonly DiceAssignmentInput[] | null {
+    return this.manualDiceAssignments ? [...this.manualDiceAssignments] : null;
+  }
+
   getSnapshots(): readonly ReturnType<DaySnapshotStore['getAll']>[number][] {
     return this.snapshotStore.getAll();
   }
@@ -169,6 +174,8 @@ export class GameSession {
           return this.handleAdjustWip(action.adjustment);
         case 'reorder-backlog':
           return this.handleReorderBacklog(action.cardNames);
+        case 'pull-to-selected':
+          return this.handlePullToSelected(action.cardName);
         case 'expedite-card':
           return this.handleExpediteCard(action.state, action.cardName);
         case 'assign-dice':
@@ -210,10 +217,39 @@ export class GameSession {
   }
 
   private handleReorderBacklog(cardNames: string[]): DispatchResult {
-    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
+    if (
+      this.phase !== GamePhase.SETUP &&
+      this.phase !== GamePhase.ADJUST_WIP &&
+      this.phase !== GamePhase.REPLENISH
+    ) {
       return { ok: false, error: 'Backlog reorder not allowed in current phase' };
     }
     this.board.getOptions().reorder(cardNames);
+    return this.success();
+  }
+
+  private handlePullToSelected(cardName: string): DispatchResult {
+    if (this.phase !== GamePhase.REPLENISH) {
+      return { ok: false, error: 'Pull to selected not allowed in current phase' };
+    }
+    const selected = this.board.getSelected();
+    if (selected.getCards().length >= selected.getLimit()) {
+      return { ok: false, error: 'Selected WIP limit reached' };
+    }
+    const backlog = this.board.getOptions();
+    const backlogNames = backlog.getCards().map((card) => card.getName());
+    if (!backlogNames.includes(cardName)) {
+      return { ok: false, error: `Card not in backlog: ${cardName}` };
+    }
+    const reordered = [cardName, ...backlogNames.filter((name) => name !== cardName)];
+    backlog.reorder(reordered);
+    const context = new Context(this.board, this.getCurrentDayObject());
+    const pulled = backlog.pull(context, ClassOfService.STANDARD);
+    if (!pulled || pulled.getName() !== cardName) {
+      return { ok: false, error: 'Could not pull card to selected' };
+    }
+    pulled.onSelected(context);
+    selected.addCard(pulled, ClassOfService.STANDARD);
     return this.success();
   }
 

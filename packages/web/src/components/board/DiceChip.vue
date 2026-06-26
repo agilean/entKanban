@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { State } from '@kanban-game/engine';
+import { computed } from 'vue';
 import type { DiceView } from '../../utils/buildBoardView';
 
-defineProps<{
+const props = defineProps<{
   dice: DiceView;
+  draggable?: boolean;
+}>();
+
+const emit = defineEmits<{
+  dragStart: [event: DragEvent, diceIndex: number];
 }>();
 
 const stateClass: Record<State, string> = {
@@ -11,10 +17,26 @@ const stateClass: Record<State, string> = {
   [State.DEVELOPMENT]: 'development',
   [State.TEST]: 'test',
 };
+
+const isDraggable = computed(() => props.draggable === true);
+
+function handleDragStart(event: DragEvent): void {
+  if (!isDraggable.value) {
+    event.preventDefault();
+    return;
+  }
+  emit('dragStart', event, props.dice.index);
+}
 </script>
 
 <template>
-  <span class="dice-chip" :class="stateClass[dice.state]" :title="dice.state">
+  <span
+    class="dice-chip"
+    :class="[stateClass[dice.state], { draggable: isDraggable }]"
+    :title="dice.state"
+    :draggable="isDraggable"
+    @dragstart="handleDragStart"
+  >
     {{ dice.label }}
   </span>
 </template>
@@ -31,6 +53,15 @@ const stateClass: Record<State, string> = {
   font-weight: 700;
   color: #fff;
   box-shadow: 0 1px 2px rgb(15 23 42 / 15%);
+}
+
+.dice-chip.draggable {
+  cursor: grab;
+}
+
+.dice-chip.draggable:active {
+  cursor: grabbing;
+  opacity: 0.75;
 }
 
 .dice-chip.analysis {

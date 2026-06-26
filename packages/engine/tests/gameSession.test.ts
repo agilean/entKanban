@@ -50,6 +50,55 @@ describe('GameSession', () => {
     expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(reversed);
   });
 
+  it('reorders backlog during adjust-wip', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+
+    expect(session.getPhase()).toBe(GamePhase.ADJUST_WIP);
+    const original = session.getBoard().getOptions().getCards().map((c) => c.getName());
+    const reversed = [...original].reverse();
+    const result = session.dispatch({ type: 'reorder-backlog', cardNames: reversed });
+    expect(result.ok).toBe(true);
+    expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(reversed);
+  });
+
+  it('pulls a backlog card into selected during replenish', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+    confirm(session);
+
+    const topCard = session.getBoard().getOptions().getCards()[0]!.getName();
+    const result = session.dispatch({ type: 'pull-to-selected', cardName: topCard });
+    expect(result.ok).toBe(true);
+    expect(session.getBoard().getSelected().getCards().map((c) => c.getName())).toContain(topCard);
+    expect(session.getBoard().getOptions().getCards().map((c) => c.getName())).not.toContain(topCard);
+  });
+
+  it('rejects pull to selected when wip is full', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+    confirm(session);
+
+    const limit = session.getBoard().getSelected().getLimit();
+    while (session.getBoard().getSelected().getCards().length < limit) {
+      const next = session.getBoard().getOptions().getCards()[0]?.getName();
+      if (!next) {
+        break;
+      }
+      const pull = session.dispatch({ type: 'pull-to-selected', cardName: next });
+      if (!pull.ok) {
+        break;
+      }
+    }
+
+    expect(session.getBoard().getSelected().getCards().length).toBe(limit);
+    const blocked = session.getBoard().getOptions().getCards()[0]?.getName();
+    if (blocked) {
+      const result = session.dispatch({ type: 'pull-to-selected', cardName: blocked });
+      expect(result.ok).toBe(false);
+    }
+  });
+
   it('rejects illegal actions in wrong phase', () => {
     const session = GameSession.createNew();
     const result = session.dispatch({

@@ -1,4 +1,5 @@
 import {
+  ClassOfService,
   ExpediteCard,
   FixedDateCard,
   IntangibleCard,
@@ -25,8 +26,15 @@ export type CardView = {
 
 export type DiceView = {
   id: string;
+  index: number;
   state: State;
   label: string;
+};
+
+export type ColumnZones = {
+  standard: CardView[];
+  expedite: CardView[];
+  done: CardView[];
 };
 
 export type ColumnView = {
@@ -36,6 +44,8 @@ export type ColumnView = {
   count: number;
   cards: CardView[];
   dice: DiceView[];
+  state?: State;
+  zones?: ColumnZones;
 };
 
 export type BoardView = {
@@ -84,16 +94,64 @@ function formatLimit(limit: number): string {
   return limit >= Number.MAX_SAFE_INTEGER / 2 ? '∞' : String(limit);
 }
 
-function mapDice(board: Board, state?: State): DiceView[] {
-  const dice = state ? board.getDiceForState(state) : board.getDice();
-  return dice.map((die, index) => ({
-    id: `${die.getActivity()}-${index}`,
+function mapAllDice(board: Board): DiceView[] {
+  return board.getDice().map((die, index) => ({
+    id: `die-${index}`,
+    index,
     state: die.getActivity(),
     label: die.toString(),
   }));
 }
 
+function mapDiceForState(allDice: DiceView[], state: State): DiceView[] {
+  return allDice.filter((die) => die.state === state);
+}
+
+function buildStateZones(board: Board, state: State): ColumnZones {
+  const column = board.getStateColumn(state);
+  const standard: CardView[] = [];
+  const expedite: CardView[] = [];
+  const done: CardView[] = [];
+
+  for (const slot of column.getPlacementSnapshot()) {
+    const card = board.findCardByName(slot.name);
+    if (!card) {
+      continue;
+    }
+    const view = mapCard(card);
+    if (slot.done) {
+      done.push(view);
+    } else if (slot.cos === ClassOfService.EXPEDITE) {
+      expedite.push(view);
+    } else {
+      standard.push(view);
+    }
+  }
+
+  return { standard, expedite, done };
+}
+
+function buildStateColumn(board: Board, state: State, id: string, title: string): ColumnView {
+  const column = board.getStateColumn(state);
+  const allDice = mapAllDice(board);
+  const zones = buildStateZones(board, state);
+  const cards = [...zones.expedite, ...zones.standard, ...zones.done];
+
+  return {
+    id,
+    title,
+    state,
+    limitLabel: formatLimit(column.getLimit()),
+    count: column.getCards().length,
+    cards,
+    dice: mapDiceForState(allDice, state),
+    zones,
+  };
+}
+
 export function buildBoardView(board: Board): BoardView {
+  const allDice = mapAllDice(board);
+
   const columns: ColumnView[] = [
     {
       id: 'backlog',
@@ -111,30 +169,9 @@ export function buildBoardView(board: Board): BoardView {
       cards: board.getSelected().getCards().map(mapCard),
       dice: [],
     },
-    {
-      id: 'analysis',
-      title: 'Analysis',
-      limitLabel: formatLimit(board.getStateColumn(State.ANALYSIS).getLimit()),
-      count: board.getStateColumn(State.ANALYSIS).getCards().length,
-      cards: board.getStateColumn(State.ANALYSIS).getCards().map(mapCard),
-      dice: mapDice(board, State.ANALYSIS),
-    },
-    {
-      id: 'development',
-      title: 'Development',
-      limitLabel: formatLimit(board.getStateColumn(State.DEVELOPMENT).getLimit()),
-      count: board.getStateColumn(State.DEVELOPMENT).getCards().length,
-      cards: board.getStateColumn(State.DEVELOPMENT).getCards().map(mapCard),
-      dice: mapDice(board, State.DEVELOPMENT),
-    },
-    {
-      id: 'test',
-      title: 'Test',
-      limitLabel: formatLimit(board.getStateColumn(State.TEST).getLimit()),
-      count: board.getStateColumn(State.TEST).getCards().length,
-      cards: board.getStateColumn(State.TEST).getCards().map(mapCard),
-      dice: mapDice(board, State.TEST),
-    },
+    buildStateColumn(board, State.ANALYSIS, 'analysis', 'Analysis'),
+    buildStateColumn(board, State.DEVELOPMENT, 'development', 'Development'),
+    buildStateColumn(board, State.TEST, 'test', 'Test'),
     {
       id: 'ready',
       title: 'Ready',
@@ -155,6 +192,6 @@ export function buildBoardView(board: Board): BoardView {
 
   return {
     columns,
-    unassignedDice: mapDice(board),
+    unassignedDice: allDice,
   };
 }

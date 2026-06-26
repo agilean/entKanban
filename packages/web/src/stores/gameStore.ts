@@ -22,6 +22,7 @@ export const useGameStore = defineStore('game', () => {
   const session = shallowRef<GameSession | null>(null);
   const lastError = ref<string | null>(null);
   const revision = ref(0);
+  const boardEpoch = ref(0);
 
   const hasSession = computed(() => session.value !== null);
   const currentDay = computed(() => session.value?.getCurrentDay() ?? 9);
@@ -64,6 +65,10 @@ export const useGameStore = defineStore('game', () => {
   const isGameOver = computed(() => {
     void revision.value;
     return session.value?.isGameOver() ?? false;
+  });
+  const pendingDiceAssignments = computed((): readonly DiceAssignmentInput[] => {
+    void revision.value;
+    return session.value?.getManualDiceAssignments() ?? [];
   });
 
   function bumpRevision(): void {
@@ -119,6 +124,7 @@ export const useGameStore = defineStore('game', () => {
       return { ok: false, error: '尚未开始游戏' };
     }
     const result = session.value.dispatch(action);
+    boardEpoch.value += 1;
     if (!result.ok) {
       lastError.value = result.error;
     } else {
@@ -148,6 +154,10 @@ export const useGameStore = defineStore('game', () => {
     return dispatchAndSave({ type: 'reorder-backlog', cardNames }, activeTab);
   }
 
+  function pullToSelected(cardName: string, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'pull-to-selected', cardName }, activeTab);
+  }
+
   function expediteCard(state: State, cardName: string, activeTab: AppTab = 'board'): DispatchResult | undefined {
     return dispatchAndSave({ type: 'expedite-card', state, cardName }, activeTab);
   }
@@ -160,9 +170,47 @@ export const useGameStore = defineStore('game', () => {
     return dispatchAndSave({ type: 'send-ted-to-training', training }, activeTab);
   }
 
+  function addDiceToCard(
+    state: State,
+    cardName: string,
+    diceIndex: number,
+    activeTab: AppTab = 'board',
+  ): DispatchResult | undefined {
+    const current = [...pendingDiceAssignments.value];
+    const existing = current.find((a) => a.state === state && a.cardName === cardName);
+    if (existing?.diceIndices.includes(diceIndex)) {
+      return undefined;
+    }
+    const alreadyAssigned = current.some((a) => a.diceIndices.includes(diceIndex));
+    if (alreadyAssigned) {
+      lastError.value = '该骰子已分配';
+      return { ok: false, error: '该骰子已分配' };
+    }
+    let updated: DiceAssignmentInput[];
+    if (existing) {
+      updated = current.map((a) =>
+        a === existing ? { ...a, diceIndices: [...a.diceIndices, diceIndex] } : a,
+      );
+    } else {
+      updated = [...current, { state, cardName, diceIndices: [diceIndex] }];
+    }
+    return assignDice(updated, activeTab);
+  }
+
+  function getAssignedDiceLabels(cardName: string): string[] {
+    if (!boardView.value) {
+      return [];
+    }
+    const indices = pendingDiceAssignments.value
+      .filter((a) => a.cardName === cardName)
+      .flatMap((a) => a.diceIndices);
+    return indices.map((index) => boardView.value!.unassignedDice[index]?.label ?? String(index));
+  }
+
   return {
     session,
     lastError,
+    boardEpoch,
     hasSession,
     currentDay,
     phase,
@@ -176,6 +224,7 @@ export const useGameStore = defineStore('game', () => {
     snapshotCount,
     isGameOver,
     hasSavedGame,
+    pendingDiceAssignments,
     startNewGame,
     resetGame,
     persistToStorage,
@@ -186,8 +235,11 @@ export const useGameStore = defineStore('game', () => {
     confirmPhase,
     adjustWipLimits,
     reorderBacklog,
+    pullToSelected,
     expediteCard,
     assignDice,
     sendTedToTraining,
+    addDiceToCard,
+    getAssignedDiceLabels,
   };
 });

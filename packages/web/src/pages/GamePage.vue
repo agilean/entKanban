@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { GamePhase } from '@kanban-game/engine';
+import { computed, onMounted } from 'vue';
+import BlockerRollsBanner from '../components/board/BlockerRollsBanner.vue';
+import DayPhaseBar from '../components/board/DayPhaseBar.vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
-import PhaseStepper from '../components/board/PhaseStepper.vue';
 import AnalyticsView from '../components/charts/AnalyticsView.vue';
 import DecisionPanel from '../components/decisions/DecisionPanel.vue';
 import SetupGuide from '../components/onboarding/SetupGuide.vue';
@@ -12,6 +14,19 @@ import { useUiStore } from '../stores/uiStore';
 
 const game = useGameStore();
 const ui = useUiStore();
+
+const showSidePanel = computed(() => {
+  const phase = game.phase;
+  return (
+    phase === GamePhase.SETUP ||
+    phase === GamePhase.ADJUST_WIP ||
+    phase === GamePhase.TED_TRAINING
+  );
+});
+
+const blockerRolls = computed(() =>
+  game.pendingActions.find((action) => action.kind === 'blocker-rolls'),
+);
 
 onMounted(() => {
   game.refreshSavedFlag();
@@ -39,9 +54,11 @@ onMounted(() => {
 
       <template v-else>
         <SetupGuide :phase="game.phase" :current-day="game.currentDay" />
-        <PhaseStepper :phase="game.phase" :current-day="game.currentDay" />
+        <DayPhaseBar :phase="game.phase" :current-day="game.currentDay" />
 
-        <div class="game-layout">
+        <BlockerRollsBanner v-if="blockerRolls" :rolls="blockerRolls.rolls" />
+
+        <div class="game-layout" :class="{ 'with-panel': showSidePanel }">
           <div class="board-area">
             <KanbanBoard v-if="game.boardView" :board="game.boardView" />
           </div>
@@ -55,9 +72,13 @@ onMounted(() => {
 <style scoped>
 .game-layout {
   display: grid;
-  grid-template-columns: 1fr 20rem;
+  grid-template-columns: 1fr;
   gap: 1rem;
   align-items: start;
+}
+
+.game-layout.with-panel {
+  grid-template-columns: 1fr 20rem;
 }
 
 .board-area {
@@ -80,7 +101,7 @@ onMounted(() => {
 }
 
 @media (max-width: 960px) {
-  .game-layout {
+  .game-layout.with-panel {
     grid-template-columns: 1fr;
   }
 }
