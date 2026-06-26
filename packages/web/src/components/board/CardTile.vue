@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { DiceRollApplyStep } from '@kanban-game/engine';
+import { State } from '@kanban-game/engine';
 import { computed, ref } from 'vue';
-import type { AssignedDiceView } from '../../stores/gameStore';
+import type { AssignedDiceView, CardRollUiMode } from '../../stores/gameStore';
 import type { EffortField } from '../../utils/effortHighlight';
 import type { CardView } from '../../utils/buildBoardView';
 import { beginCardDrag, endCardDrag } from '../../utils/cardDragState';
@@ -18,6 +20,7 @@ const props = defineProps<{
   diceDraggable?: boolean;
   assignedDice?: AssignedDiceView[];
   effortHighlight?: Partial<Record<EffortField, true>>;
+  rollUi?: { mode: CardRollUiMode; step: DiceRollApplyStep } | null;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +83,14 @@ const businessValueClass = computed(() => {
   };
   return tierMap[props.card.businessValue] ?? null;
 });
+
+const STATE_CLASS: Record<State, string> = {
+  [State.ANALYSIS]: 'analysis',
+  [State.DEVELOPMENT]: 'development',
+  [State.TEST]: 'test',
+};
+
+const showRollOverlay = computed(() => props.rollUi !== null && props.rollUi !== undefined);
 
 function handleDragStart(event: DragEvent): void {
   if (isForwardDragEnabled.value) {
@@ -165,6 +176,9 @@ function closeDetail(): void {
       droppable: isDropEnabled,
       'dice-drop-active': diceDragActive,
       'effort-updated': hasEffortUpdate,
+      'roll-preview': rollUi?.mode === 'preview',
+      'roll-active': rollUi?.mode === 'rolling',
+      'roll-done': rollUi?.mode === 'done',
     }"
     :draggable="isAnyDragEnabled"
     @dragstart="handleDragStart"
@@ -257,6 +271,28 @@ function closeDetail(): void {
       />
     </div>
 
+    <div v-if="showRollOverlay && rollUi" class="card-roll-overlay">
+      <div class="card-roll-dice">
+        <span
+          v-for="(value, index) in rollUi.step.rollValues"
+          :key="index"
+          class="card-roll-die"
+          :class="[
+            STATE_CLASS[rollUi.step.state],
+            { spin: rollUi.mode === 'rolling' },
+          ]"
+        >
+          <template v-if="rollUi.mode === 'rolling'">?</template>
+          <template v-else>{{ rollUi.step.dieLabels[index] }}{{ value }}</template>
+        </span>
+      </div>
+      <p v-if="rollUi.mode === 'rolling'" class="card-roll-label">掷骰中</p>
+      <p v-else-if="rollUi.mode === 'preview'" class="card-roll-label">
+        合计 {{ rollUi.step.totalRoll }} · −{{ rollUi.step.delta }}
+      </p>
+      <p v-else class="card-roll-label done">已核销 −{{ rollUi.step.delta }}</p>
+    </div>
+
     <footer v-if="card.dueDate" class="card-footer">
       <span v-if="card.dueDate" class="due-date">Due D{{ card.dueDate }}</span>
     </footer>
@@ -274,6 +310,7 @@ function closeDetail(): void {
 
 <style scoped>
 .card-tile {
+  position: relative;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   background: #fff;
@@ -494,6 +531,86 @@ function closeDetail(): void {
 .effort-done {
   color: #16a34a;
   font-weight: 700;
+}
+
+.card-tile.roll-preview {
+  box-shadow: 0 0 0 2px #dbeafe;
+}
+
+.card-tile.roll-active {
+  box-shadow: 0 0 0 2px #2563eb;
+  z-index: 2;
+}
+
+.card-tile.roll-done {
+  opacity: 0.85;
+}
+
+.card-roll-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 92%);
+  backdrop-filter: blur(1px);
+}
+
+.card-roll-dice {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.card-roll-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.card-roll-die.analysis {
+  background: #2563eb;
+}
+
+.card-roll-die.development {
+  background: #16a34a;
+}
+
+.card-roll-die.test {
+  background: #d97706;
+}
+
+.card-roll-die.spin {
+  animation: card-roll-spin 0.45s ease-in-out infinite alternate;
+}
+
+.card-roll-label {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.card-roll-label.done {
+  color: #16a34a;
+}
+
+@keyframes card-roll-spin {
+  0% {
+    transform: rotate(-10deg);
+  }
+  100% {
+    transform: rotate(10deg);
+  }
 }
 
 .assigned-dice {

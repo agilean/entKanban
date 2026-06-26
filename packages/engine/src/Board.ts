@@ -172,7 +172,12 @@ export class Board {
   }
 
   advanceCard(fromColumn: string, toColumn: string, cardName: string, context: Context): void {
-    const check = this.canAdvanceCard(fromColumn, toColumn, cardName);
+    const check = this.canAdvanceCard(
+      fromColumn,
+      toColumn,
+      cardName,
+      context.getDay().getOrdinal(),
+    );
     if (!check.ok) {
       throw new Error(check.reason);
     }
@@ -181,7 +186,12 @@ export class Board {
     this.addCardToColumn(toColumn, card, context, this.removedCos);
   }
 
-  canAdvanceCard(fromColumn: string, toColumn: string, cardName: string): AdvanceCheckResult {
+  canAdvanceCard(
+    fromColumn: string,
+    toColumn: string,
+    cardName: string,
+    currentDay?: number,
+  ): AdvanceCheckResult {
     if (!isValidAdvance(fromColumn, toColumn)) {
       return { ok: false, reason: `不能从${labelColumn(fromColumn)}直接拖入${labelColumn(toColumn)}` };
     }
@@ -199,6 +209,17 @@ export class Board {
         ok: false,
         reason: `${cardName} 还有未完成的${labelStateWork(fromState)}工作量`,
       };
+    }
+
+    if (fromColumn === 'ready' && toColumn === 'deployed' && currentDay !== undefined) {
+      const frequency = this.readyToDeploy.getDeploymentFrequency();
+      if (currentDay % frequency !== 0) {
+        const nextReleaseDay = currentDay + (frequency - (currentDay % frequency));
+        return {
+          ok: false,
+          reason: `Day ${currentDay} 不是发布日，下次发布为 Day ${nextReleaseDay}`,
+        };
+      }
     }
 
     const cos = this.getCardClassOfService(fromColumn, card);

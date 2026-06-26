@@ -27,6 +27,17 @@ export type AssignedDiceView = {
   state: State;
 };
 
+export type DiceRollUiPhase = 'results' | 'applying';
+
+export type CardRollUiMode = 'preview' | 'rolling' | 'done';
+
+export type DiceRollUiState = {
+  visible: boolean;
+  phase: DiceRollUiPhase;
+  steps: DiceRollApplyStep[];
+  activeIndex: number;
+};
+
 function removeDiceFromAssignments(
   assignments: DiceAssignmentInput[],
   diceIndex: number,
@@ -66,6 +77,7 @@ export const useGameStore = defineStore('game', () => {
   const revision = ref(0);
   const boardEpoch = ref(0);
   const effortHighlights = ref<Record<string, Partial<Record<EffortField, true>>>>({});
+  const diceRollUi = ref<DiceRollUiState | null>(null);
 
   const hasSession = computed(() => session.value !== null);
   const currentDay = computed(() => session.value?.getCurrentDay() ?? 9);
@@ -127,6 +139,66 @@ export const useGameStore = defineStore('game', () => {
     void revision.value;
     return session.value?.getAppliedRollCount() ?? 0;
   });
+
+  const isDiceRollActive = computed(() => diceRollUi.value?.visible === true);
+
+  function openDiceRollResults(steps: readonly DiceRollApplyStep[]): void {
+    diceRollUi.value = {
+      visible: true,
+      phase: 'results',
+      steps: [...steps],
+      activeIndex: 0,
+    };
+  }
+
+  function setDiceRollApplying(index: number): void {
+    if (!diceRollUi.value) {
+      return;
+    }
+    diceRollUi.value = {
+      ...diceRollUi.value,
+      phase: 'applying',
+      activeIndex: index,
+    };
+  }
+
+  function closeDiceRollUi(): void {
+    diceRollUi.value = null;
+  }
+
+  function getCardRollUi(cardName: string): {
+    mode: CardRollUiMode;
+    step: DiceRollApplyStep;
+  } | null {
+    const ui = diceRollUi.value;
+    if (!ui) {
+      return null;
+    }
+    const stepIndex = ui.steps.findIndex((step) => step.cardName === cardName);
+    if (stepIndex < 0) {
+      return null;
+    }
+    const step = ui.steps[stepIndex]!;
+    if (ui.phase === 'results') {
+      return { mode: 'preview', step };
+    }
+    if (stepIndex < ui.activeIndex) {
+      return { mode: 'done', step };
+    }
+    if (stepIndex === ui.activeIndex) {
+      return { mode: 'rolling', step };
+    }
+    return { mode: 'preview', step };
+  }
+
+  function canDeployToday(): boolean {
+    if (!session.value) {
+      return false;
+    }
+    const day = session.value.getCurrentDay();
+    const frequency = session.value.getBoard().getReadyToDeploy().getDeploymentFrequency();
+    return day % frequency === 0;
+  }
 
   function clearEffortHighlights(): void {
     effortHighlights.value = {};
@@ -194,6 +266,7 @@ export const useGameStore = defineStore('game', () => {
     session.value = GameSession.createNew();
     lastError.value = null;
     clearEffortHighlights();
+    closeDiceRollUi();
     clearSavedGame();
     refreshSavedFlag();
     bumpRevision();
@@ -322,7 +395,9 @@ export const useGameStore = defineStore('game', () => {
     if (!session.value) {
       return { ok: false as const, reason: '尚未开始游戏' };
     }
-    return session.value.getBoard().canAdvanceCard(fromColumn, toColumn, cardName);
+    return session.value
+      .getBoard()
+      .canAdvanceCard(fromColumn, toColumn, cardName, session.value.getCurrentDay());
   }
 
   function checkPullToSelected(cardName: string) {
@@ -372,6 +447,13 @@ export const useGameStore = defineStore('game', () => {
     pendingRollPreview,
     appliedRollCount,
     effortHighlights,
+    diceRollUi,
+    isDiceRollActive,
+    openDiceRollResults,
+    setDiceRollApplying,
+    closeDiceRollUi,
+    getCardRollUi,
+    canDeployToday,
     startNewGame,
     resetGame,
     persistToStorage,

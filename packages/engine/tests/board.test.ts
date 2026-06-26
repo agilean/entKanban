@@ -119,4 +119,32 @@ describe('Board advanceCard', () => {
       expect(check.reason).toMatch(/WIP|已满/);
     }
   });
+
+  it('only allows deploy on release days before continuous delivery', () => {
+    const board = new Board();
+    const s7 = board.findCardByName('S7')!;
+    board.getStateColumn(State.DEVELOPMENT).removeCard(s7);
+    board.getReadyToDeploy().addCard(s7, ClassOfService.STANDARD);
+
+    const blocked = board.canAdvanceCard('ready', 'deployed', 'S7', 10);
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) {
+      expect(blocked.reason).toMatch(/发布日/);
+    }
+
+    const allowed = board.canAdvanceCard('ready', 'deployed', 'S7', 12);
+    expect(allowed.ok).toBe(true);
+  });
+
+  it('allows daily deploy after I1 reaches ready', () => {
+    const board = new Board();
+    const i1 = getCard('I1');
+    const day = new DaysFactory(false).getDay(11);
+    const context = new Context(board, day);
+    i1.onReadyToDeploy(context);
+    board.getReadyToDeploy().addCard(i1, ClassOfService.STANDARD);
+
+    expect(board.canAdvanceCard('ready', 'deployed', 'I1', 11).ok).toBe(true);
+    expect(board.canAdvanceCard('ready', 'deployed', 'I1', 12).ok).toBe(true);
+  });
 });

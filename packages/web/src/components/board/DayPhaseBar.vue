@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { GamePhase } from '@kanban-game/engine';
-import type { DiceRollApplyStep } from '@kanban-game/engine';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
 import { confirmLabel } from '../../utils/confirmLabel';
@@ -11,7 +10,6 @@ import {
   isPhaseComplete,
   stepsForPhase,
 } from '../../utils/phaseSteps';
-import DiceRollOverlay from './DiceRollOverlay.vue';
 
 defineProps<{
   phase: GamePhase;
@@ -27,30 +25,9 @@ const confirmAction = computed(() =>
   game.pendingActions.find((action) => action.kind === 'confirm'),
 );
 
-const overlayOpen = ref(false);
-const overlayPhase = ref<'rolling' | 'results' | 'applying'>('rolling');
-const rollSteps = ref<DiceRollApplyStep[]>([]);
-const rollingIndex = ref(0);
-const applyingIndex = ref(0);
-const busy = computed(() => overlayOpen.value);
+const busy = computed(() => game.isDiceRollActive);
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-async function animateRolling(preview: DiceRollApplyStep[]): Promise<void> {
-  overlayPhase.value = 'rolling';
-  rollingIndex.value = 0;
-  for (let index = 0; index < preview.length; index += 1) {
-    rollingIndex.value = index;
-    await delay(700);
-  }
-  overlayPhase.value = 'results';
-}
-
-async function handleConfirm(): Promise<void> {
+function handleConfirm(): void {
   if (busy.value) {
     return;
   }
@@ -65,51 +42,18 @@ async function handleConfirm(): Promise<void> {
     if (preview.length === 0) {
       return;
     }
-    rollSteps.value = [...preview];
-    overlayOpen.value = true;
-    await animateRolling(rollSteps.value);
+    game.openDiceRollResults(preview);
     return;
   }
   game.confirmPhase(ui.activeTab);
 }
-
-async function handleApply(): Promise<void> {
-  if (overlayPhase.value !== 'results') {
-    return;
-  }
-  overlayPhase.value = 'applying';
-  const start = game.appliedRollCount;
-  for (let index = start; index < rollSteps.value.length; index += 1) {
-    applyingIndex.value = index;
-    await delay(450);
-    const result = game.applyRollStep(index, ui.activeTab);
-    if (!result?.ok) {
-      overlayOpen.value = false;
-      endDiceDrag();
-      return;
-    }
-    await delay(350);
-  }
-  overlayOpen.value = false;
-  rollSteps.value = [];
-  endDiceDrag();
-}
 </script>
 
 <template>
-  <DiceRollOverlay
-    v-if="overlayOpen"
-    :phase="overlayPhase"
-    :steps="rollSteps"
-    :rolling-index="rollingIndex"
-    :applying-index="applyingIndex"
-    :current-day="currentDay"
-    @apply="handleApply"
-  />
-
   <nav class="day-phase-bar" aria-label="日阶段进度">
     <div class="day-label">
       <span class="day-number">Day {{ currentDay }}</span>
+      <span v-if="game.phase === GamePhase.DO_WORK" class="day-sub">工作中</span>
     </div>
 
     <ol class="steps">
@@ -155,12 +99,21 @@ async function handleApply(): Promise<void> {
 
 .day-label {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .day-number {
   font-size: 1rem;
   font-weight: 700;
   color: #1e293b;
+}
+
+.day-sub {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #2563eb;
 }
 
 .steps {

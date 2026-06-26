@@ -132,6 +132,13 @@ function onExpediteDragOver(event: DragEvent): void {
   if (!canExpedite.value || !isExpediteCardDrag(event)) {
     return;
   }
+  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
+  if (!cardName || !isExpediteEligible(props.column.id, cardName)) {
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'none';
+    }
+    return;
+  }
   event.preventDefault();
   event.stopPropagation();
   expediteDragOver.value = true;
@@ -155,7 +162,14 @@ function onExpediteDrop(event: DragEvent): void {
   if (!cardName) {
     return;
   }
-  game.expediteCard(props.column.state, cardName);
+  if (!isExpediteEligible(props.column.id, cardName)) {
+    ui.showDragToast('该卡片当前不可 Expedite（仅临近到期的固定日期卡或 Expedite 卡可加速）');
+    return;
+  }
+  const result = game.expediteCard(props.column.state, cardName);
+  if (!result?.ok && result?.error) {
+    ui.showDragToast(result.error);
+  }
 }
 
 function onCardDiceDrop(event: DragEvent, cardName: string): void {
@@ -272,6 +286,10 @@ function effortHighlightFor(cardName: string) {
   return game.getEffortHighlight(cardName);
 }
 
+function rollUiFor(cardName: string) {
+  return game.getCardRollUi(cardName);
+}
+
 const assignedDiceIndices = computed(() => {
   const indices = new Set<number>();
   for (const assignment of game.pendingDiceAssignments) {
@@ -363,6 +381,8 @@ function isCardDroppable(cardName: string): boolean {
   return canDropDiceOnCard(props.column.id, cardName);
 }
 
+const canDeployToday = computed(() => game.canDeployToday());
+
 const interactive = () => isColumnInteractive(props.column.id);
 </script>
 
@@ -382,6 +402,7 @@ const interactive = () => isColumnInteractive(props.column.id);
     <header class="column-header">
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
+      <span v-if="column.id === 'ready' && canDeployToday" class="release-badge">发布日</span>
     </header>
 
     <!-- Backlog: sort + drag to Selected -->
@@ -400,7 +421,11 @@ const interactive = () => isColumnInteractive(props.column.id);
       >
         <template #item="{ element }">
           <div class="sortable-card-wrap" :data-card-name="element.name">
-            <CardTile :card="element" :effort-highlight="effortHighlightFor(element.name)" />
+            <CardTile
+              :card="element"
+              :effort-highlight="effortHighlightFor(element.name)"
+              :roll-ui="rollUiFor(element.name)"
+            />
           </div>
         </template>
       </draggable>
@@ -432,6 +457,7 @@ const interactive = () => isColumnInteractive(props.column.id);
               :forward-draggable="isForwardDraggable(element)"
               from-column="selected"
               :effort-highlight="effortHighlightFor(element.name)"
+              :roll-ui="rollUiFor(element.name)"
             />
           </div>
         </template>
@@ -467,10 +493,11 @@ const interactive = () => isColumnInteractive(props.column.id);
               :dice-draggable="canAssignDice"
               :assigned-dice="assignedDiceFor(card.name)"
               :effort-highlight="effortHighlightFor(card.name)"
+              :roll-ui="rollUiFor(card.name)"
               @dice-drop="onCardDiceDrop"
             />
           </div>
-          <p v-if="column.zones.expedite.length === 0" class="zone-empty">拖入可 Expedite 的标准卡</p>
+          <p v-if="column.zones.expedite.length === 0" class="zone-empty">拖入临近到期的固定日期卡或 Expedite 卡</p>
         </div>
       </div>
 
@@ -493,6 +520,7 @@ const interactive = () => isColumnInteractive(props.column.id);
               :dice-draggable="canAssignDice"
               :assigned-dice="assignedDiceFor(card.name)"
               :effort-highlight="effortHighlightFor(card.name)"
+              :roll-ui="rollUiFor(card.name)"
               @drag-start="onCardDragStart"
               @dice-drop="onCardDiceDrop"
             />
@@ -515,6 +543,7 @@ const interactive = () => isColumnInteractive(props.column.id);
             :forward-draggable="isForwardDraggable(card)"
             :from-column="column.id"
             :effort-highlight="effortHighlightFor(card.name)"
+            :roll-ui="rollUiFor(card.name)"
           />
         </div>
       </div>
@@ -557,6 +586,7 @@ const interactive = () => isColumnInteractive(props.column.id);
           :forward-draggable="isForwardDraggable(card)"
           :from-column="column.id"
           :effort-highlight="effortHighlightFor(card.name)"
+          :roll-ui="rollUiFor(card.name)"
         />
         <div
           v-if="advanceDropState === 'valid'"
@@ -564,7 +594,9 @@ const interactive = () => isColumnInteractive(props.column.id);
           aria-hidden="true"
         />
       </div>
-      <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">可将卡片拖入已部署列</p>
+      <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">
+        {{ canDeployToday ? '发布日：可将就绪卡片拖入已部署' : '今天不是发布日，请等待下一个发布日' }}
+      </p>
       <p
         v-if="advanceDropState === 'invalid' && advanceDropReason"
         class="drop-reject-hint"
@@ -666,6 +698,16 @@ const interactive = () => isColumnInteractive(props.column.id);
   color: #334155;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+.release-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
 }
 
 .wip {

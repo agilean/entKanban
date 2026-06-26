@@ -4,6 +4,7 @@ import type { BoardView } from '../../utils/buildBoardView';
 import { endCardDrag } from '../../utils/cardDragState';
 import { endDiceDrag } from '../../utils/diceDragState';
 import DicePool from './DicePool.vue';
+import DiceRollPanel from './DiceRollPanel.vue';
 import KanbanColumn from './KanbanColumn.vue';
 
 defineProps<{
@@ -27,12 +28,15 @@ onUnmounted(() => {
 <template>
   <div class="kanban-board-wrap">
     <DicePool :board="board" />
-    <div class="kanban-board">
-      <KanbanColumn
-        v-for="column in board.columns"
-        :key="column.id"
-        :column="column"
-      />
+    <div class="kanban-board-area">
+      <div class="kanban-board">
+        <KanbanColumn
+          v-for="column in board.columns"
+          :key="column.id"
+          :column="column"
+        />
+      </div>
+      <DiceRollPanel />
     </div>
   </div>
 </template>
@@ -43,10 +47,15 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
+.kanban-board-area {
+  position: relative;
+}
+
 .kanban-board {
   display: flex;
   gap: 0.625rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
+  padding-right: min(21rem, 42%);
 }
 </style>
