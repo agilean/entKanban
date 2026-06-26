@@ -1,5 +1,11 @@
 import { ClassOfService } from './ClassOfService.js';
+import { Context } from './Context.js';
 import { State } from './State.js';
+import {
+  COLUMN_STATE,
+  isValidAdvance,
+  type FlowColumnId,
+} from './board/columnFlow.js';
 import { getCard } from './card/Cards.js';
 import type { Card } from './card/Card.js';
 import { DeployedColumn } from './column/DeployedColumn.js';
@@ -161,6 +167,107 @@ export class Board {
     this.getStateColumn(State.ANALYSIS).setLimit(adjustment.getAnalysis());
     this.getStateColumn(State.DEVELOPMENT).setLimit(adjustment.getDevelopment());
     this.getStateColumn(State.TEST).setLimit(adjustment.getTest());
+  }
+
+  advanceCard(fromColumn: string, toColumn: string, cardName: string, context: Context): void {
+    if (!isValidAdvance(fromColumn, toColumn)) {
+      throw new Error(`Cannot advance from ${fromColumn} to ${toColumn}`);
+    }
+    const card = this.findCardByName(cardName);
+    if (!card) {
+      throw new Error(`Card not found: ${cardName}`);
+    }
+    if (!this.isCardInColumn(fromColumn, card)) {
+      throw new Error(`Card ${cardName} is not in ${fromColumn}`);
+    }
+
+    const fromState = COLUMN_STATE[fromColumn as FlowColumnId];
+    if (fromState !== undefined && card.getRemainingWork(fromState) > 0) {
+      throw new Error(`Card ${cardName} still has remaining ${fromState} work`);
+    }
+
+    this.removeCardFromColumn(fromColumn, card);
+    this.addCardToColumn(toColumn, card, context, this.removedCos);
+  }
+
+  private removedCos: ClassOfService = ClassOfService.STANDARD;
+
+  private isCardInColumn(columnId: string, card: Card): boolean {
+    switch (columnId) {
+      case 'selected':
+        return this.selected.getCards().some((item) => item.getName() === card.getName());
+      case 'analysis':
+      case 'development':
+      case 'test':
+        return this.getStateColumn(COLUMN_STATE[columnId as FlowColumnId]!)
+          .getCards()
+          .some((item) => item.getName() === card.getName());
+      case 'ready':
+        return this.readyToDeploy.getCards().some((item) => item.getName() === card.getName());
+      default:
+        return false;
+    }
+  }
+
+  private removeCardFromColumn(columnId: string, card: Card): void {
+    switch (columnId) {
+      case 'selected':
+        if (!this.selected.removeCard(card)) {
+          throw new Error(`Failed to remove ${card.getName()} from selected`);
+        }
+        this.removedCos = ClassOfService.STANDARD;
+        return;
+      case 'analysis':
+      case 'development':
+      case 'test': {
+        const removed = this.getStateColumn(COLUMN_STATE[columnId as FlowColumnId]!).removeCard(card);
+        if (!removed) {
+          throw new Error(`Failed to remove ${card.getName()} from ${columnId}`);
+        }
+        this.removedCos = removed.cos;
+        return;
+      }
+      case 'ready':
+        if (!this.readyToDeploy.removeCard(card)) {
+          throw new Error(`Failed to remove ${card.getName()} from ready`);
+        }
+        this.removedCos = ClassOfService.STANDARD;
+        return;
+      default:
+        throw new Error(`Cannot remove from column: ${columnId}`);
+    }
+  }
+
+  private addCardToColumn(
+    columnId: string,
+    card: Card,
+    context: Context,
+    cos: ClassOfService,
+  ): void {
+    switch (columnId) {
+      case 'analysis':
+        if (card.getDaySelected() === 0) {
+          card.onSelected(context);
+        }
+        this.getStateColumn(State.ANALYSIS).addCard(card, cos);
+        return;
+      case 'development':
+        this.getStateColumn(State.DEVELOPMENT).addCard(card, cos);
+        return;
+      case 'test':
+        this.getStateColumn(State.TEST).addCard(card, cos);
+        return;
+      case 'ready':
+        card.onReadyToDeploy(context);
+        this.readyToDeploy.addCard(card, cos);
+        return;
+      case 'deployed':
+        card.onDeployed(context);
+        this.deployed.addCard(card, cos);
+        return;
+      default:
+        throw new Error(`Cannot add to column: ${columnId}`);
+    }
   }
 
   clear(): void {

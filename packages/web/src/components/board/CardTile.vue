@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { CardView } from '../../utils/buildBoardView';
+import CardDetailPopover from './CardDetailPopover.vue';
 
 const props = defineProps<{
   card: CardView;
   draggable?: boolean;
+  forwardDraggable?: boolean;
+  fromColumn?: string;
   droppable?: boolean;
   assignedDice?: string[];
 }>();
@@ -22,9 +25,23 @@ const kindLabels: Record<CardView['kind'], string> = {
 };
 
 const isDragEnabled = computed(() => props.draggable === true);
+const isForwardDragEnabled = computed(
+  () => props.forwardDraggable === true && Boolean(props.fromColumn),
+);
+const isAnyDragEnabled = computed(() => isDragEnabled.value || isForwardDragEnabled.value);
 const isDropEnabled = computed(() => props.droppable === true);
+const showDetail = ref(false);
+const anchorRect = ref<DOMRect | null>(null);
 
 function handleDragStart(event: DragEvent): void {
+  if (isForwardDragEnabled.value) {
+    event.dataTransfer?.setData('text/card-name', props.card.name);
+    event.dataTransfer?.setData('text/from-column', props.fromColumn ?? '');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+    return;
+  }
   if (!isDragEnabled.value) {
     event.preventDefault();
     return;
@@ -49,6 +66,19 @@ function handleDrop(event: DragEvent): void {
   event.preventDefault();
   emit('diceDrop', event, props.card.name);
 }
+
+function openDetail(event: MouseEvent): void {
+  event.stopPropagation();
+  event.preventDefault();
+  const target = event.currentTarget as HTMLElement;
+  anchorRect.value = target.getBoundingClientRect();
+  showDetail.value = true;
+}
+
+function closeDetail(): void {
+  showDetail.value = false;
+  anchorRect.value = null;
+}
 </script>
 
 <template>
@@ -56,17 +86,29 @@ function handleDrop(event: DragEvent): void {
     class="card-tile"
     :class="{
       [`kind-${card.kind}`]: true,
-      draggable: isDragEnabled,
+      draggable: isAnyDragEnabled,
       droppable: isDropEnabled,
     }"
-    :draggable="isDragEnabled"
+    :draggable="isAnyDragEnabled"
     @dragstart="handleDragStart"
     @dragover="handleDragOver"
     @drop="handleDrop"
   >
     <header class="card-header">
       <span class="card-name">{{ card.name }}</span>
-      <span class="card-kind">{{ kindLabels[card.kind] }}</span>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="btn-info"
+          title="查看卡片详情"
+          aria-label="查看卡片详情"
+          @mousedown.stop
+          @click="openDetail"
+        >
+          ⓘ
+        </button>
+        <span class="card-kind">{{ kindLabels[card.kind] }}</span>
+      </div>
     </header>
 
     <div class="effort" aria-label="剩余工作量">
@@ -89,6 +131,15 @@ function handleDrop(event: DragEvent): void {
       <span v-if="card.blocked" class="blocker">Blocker {{ card.blockerRemaining }}</span>
       <span v-if="card.dueDate" class="due-date">Due D{{ card.dueDate }}</span>
     </footer>
+
+    <Teleport to="body">
+      <CardDetailPopover
+        v-if="showDetail && anchorRect"
+        :card-name="card.name"
+        :anchor-rect="anchorRect"
+        @close="closeDetail"
+      />
+    </Teleport>
   </article>
 </template>
 
@@ -151,6 +202,30 @@ function handleDrop(event: DragEvent): void {
 .card-name {
   font-weight: 700;
   color: #1e293b;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-info {
+  border: none;
+  background: #f1f5f9;
+  color: #475569;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-info:hover {
+  background: #e2e8f0;
+  color: #1d4ed8;
 }
 
 .card-kind {

@@ -59,6 +59,10 @@ export class ReadyToDeployColumn extends AbstractColumn {
     return this.deploymentFrequency;
   }
 
+  removeCard(card: Card): boolean {
+    return this.cards.remove(card);
+  }
+
   clear(): void {
     this.cards.clear();
   }

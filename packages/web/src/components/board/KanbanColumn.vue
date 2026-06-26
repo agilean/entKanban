@@ -15,15 +15,24 @@ const game = useGameStore();
 const {
   canReorderBacklog,
   canPullToSelected,
+  canAdvanceFlow,
   canExpedite,
   canAssignDice,
   isExpediteEligible,
   isColumnInteractive,
   canDropDiceOnCard,
+  canReceiveAdvance,
 } = useDragPolicy();
+
+const ADVANCE_DROP_COLUMNS = new Set(['analysis', 'development', 'test', 'ready', 'deployed']);
+
+const canReceiveAdvanceDrop = computed(
+  () => canAdvanceFlow.value && ADVANCE_DROP_COLUMNS.has(props.column.id),
+);
 
 const localCards = ref<CardView[]>([...props.column.cards]);
 const expediteDragOver = ref(false);
+const advanceDragOver = ref(false);
 const pendingPullCardName = ref<string | null>(null);
 
 watch(
@@ -125,6 +134,42 @@ function onCardDiceDrop(event: DragEvent, cardName: string): void {
   game.addDiceToCard(props.column.state, cardName, diceIndex);
 }
 
+function isForwardDraggable(card: CardView): boolean {
+  return canAdvanceFlow.value && card.advanceable === true;
+}
+
+function onAdvanceDragOver(event: DragEvent): void {
+  if (!canReceiveAdvanceDrop.value) {
+    return;
+  }
+  event.preventDefault();
+  advanceDragOver.value = true;
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function onAdvanceDragLeave(): void {
+  advanceDragOver.value = false;
+}
+
+function onAdvanceDrop(event: DragEvent): void {
+  event.preventDefault();
+  advanceDragOver.value = false;
+  if (!canReceiveAdvanceDrop.value) {
+    return;
+  }
+  const cardName = event.dataTransfer?.getData('text/card-name');
+  const fromColumn = event.dataTransfer?.getData('text/from-column');
+  if (!cardName || !fromColumn) {
+    return;
+  }
+  if (!canReceiveAdvance(fromColumn, props.column.id)) {
+    return;
+  }
+  game.advanceCard(fromColumn, props.column.id, cardName);
+}
+
 function assignedDiceFor(cardName: string): string[] {
   return game.getAssignedDiceLabels(cardName);
 }
@@ -143,7 +188,13 @@ const interactive = () => isColumnInteractive(props.column.id);
 <template>
   <section
     class="kanban-column"
-    :class="{ interactive: interactive() }"
+    :class="{
+      interactive: interactive(),
+      'advance-drop-target': advanceDragOver,
+    }"
+    @dragover="onAdvanceDragOver"
+    @dragleave="onAdvanceDragLeave"
+    @drop="onAdvanceDrop"
   >
     <header class="column-header">
       <h3>{{ column.title }}</h3>
@@ -171,7 +222,7 @@ const interactive = () => isColumnInteractive(props.column.id);
         </template>
       </draggable>
       <p v-if="canReorderBacklog" class="column-hint">
-        {{ canPullToSelected ? '拖拽排序，或拖入 Selected 填充' : '拖拽调整 Backlog 顺序' }}
+        {{ canPullToSelected ? '拖拽排序，或拖入优先列填充' : '拖拽调整存量顺序' }}
       </p>
     </template>
 
@@ -193,11 +244,17 @@ const interactive = () => isColumnInteractive(props.column.id);
       >
         <template #item="{ element }">
           <div class="sortable-card-wrap" :data-card-name="element.name">
-            <CardTile :card="element" />
+            <CardTile
+              :card="element"
+              :forward-draggable="isForwardDraggable(element)"
+              from-column="selected"
+            />
           </div>
         </template>
       </draggable>
-      <p v-if="canPullToSelected" class="column-hint">拖拽调整优先级，或从 Backlog 接收卡片</p>
+      <p v-if="canPullToSelected || canAdvanceFlow" class="column-hint">
+        {{ canPullToSelected ? '拖拽调整优先级，或从存量接收卡片' : '可将卡片拖入分析列' }}
+      </p>
     </template>
 
     <!-- State columns with zones -->
@@ -215,6 +272,8 @@ const interactive = () => isColumnInteractive(props.column.id);
             v-for="card in column.zones.expedite"
             :key="card.id"
             :card="card"
+            :forward-draggable="isForwardDraggable(card)"
+            :from-column="column.id"
             :droppable="isCardDroppable(card.name)"
             :assigned-dice="assignedDiceFor(card.name)"
             @dice-drop="onCardDiceDrop"
@@ -231,6 +290,8 @@ const interactive = () => isColumnInteractive(props.column.id);
             :key="card.id"
             :card="card"
             :draggable="isCardDraggable(card.name)"
+            :forward-draggable="isForwardDraggable(card)"
+            :from-column="column.id"
             :droppable="isCardDroppable(card.name)"
             :assigned-dice="assignedDiceFor(card.name)"
             @drag-start="onCardDragStart"
@@ -242,20 +303,34 @@ const interactive = () => isColumnInteractive(props.column.id);
       <div v-if="column.zones.done.length > 0" class="zone done-zone">
         <span class="zone-label">Done</span>
         <div class="zone-cards">
-          <CardTile v-for="card in column.zones.done" :key="card.id" :card="card" />
+          <CardTile
+            v-for="card in column.zones.done"
+            :key="card.id"
+            :card="card"
+            :forward-draggable="isForwardDraggable(card)"
+            :from-column="column.id"
+          />
         </div>
       </div>
 
       <footer v-if="column.dice.length > 0" class="dice-row">
         <DiceChip v-for="die in column.dice" :key="die.id" :dice="die" />
       </footer>
+      <p v-if="canAdvanceFlow" class="column-hint">填充阶段：可将已完成本阶段工作的卡片拖入下一列</p>
     </template>
 
     <!-- Simple columns (Ready, Deployed) -->
     <template v-else>
       <div class="cards">
-        <CardTile v-for="card in column.cards" :key="card.id" :card="card" />
+        <CardTile
+          v-for="card in column.cards"
+          :key="card.id"
+          :card="card"
+          :forward-draggable="isForwardDraggable(card)"
+          :from-column="column.id"
+        />
       </div>
+      <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">可将卡片拖入已部署列</p>
     </template>
   </section>
 </template>
@@ -278,6 +353,12 @@ const interactive = () => isColumnInteractive(props.column.id);
   border-color: #93c5fd;
   background: #f8fafc;
   box-shadow: inset 0 0 0 1px #dbeafe;
+}
+
+.kanban-column.advance-drop-target {
+  border-color: #6366f1;
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px #c7d2fe;
 }
 
 .column-header {

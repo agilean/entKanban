@@ -15,14 +15,7 @@ import { useUiStore } from '../stores/uiStore';
 const game = useGameStore();
 const ui = useUiStore();
 
-const showSidePanel = computed(() => {
-  const phase = game.phase;
-  return (
-    phase === GamePhase.SETUP ||
-    phase === GamePhase.ADJUST_WIP ||
-    phase === GamePhase.TED_TRAINING
-  );
-});
+const showSidePanel = computed(() => game.phase === GamePhase.TED_TRAINING);
 
 const blockerRolls = computed(() =>
   game.pendingActions.find((action) => action.kind === 'blocker-rolls'),

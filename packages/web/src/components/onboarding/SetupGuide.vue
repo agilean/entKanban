@@ -13,13 +13,12 @@ const visible = computed(() => props.currentDay === 9 && props.phase === GamePha
 <template>
   <aside v-if="visible" class="guide">
     <h2>欢迎来到 getKanban</h2>
-    <p>你正在 <strong>Day 9</strong> 的晨会。当前棋盘是团队的真实状态。</p>
+    <p>你正在 <strong>Day 9</strong> 准备阶段。当前棋盘是团队的真实状态。</p>
     <ul>
-      <li>先浏览各列 WIP 与卡片位置，理解价值流瓶颈。</li>
-      <li>可选：记录最多 3 次 WIP 限制调整（在后续各日晨会生效）。</li>
-      <li>准备好后点击「开始 Day 10」进入正式游戏。</li>
+      <li>浏览各列 WIP 与卡片位置，点击卡片右上角 ⓘ 查看详情。</li>
+      <li>可拖拽调整存量 / 优先顺序，或从存量填充优先列；也可将已完成当前阶段的卡片拖入下一列。</li>
+      <li>准备好后点击「开始 Day 10」，每轮从<strong>填充</strong>阶段开始。</li>
     </ul>
-    <p class="hint">提示：Backlog 排队策略会影响后续补货顺序，先观察再决策。</p>
   </aside>
 </template>
 
@@ -45,14 +44,9 @@ const visible = computed(() => props.currentDay === 9 && props.phase === GamePha
 }
 
 .guide ul {
-  margin: 0 0 0.5rem;
+  margin: 0;
   padding-left: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.6;
-}
-
-.hint {
-  color: #3b82f6;
-  font-size: 0.8125rem;
 }
 </style>

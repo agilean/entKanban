@@ -68,6 +68,10 @@ export class SelectedColumn extends LimitedColumn {
     this.cards.setOrder(ordered);
   }
 
+  removeCard(card: Card): boolean {
+    return this.cards.remove(card);
+  }
+
   clear(): void {
     this.cards.clear();
   }

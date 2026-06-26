@@ -10,8 +10,7 @@ export const SETUP_STEPS: PhaseStep[] = [
 ];
 
 export const DAY_STEPS: PhaseStep[] = [
-  { id: GamePhase.ADJUST_WIP, label: 'WIP' },
-  { id: GamePhase.REPLENISH, label: '补充' },
+  { id: GamePhase.REPLENISH, label: '填充' },
   { id: GamePhase.EXPEDITE, label: 'Expedite' },
   { id: GamePhase.ASSIGN_DICE, label: '骰子' },
   { id: GamePhase.DO_WORK, label: '工作' },
@@ -34,6 +33,9 @@ const PHASE_ORDER: GamePhase[] = [
 ];
 
 export function phaseIndex(phase: GamePhase): number {
+  if (phase === GamePhase.ADJUST_WIP || phase === GamePhase.REMOVE_BLOCKERS) {
+    return PHASE_ORDER.indexOf(GamePhase.REPLENISH);
+  }
   return PHASE_ORDER.indexOf(phase);
 }
 
@@ -43,6 +45,9 @@ export function isPhaseComplete(current: GamePhase, step: GamePhase): boolean {
 
 export function isPhaseActive(current: GamePhase, step: GamePhase): boolean {
   if (step === GamePhase.REPLENISH && current === GamePhase.REMOVE_BLOCKERS) {
+    return true;
+  }
+  if (step === GamePhase.REPLENISH && current === GamePhase.ADJUST_WIP) {
     return true;
   }
   return current === step;

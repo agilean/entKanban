@@ -12,6 +12,7 @@ export type PlayerAction =
   | { type: 'reorder-backlog'; cardNames: string[] }
   | { type: 'reorder-selected'; cardNames: string[] }
   | { type: 'pull-to-selected'; cardName: string }
+  | { type: 'advance-card'; fromColumn: string; toColumn: string; cardName: string }
   | { type: 'expedite-card'; state: State; cardName: string }
   | { type: 'assign-dice'; assignments: DiceAssignmentInput[] }
   | { type: 'send-ted-to-training'; training: boolean }

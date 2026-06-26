@@ -1,4 +1,4 @@
-import { GamePhase, State, type PendingAction } from '@kanban-game/engine';
+import { GamePhase, State, isValidAdvance, type PendingAction } from '@kanban-game/engine';
 import { computed } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 
@@ -38,17 +38,15 @@ export function useDragPolicy() {
   const game = useGameStore();
 
   const canReorderBacklog = computed(
-    () =>
-      game.phase === GamePhase.REPLENISH ||
-      game.phase === GamePhase.SETUP ||
-      game.phase === GamePhase.ADJUST_WIP,
+    () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
   );
 
   const canPullToSelected = computed(
-    () =>
-      game.phase === GamePhase.REPLENISH ||
-      game.phase === GamePhase.SETUP ||
-      game.phase === GamePhase.ADJUST_WIP,
+    () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
+  );
+
+  const canAdvanceFlow = computed(
+    () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
   );
 
   const canExpedite = computed(() => game.phase === GamePhase.EXPEDITE);
@@ -75,12 +73,19 @@ export function useDragPolicy() {
       return canReorderBacklog.value;
     }
     if (columnId === 'selected') {
-      return canPullToSelected.value;
+      return canPullToSelected.value || canAdvanceFlow.value;
     }
     if (isStateColumnId(columnId)) {
-      return canExpedite.value || canAssignDice.value;
+      return canExpedite.value || canAssignDice.value || canAdvanceFlow.value;
+    }
+    if (columnId === 'ready' || columnId === 'deployed') {
+      return canAdvanceFlow.value;
     }
     return false;
+  }
+
+  function canReceiveAdvance(fromColumn: string, toColumn: string): boolean {
+    return canAdvanceFlow.value && isValidAdvance(fromColumn, toColumn);
   }
 
   function canDropDiceOnCard(columnId: string, cardName: string): boolean {
@@ -102,12 +107,14 @@ export function useDragPolicy() {
   return {
     canReorderBacklog,
     canPullToSelected,
+    canAdvanceFlow,
     canExpedite,
     canAssignDice,
     expediteEligibleByColumn,
     isExpediteEligible,
     isColumnInteractive,
     canDropDiceOnCard,
+    canReceiveAdvance,
     columnIdToState,
   };
 }

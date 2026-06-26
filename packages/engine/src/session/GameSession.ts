@@ -104,6 +104,9 @@ export class GameSession {
         ? [...state.manualDiceAssignments]
         : null;
     }
+    if (session.phase === GamePhase.ADJUST_WIP) {
+      session.beginReplenishPhase();
+    }
     DayStore.setDay(session.getDaysFactory().getDay(session.currentDay));
     return session;
   }
@@ -178,6 +181,8 @@ export class GameSession {
           return this.handleReorderSelected(action.cardNames);
         case 'pull-to-selected':
           return this.handlePullToSelected(action.cardName);
+        case 'advance-card':
+          return this.handleAdvanceCard(action.fromColumn, action.toColumn, action.cardName);
         case 'expedite-card':
           return this.handleExpediteCard(action.state, action.cardName);
         case 'assign-dice':
@@ -210,8 +215,14 @@ export class GameSession {
     };
   }
 
+  private beginReplenishPhase(): void {
+    this.getCurrentDayObject().adjustWipLimits(this.board);
+    this.lastBlockerRolls = this.getCurrentDayObject().removeBlockers(this.board);
+    this.phase = GamePhase.REPLENISH;
+  }
+
   private handleAdjustWip(adjustment: WipLimitAdjustment): DispatchResult {
-    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.ADJUST_WIP) {
+    if (this.phase !== GamePhase.SETUP) {
       return { ok: false, error: 'WIP adjustment not allowed in current phase' };
     }
     this.board.putAdjustment(adjustment);
@@ -219,11 +230,7 @@ export class GameSession {
   }
 
   private handleReorderBacklog(cardNames: string[]): DispatchResult {
-    if (
-      this.phase !== GamePhase.SETUP &&
-      this.phase !== GamePhase.ADJUST_WIP &&
-      this.phase !== GamePhase.REPLENISH
-    ) {
+    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Backlog reorder not allowed in current phase' };
     }
     this.board.getOptions().reorder(cardNames);
@@ -231,23 +238,28 @@ export class GameSession {
   }
 
   private handleReorderSelected(cardNames: string[]): DispatchResult {
-    if (
-      this.phase !== GamePhase.SETUP &&
-      this.phase !== GamePhase.ADJUST_WIP &&
-      this.phase !== GamePhase.REPLENISH
-    ) {
+    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Selected reorder not allowed in current phase' };
     }
     this.board.getSelected().reorder(cardNames);
     return this.success();
   }
 
+  private handleAdvanceCard(
+    fromColumn: string,
+    toColumn: string,
+    cardName: string,
+  ): DispatchResult {
+    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
+      return { ok: false, error: 'Card advance not allowed in current phase' };
+    }
+    const context = new Context(this.board, this.getCurrentDayObject());
+    this.board.advanceCard(fromColumn, toColumn, cardName, context);
+    return this.success();
+  }
+
   private handlePullToSelected(cardName: string): DispatchResult {
-    if (
-      this.phase !== GamePhase.SETUP &&
-      this.phase !== GamePhase.ADJUST_WIP &&
-      this.phase !== GamePhase.REPLENISH
-    ) {
+    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Pull to selected not allowed in current phase' };
     }
     const selected = this.board.getSelected();
@@ -305,13 +317,8 @@ export class GameSession {
     switch (this.phase) {
       case GamePhase.SETUP:
         this.currentDay = 10;
-        this.phase = GamePhase.ADJUST_WIP;
         DayStore.setDay(this.getDaysFactory().getDay(10));
-        return this.success();
-      case GamePhase.ADJUST_WIP:
-        this.getCurrentDayObject().adjustWipLimits(this.board);
-        this.lastBlockerRolls = this.getCurrentDayObject().removeBlockers(this.board);
-        this.phase = GamePhase.REPLENISH;
+        this.beginReplenishPhase();
         return this.success();
       case GamePhase.REPLENISH:
         this.getCurrentDayObject().replenishSelected(this.board);
@@ -391,8 +398,8 @@ export class GameSession {
       this.phase = GamePhase.GAME_OVER;
       return this.success();
     }
-    this.phase = GamePhase.ADJUST_WIP;
     DayStore.setDay(this.getDaysFactory().getDay(this.currentDay));
+    this.beginReplenishPhase();
     return this.success();
   }
 
@@ -402,17 +409,9 @@ export class GameSession {
 
     switch (this.phase) {
       case GamePhase.SETUP:
-      case GamePhase.ADJUST_WIP:
-        if (this.board.getWipAdjustmentCount() < 3) {
-          pending.push({
-            kind: 'adjust-wip',
-            remaining: 3 - this.board.getWipAdjustmentCount(),
-            max: 3,
-          });
-        }
         pending.push({
           kind: 'confirm',
-          label: this.phase === GamePhase.SETUP ? 'start-day-10' : 'continue-stand-up',
+          label: 'start-day-10',
         });
         break;
       case GamePhase.REPLENISH:

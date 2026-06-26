@@ -16,6 +16,7 @@ export type CardView = {
   kind: CardCosKind;
   blocked: boolean;
   blockerRemaining?: number;
+  advanceable?: boolean;
   effort: {
     analysis: number;
     development: number;
@@ -66,7 +67,23 @@ function cardKind(card: Card): CardCosKind {
   return 'standard';
 }
 
-function mapCard(card: Card): CardView {
+function isCardAdvanceable(card: Card, columnId: string): boolean {
+  switch (columnId) {
+    case 'selected':
+    case 'ready':
+      return true;
+    case 'analysis':
+      return card.getRemainingWork(State.ANALYSIS) === 0;
+    case 'development':
+      return card.getRemainingWork(State.DEVELOPMENT) === 0;
+    case 'test':
+      return card.getRemainingWork(State.TEST) === 0;
+    default:
+      return false;
+  }
+}
+
+function mapCard(card: Card, columnId?: string): CardView {
   const view: CardView = {
     id: card.getName(),
     name: card.getName(),
@@ -85,6 +102,10 @@ function mapCard(card: Card): CardView {
 
   if (card instanceof FixedDateCard) {
     view.dueDate = card.getDueDate();
+  }
+
+  if (columnId) {
+    view.advanceable = isCardAdvanceable(card, columnId);
   }
 
   return view;
@@ -107,7 +128,7 @@ function mapDiceForState(allDice: DiceView[], state: State): DiceView[] {
   return allDice.filter((die) => die.state === state);
 }
 
-function buildStateZones(board: Board, state: State): ColumnZones {
+function buildStateZones(board: Board, state: State, columnId: string): ColumnZones {
   const column = board.getStateColumn(state);
   const standard: CardView[] = [];
   const expedite: CardView[] = [];
@@ -118,7 +139,7 @@ function buildStateZones(board: Board, state: State): ColumnZones {
     if (!card) {
       continue;
     }
-    const view = mapCard(card);
+    const view = mapCard(card, columnId);
     if (slot.done) {
       done.push(view);
     } else if (slot.cos === ClassOfService.EXPEDITE) {
@@ -134,7 +155,7 @@ function buildStateZones(board: Board, state: State): ColumnZones {
 function buildStateColumn(board: Board, state: State, id: string, title: string): ColumnView {
   const column = board.getStateColumn(state);
   const allDice = mapAllDice(board);
-  const zones = buildStateZones(board, state);
+  const zones = buildStateZones(board, state, id);
   const cards = [...zones.expedite, ...zones.standard, ...zones.done];
 
   return {
@@ -155,37 +176,37 @@ export function buildBoardView(board: Board): BoardView {
   const columns: ColumnView[] = [
     {
       id: 'backlog',
-      title: 'Backlog',
+      title: '存量',
       limitLabel: '∞',
       count: board.getOptions().getCards().length,
-      cards: board.getOptions().getCards().map(mapCard),
+      cards: board.getOptions().getCards().map((c) => mapCard(c, 'backlog')),
       dice: [],
     },
     {
       id: 'selected',
-      title: 'Selected',
+      title: '优先',
       limitLabel: formatLimit(board.getSelected().getLimit()),
       count: board.getSelected().getCards().length,
-      cards: board.getSelected().getCards().map(mapCard),
+      cards: board.getSelected().getCards().map((c) => mapCard(c, 'selected')),
       dice: [],
     },
-    buildStateColumn(board, State.ANALYSIS, 'analysis', 'Analysis'),
-    buildStateColumn(board, State.DEVELOPMENT, 'development', 'Development'),
-    buildStateColumn(board, State.TEST, 'test', 'Test'),
+    buildStateColumn(board, State.ANALYSIS, 'analysis', '分析'),
+    buildStateColumn(board, State.DEVELOPMENT, 'development', '开发'),
+    buildStateColumn(board, State.TEST, 'test', '测试'),
     {
       id: 'ready',
-      title: 'Ready',
+      title: '就绪',
       limitLabel: '∞',
       count: board.getReadyToDeploy().getCards().length,
-      cards: board.getReadyToDeploy().getCards().map(mapCard),
+      cards: board.getReadyToDeploy().getCards().map((c) => mapCard(c, 'ready')),
       dice: [],
     },
     {
       id: 'deployed',
-      title: 'Deployed',
+      title: '已部署',
       limitLabel: '∞',
       count: board.getDeployed().getCards().length,
-      cards: board.getDeployed().getCards().map(mapCard),
+      cards: board.getDeployed().getCards().map((c) => mapCard(c, 'deployed')),
       dice: [],
     },
   ];

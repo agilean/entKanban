@@ -1,48 +1,24 @@
 <script setup lang="ts">
-import { GamePhase } from '@kanban-game/engine';
 import { computed } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
-import BlockerRollsPanel from './BlockerRollsPanel.vue';
 import TedTrainingPanel from './TedTrainingPanel.vue';
-import WipAdjustPanel from './WipAdjustPanel.vue';
 
 const game = useGameStore();
 
-const adjustWip = computed(() =>
-  game.pendingActions.find((action) => action.kind === 'adjust-wip'),
-);
 const tedTraining = computed(() =>
   game.pendingActions.find((action) => action.kind === 'ted-training'),
 );
-const blockerRolls = computed(() =>
-  game.pendingActions.find((action) => action.kind === 'blocker-rolls'),
-);
 
-const hasContent = computed(
-  () => Boolean(adjustWip.value || tedTraining.value || blockerRolls.value),
-);
-
-const showPanel = computed(() => {
-  const phase = game.phase;
-  return (
-    phase === GamePhase.SETUP ||
-    phase === GamePhase.ADJUST_WIP ||
-    phase === GamePhase.TED_TRAINING
-  );
-});
+const hasContent = computed(() => Boolean(tedTraining.value));
 </script>
 
 <template>
-  <aside v-if="showPanel && hasContent" class="decision-panel">
+  <aside v-if="hasContent" class="decision-panel">
     <header class="panel-header">
       <h2>辅助操作</h2>
     </header>
 
     <div class="sections">
-      <WipAdjustPanel v-if="adjustWip" :remaining="adjustWip.remaining" />
-
-      <BlockerRollsPanel v-if="blockerRolls" :rolls="blockerRolls.rolls" />
-
       <TedTrainingPanel v-if="tedTraining" />
 
       <p v-if="game.isGameOver" class="game-over">游戏已结束，感谢游玩！</p>

@@ -14,7 +14,6 @@ function walkStandUp(session: GameSession): void {
   confirm(session);
   confirm(session);
   confirm(session);
-  confirm(session);
 }
 
 function boardSignature(session: GameSession): string {
@@ -60,7 +59,7 @@ describe('GameSession serialization', () => {
     const restored = GameSession.fromJSON(json);
 
     expect(restored.getCurrentDay()).toBe(10);
-    expect(restored.getPhase()).toBe(GamePhase.ADJUST_WIP);
+    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
     expect(restored.getBoard().getWipAdjustmentCount()).toBe(1);
     expect(restored.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(
       json.backlogOrder,
@@ -82,7 +81,6 @@ describe('GameSession serialization', () => {
 
   it('round-trips manual dice assignments during assign-dice phase', () => {
     const session = GameSession.createNew();
-    confirm(session);
     confirm(session);
     confirm(session);
     confirm(session);

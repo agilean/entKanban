@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Board } from '../src/Board.js';
+import { Context } from '../src/Context.js';
+import { DaysFactory } from '../src/DaysFactory.js';
 import { State } from '../src/State.js';
 import { getCard } from '../src/card/Cards.js';
 
@@ -58,5 +60,35 @@ describe('Board initial layout', () => {
     const b = getCard('S1');
     expect(a).not.toBe(b);
     expect(a.getName()).toBe(b.getName());
+  });
+});
+
+describe('Board advanceCard', () => {
+  it('moves a done development card to test during replenish flow', () => {
+    const board = new Board();
+    const day = new DaysFactory(false).getDay(10);
+    const context = new Context(board, day);
+
+    expect(board.findCardByName('S5')).toBeDefined();
+    expect(
+      board.getStateColumn(State.DEVELOPMENT).getCards().some((c) => c.getName() === 'S5'),
+    ).toBe(true);
+
+    board.advanceCard('development', 'test', 'S5', context);
+
+    expect(
+      board.getStateColumn(State.DEVELOPMENT).getCards().some((c) => c.getName() === 'S5'),
+    ).toBe(false);
+    expect(board.getStateColumn(State.TEST).getCards().some((c) => c.getName() === 'S5')).toBe(true);
+  });
+
+  it('rejects advance when remaining work exists in source column', () => {
+    const board = new Board();
+    const day = new DaysFactory(false).getDay(10);
+    const context = new Context(board, day);
+
+    expect(() => board.advanceCard('development', 'test', 'S6', context)).toThrow(
+      /remaining development work/i,
+    );
   });
 });

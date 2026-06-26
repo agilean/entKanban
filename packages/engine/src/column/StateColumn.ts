@@ -185,6 +185,22 @@ export class StateColumn extends LimitedColumn {
     this.expTodo.add(card);
   }
 
+  removeCard(card: Card): { cos: ClassOfService; done: boolean } | null {
+    if (this.stdTodo.remove(card)) {
+      return { cos: ClassOfService.STANDARD, done: false };
+    }
+    if (this.stdDone.remove(card)) {
+      return { cos: ClassOfService.STANDARD, done: true };
+    }
+    if (this.expTodo.remove(card)) {
+      return { cos: ClassOfService.EXPEDITE, done: false };
+    }
+    if (this.expDone.remove(card)) {
+      return { cos: ClassOfService.EXPEDITE, done: true };
+    }
+    return null;
+  }
+
   clearDiceAssignments(): void {
     this.groups = [];
     this.rolled = false;

@@ -162,6 +162,15 @@ export const useGameStore = defineStore('game', () => {
     return dispatchAndSave({ type: 'reorder-selected', cardNames }, activeTab);
   }
 
+  function advanceCard(
+    fromColumn: string,
+    toColumn: string,
+    cardName: string,
+    activeTab: AppTab = 'board',
+  ): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'advance-card', fromColumn, toColumn, cardName }, activeTab);
+  }
+
   function expediteCard(state: State, cardName: string, activeTab: AppTab = 'board'): DispatchResult | undefined {
     return dispatchAndSave({ type: 'expedite-card', state, cardName }, activeTab);
   }
@@ -241,6 +250,7 @@ export const useGameStore = defineStore('game', () => {
     reorderBacklog,
     pullToSelected,
     reorderSelected,
+    advanceCard,
     expediteCard,
     assignDice,
     sendTedToTraining,
