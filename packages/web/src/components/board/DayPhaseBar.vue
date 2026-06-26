@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
 import { confirmLabel } from '../../utils/confirmLabel';
+import { endDiceDrag } from '../../utils/diceDragState';
 import {
   isPhaseActive,
   isPhaseComplete,
@@ -55,6 +56,7 @@ async function handleConfirm(): Promise<void> {
   }
   const action = confirmAction.value;
   if (action?.label === 'do-work') {
+    endDiceDrag();
     const result = game.rollDice(ui.activeTab);
     if (!result?.ok) {
       return;
@@ -83,12 +85,14 @@ async function handleApply(): Promise<void> {
     const result = game.applyRollStep(index, ui.activeTab);
     if (!result?.ok) {
       overlayOpen.value = false;
+      endDiceDrag();
       return;
     }
     await delay(350);
   }
   overlayOpen.value = false;
   rollSteps.value = [];
+  endDiceDrag();
 }
 </script>
 

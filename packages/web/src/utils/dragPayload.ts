@@ -13,10 +13,17 @@ function transferTypes(event: DragEvent): string[] {
 }
 
 export function isDiceDrag(event: DragEvent): boolean {
-  if (activeDiceDragIndex.value !== null) {
+  const types = transferTypes(event);
+  if (types.includes(DICE_INDEX_MIME)) {
     return true;
   }
-  return transferTypes(event).includes(DICE_INDEX_MIME);
+  if (types.includes(FROM_COLUMN_MIME)) {
+    return false;
+  }
+  if (types.includes(CARD_NAME_MIME) && !types.includes(DICE_INDEX_MIME)) {
+    return false;
+  }
+  return activeDiceDragIndex.value !== null;
 }
 
 export function isCardAdvanceDrag(event: DragEvent): boolean {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { AssignedDiceView } from '../../stores/gameStore';
+import type { EffortField } from '../../utils/effortHighlight';
 import type { CardView } from '../../utils/buildBoardView';
 import { isDiceDrag } from '../../utils/dragPayload';
 import { wipAgeSeverity } from '../../utils/wipAge';
@@ -15,6 +16,7 @@ const props = defineProps<{
   droppable?: boolean;
   diceDraggable?: boolean;
   assignedDice?: AssignedDiceView[];
+  effortHighlight?: Partial<Record<EffortField, true>>;
 }>();
 
 const emit = defineEmits<{
@@ -58,6 +60,11 @@ const wipAgeClass = computed(() => {
     return 'cycle';
   }
   return wipAgeSeverity(props.card.wipDays, 'flow');
+});
+
+const hasEffortUpdate = computed(() => {
+  const highlight = props.effortHighlight;
+  return Boolean(highlight && Object.keys(highlight).length > 0);
 });
 
 function handleDragStart(event: DragEvent): void {
@@ -138,6 +145,7 @@ function closeDetail(): void {
       draggable: isAnyDragEnabled,
       droppable: isDropEnabled,
       'dice-drop-active': diceDragActive,
+      'effort-updated': hasEffortUpdate,
     }"
     :draggable="isAnyDragEnabled"
     @dragstart="handleDragStart"
@@ -174,9 +182,27 @@ function closeDetail(): void {
     </header>
 
     <div class="effort" aria-label="剩余工作量">
-      <span v-if="card.effort.analysis > 0" class="effort-item analysis">A {{ card.effort.analysis }}</span>
-      <span v-if="card.effort.development > 0" class="effort-item development">D {{ card.effort.development }}</span>
-      <span v-if="card.effort.test > 0" class="effort-item test">T {{ card.effort.test }}</span>
+      <span
+        v-if="card.effort.analysis > 0"
+        class="effort-item analysis"
+        :class="{ 'effort-changed': effortHighlight?.analysis }"
+      >
+        A {{ card.effort.analysis }}
+      </span>
+      <span
+        v-if="card.effort.development > 0"
+        class="effort-item development"
+        :class="{ 'effort-changed': effortHighlight?.development }"
+      >
+        D {{ card.effort.development }}
+      </span>
+      <span
+        v-if="card.effort.test > 0"
+        class="effort-item test"
+        :class="{ 'effort-changed': effortHighlight?.test }"
+      >
+        T {{ card.effort.test }}
+      </span>
       <span
         v-if="card.effort.analysis === 0 && card.effort.development === 0 && card.effort.test === 0"
         class="effort-done"
@@ -226,6 +252,12 @@ function closeDetail(): void {
   padding: 0.5rem 0.625rem;
   font-size: 0.75rem;
   box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card-tile.effort-updated {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px #bbf7d0, 0 1px 2px rgb(15 23 42 / 6%);
 }
 
 .card-tile.draggable {
@@ -382,6 +414,22 @@ function closeDetail(): void {
 .effort-item.test {
   background: #fef3c7;
   color: #b45309;
+}
+
+.effort-item.effort-changed {
+  color: #dc2626 !important;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgb(220 38 38 / 35%);
+  animation: effort-flash 0.8s ease-out;
+}
+
+@keyframes effort-flash {
+  0% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .effort-done {

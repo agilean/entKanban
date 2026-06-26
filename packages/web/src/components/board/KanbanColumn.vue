@@ -13,6 +13,7 @@ import {
   isExpediteCardDrag,
   readDiceIndex,
 } from '../../utils/dragPayload';
+import { beginDiceDrag } from '../../utils/diceDragState';
 import CardTile from './CardTile.vue';
 import DiceChip from './DiceChip.vue';
 
@@ -205,6 +206,10 @@ function assignedDiceFor(cardName: string) {
   return game.getAssignedDiceForCard(cardName);
 }
 
+function effortHighlightFor(cardName: string) {
+  return game.getEffortHighlight(cardName);
+}
+
 const assignedDiceIndices = computed(() => {
   const indices = new Set<number>();
   for (const assignment of game.pendingDiceAssignments) {
@@ -224,7 +229,9 @@ function isDiceDraggable(diceIndex: number): boolean {
 }
 
 function onDiceDragStart(event: DragEvent, diceIndex: number): void {
+  beginDiceDrag(diceIndex);
   event.dataTransfer?.setData(DICE_INDEX_MIME, String(diceIndex));
+  event.dataTransfer?.setData('text/plain', String(diceIndex));
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
   }
@@ -329,7 +336,7 @@ const interactive = () => isColumnInteractive(props.column.id);
       >
         <template #item="{ element }">
           <div class="sortable-card-wrap" :data-card-name="element.name">
-            <CardTile :card="element" />
+            <CardTile :card="element" :effort-highlight="effortHighlightFor(element.name)" />
           </div>
         </template>
       </draggable>
@@ -360,6 +367,7 @@ const interactive = () => isColumnInteractive(props.column.id);
               :card="element"
               :forward-draggable="isForwardDraggable(element)"
               from-column="selected"
+              :effort-highlight="effortHighlightFor(element.name)"
             />
           </div>
         </template>
@@ -394,6 +402,7 @@ const interactive = () => isColumnInteractive(props.column.id);
               :droppable="isCardDroppable(card.name)"
               :dice-draggable="canAssignDice"
               :assigned-dice="assignedDiceFor(card.name)"
+              :effort-highlight="effortHighlightFor(card.name)"
               @dice-drop="onCardDiceDrop"
             />
           </div>
@@ -419,6 +428,7 @@ const interactive = () => isColumnInteractive(props.column.id);
               :droppable="isCardDroppable(card.name)"
               :dice-draggable="canAssignDice"
               :assigned-dice="assignedDiceFor(card.name)"
+              :effort-highlight="effortHighlightFor(card.name)"
               @drag-start="onCardDragStart"
               @dice-drop="onCardDiceDrop"
             />
@@ -435,6 +445,7 @@ const interactive = () => isColumnInteractive(props.column.id);
             :card="card"
             :forward-draggable="isForwardDraggable(card)"
             :from-column="column.id"
+            :effort-highlight="effortHighlightFor(card.name)"
           />
         </div>
       </div>
@@ -470,6 +481,7 @@ const interactive = () => isColumnInteractive(props.column.id);
           :card="card"
           :forward-draggable="isForwardDraggable(card)"
           :from-column="column.id"
+          :effort-highlight="effortHighlightFor(card.name)"
         />
       </div>
       <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">可将卡片拖入已部署列</p>

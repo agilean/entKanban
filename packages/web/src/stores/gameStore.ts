@@ -12,9 +12,12 @@ import {
   type PlayerAction,
 } from '@kanban-game/engine';
 import type { Board } from '@kanban-game/engine';
+import type { DiceRollApplyStep } from '@kanban-game/engine';
 import { defineStore } from 'pinia';
 import { computed, ref, shallowRef } from 'vue';
 import { buildBoardView } from '../utils/buildBoardView';
+import { stateToEffortField, type EffortField } from '../utils/effortHighlight';
+import { endDiceDrag } from '../utils/diceDragState';
 import { clearSavedGame, loadGame, saveGame, type SavedGamePayload } from '../utils/saveGame';
 import type { AppTab } from './uiStore';
 
@@ -62,6 +65,7 @@ export const useGameStore = defineStore('game', () => {
   const lastError = ref<string | null>(null);
   const revision = ref(0);
   const boardEpoch = ref(0);
+  const effortHighlights = ref<Record<string, Partial<Record<EffortField, true>>>>({});
 
   const hasSession = computed(() => session.value !== null);
   const currentDay = computed(() => session.value?.getCurrentDay() ?? 9);
@@ -124,6 +128,33 @@ export const useGameStore = defineStore('game', () => {
     return session.value?.getAppliedRollCount() ?? 0;
   });
 
+  function clearEffortHighlights(): void {
+    effortHighlights.value = {};
+  }
+
+  function markEffortHighlight(step: DiceRollApplyStep): void {
+    if (step.delta <= 0) {
+      return;
+    }
+    const field = stateToEffortField(step.state);
+    effortHighlights.value = {
+      ...effortHighlights.value,
+      [step.cardName]: {
+        ...effortHighlights.value[step.cardName],
+        [field]: true,
+      },
+    };
+  }
+
+  function getEffortHighlight(cardName: string): Partial<Record<EffortField, true>> {
+    return effortHighlights.value[cardName] ?? {};
+  }
+
+  function hasEffortHighlight(cardName: string): boolean {
+    const highlight = effortHighlights.value[cardName];
+    return Boolean(highlight && Object.keys(highlight).length > 0);
+  }
+
   function bumpRevision(): void {
     revision.value += 1;
   }
@@ -162,6 +193,7 @@ export const useGameStore = defineStore('game', () => {
   function startNewGame(): void {
     session.value = GameSession.createNew();
     lastError.value = null;
+    clearEffortHighlights();
     clearSavedGame();
     refreshSavedFlag();
     bumpRevision();
@@ -200,11 +232,19 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function rollDice(activeTab: AppTab = 'board'): DispatchResult | undefined {
+    clearEffortHighlights();
+    endDiceDrag();
     return dispatchAndSave({ type: 'roll-dice' }, activeTab);
   }
 
   function applyRollStep(index: number, activeTab: AppTab = 'board'): DispatchResult | undefined {
-    return dispatchAndSave({ type: 'apply-roll-step', index }, activeTab);
+    const steps = session.value?.getPendingRollSteps() ?? [];
+    const step = steps[index];
+    const result = dispatchAndSave({ type: 'apply-roll-step', index }, activeTab);
+    if (result?.ok && step) {
+      markEffortHighlight(step);
+    }
+    return result;
   }
 
   function adjustWipLimits(adjustment: WipLimitAdjustment, activeTab: AppTab = 'board'): DispatchResult | undefined {
@@ -317,6 +357,7 @@ export const useGameStore = defineStore('game', () => {
     pendingDiceAssignments,
     pendingRollPreview,
     appliedRollCount,
+    effortHighlights,
     startNewGame,
     resetGame,
     persistToStorage,
@@ -338,5 +379,8 @@ export const useGameStore = defineStore('game', () => {
     addDiceToCard,
     unassignDice,
     getAssignedDiceForCard,
+    getEffortHighlight,
+    hasEffortHighlight,
+    clearEffortHighlights,
   };
 });
