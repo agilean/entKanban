@@ -6,11 +6,9 @@ import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
 import type { CardView, ColumnView } from '../../utils/buildBoardView';
 import {
-  CARD_NAME_MIME,
   DICE_INDEX_MIME,
   isCardAdvanceDrag,
   isDiceDrag,
-  isExpediteCardDrag,
   readAdvanceDrag,
   readDiceIndex,
 } from '../../utils/dragPayload';
@@ -29,23 +27,16 @@ const {
   canReorderBacklog,
   canPullToSelected,
   canAdvanceFlow,
-  canExpedite,
   canAssignDice,
-  isExpediteEligible,
+  isRelease,
   isColumnInteractive,
   canDropDiceOnCard,
+  canReceiveAdvance,
 } = useDragPolicy();
 
 const STATE_COLUMN_IDS = new Set(['analysis', 'development', 'test']);
 
-const ADVANCE_DROP_COLUMNS = new Set(['analysis', 'development', 'test', 'ready', 'deployed']);
-
-const canReceiveAdvanceDrop = computed(
-  () => canAdvanceFlow.value && ADVANCE_DROP_COLUMNS.has(props.column.id),
-);
-
 const localCards = ref<CardView[]>([...props.column.cards]);
-const expediteDragOver = ref(false);
 const advanceDragOver = ref(false);
 const advanceDropState = ref<'valid' | 'invalid' | null>(null);
 const advanceDropReason = ref('');
@@ -121,57 +112,6 @@ function onSelectedDragEnd(event: { from: HTMLElement; to: HTMLElement }): void 
   }
 }
 
-function onCardDragStart(event: DragEvent, cardName: string): void {
-  event.dataTransfer?.setData(CARD_NAME_MIME, cardName);
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-  }
-}
-
-function onExpediteDragOver(event: DragEvent): void {
-  if (!canExpedite.value || !isExpediteCardDrag(event)) {
-    return;
-  }
-  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
-  if (!cardName || !isExpediteEligible(props.column.id, cardName)) {
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'none';
-    }
-    return;
-  }
-  event.preventDefault();
-  event.stopPropagation();
-  expediteDragOver.value = true;
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move';
-  }
-}
-
-function onExpediteDragLeave(): void {
-  expediteDragOver.value = false;
-}
-
-function onExpediteDrop(event: DragEvent): void {
-  event.preventDefault();
-  event.stopPropagation();
-  expediteDragOver.value = false;
-  if (!canExpedite.value || !props.column.state || isDiceDrag(event)) {
-    return;
-  }
-  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
-  if (!cardName) {
-    return;
-  }
-  if (!isExpediteEligible(props.column.id, cardName)) {
-    ui.showDragToast('该卡片当前不可 Expedite（仅临近到期的固定日期卡或 Expedite 卡可加速）');
-    return;
-  }
-  const result = game.expediteCard(props.column.state, cardName);
-  if (!result?.ok && result?.error) {
-    ui.showDragToast(result.error);
-  }
-}
-
 function onCardDiceDrop(event: DragEvent, cardName: string): void {
   if (!canAssignDice.value || !props.column.state) {
     return;
@@ -197,12 +137,16 @@ function resetAdvanceDropPreview(): void {
 }
 
 function evaluateAdvanceDrop(event: DragEvent): boolean {
-  if (!canReceiveAdvanceDrop.value || !isCardAdvanceDrag(event)) {
+  if (!isCardAdvanceDrag(event)) {
     resetAdvanceDropPreview();
     return false;
   }
   const drag = readAdvanceDrag(event);
   if (!drag) {
+    resetAdvanceDropPreview();
+    return false;
+  }
+  if (!canReceiveAdvance(drag.fromColumn, props.column.id)) {
     resetAdvanceDropPreview();
     return false;
   }
@@ -264,7 +208,10 @@ function onAdvanceDrop(event: DragEvent): void {
   const drag = readAdvanceDrag(event);
   resetAdvanceDropPreview();
   endCardDrag();
-  if (!canReceiveAdvanceDrop.value || isDiceDrag(event) || !drag) {
+  if (isDiceDrag(event) || !drag) {
+    return;
+  }
+  if (!canReceiveAdvance(drag.fromColumn, props.column.id)) {
     return;
   }
   const check = game.checkAdvance(drag.fromColumn, props.column.id, drag.cardName);
@@ -373,15 +320,9 @@ function onCardZoneDrop(event: DragEvent, cardName: string): void {
   onCardDiceDrop(event, cardName);
 }
 
-function isCardDraggable(cardName: string): boolean {
-  return isExpediteEligible(props.column.id, cardName);
-}
-
 function isCardDroppable(cardName: string): boolean {
   return canDropDiceOnCard(props.column.id, cardName);
 }
-
-const canDeployToday = computed(() => game.canDeployToday);
 
 const interactive = () => isColumnInteractive(props.column.id);
 </script>
@@ -402,7 +343,7 @@ const interactive = () => isColumnInteractive(props.column.id);
     <header class="column-header">
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
-      <span v-if="column.id === 'ready' && canDeployToday" class="release-badge">发布日</span>
+      <span v-if="column.id === 'ready' && isRelease" class="release-badge">发布日</span>
     </header>
 
     <!-- Backlog: sort + drag to Selected -->
@@ -467,85 +408,33 @@ const interactive = () => isColumnInteractive(props.column.id);
       </p>
     </template>
 
-    <!-- State columns with zones -->
-    <template v-else-if="column.zones">
-      <div
-        class="zone expedite-zone"
-        :class="{ 'drop-active': canExpedite, 'drag-over': expediteDragOver }"
-        @dragover="onExpediteDragOver"
-        @dragleave="onExpediteDragLeave"
-        @drop="onExpediteDrop"
-      >
-        <span class="zone-label">Expedite</span>
-        <div class="zone-cards">
-          <div
-            v-for="card in column.zones.expedite"
-            :key="card.id"
-            class="card-dice-target"
-            @dragover="onCardZoneDragOver"
-            @drop="onCardZoneDrop($event, card.name)"
-          >
-            <CardTile
-              :card="card"
-              :forward-draggable="isForwardDraggable(card)"
-              :from-column="column.id"
-              :droppable="isCardDroppable(card.name)"
-              :dice-draggable="canAssignDice"
-              :assigned-dice="assignedDiceFor(card.name)"
-              :effort-highlight="effortHighlightFor(card.name)"
-              :roll-ui="rollUiFor(card.name)"
-              @dice-drop="onCardDiceDrop"
-            />
-          </div>
-          <p v-if="column.zones.expedite.length === 0" class="zone-empty">拖入临近到期的固定日期卡或 Expedite 卡</p>
-        </div>
-      </div>
-
-      <div class="zone standard-zone" :class="{ 'zone-drop-preview': advanceDropState === 'valid' }">
-        <span class="zone-label">Standard</span>
-        <div class="zone-cards">
-          <div
-            v-for="card in column.zones.standard"
-            :key="card.id"
-            class="card-dice-target"
-            @dragover="onCardZoneDragOver"
-            @drop="onCardZoneDrop($event, card.name)"
-          >
-            <CardTile
-              :card="card"
-              :draggable="isCardDraggable(card.name)"
-              :forward-draggable="isForwardDraggable(card)"
-              :from-column="column.id"
-              :droppable="isCardDroppable(card.name)"
-              :dice-draggable="canAssignDice"
-              :assigned-dice="assignedDiceFor(card.name)"
-              :effort-highlight="effortHighlightFor(card.name)"
-              :roll-ui="rollUiFor(card.name)"
-              @drag-start="onCardDragStart"
-              @dice-drop="onCardDiceDrop"
-            />
-          </div>
-          <div
-            v-if="advanceDropState === 'valid'"
-            class="advance-slot"
-            aria-hidden="true"
-          />
-        </div>
-      </div>
-
-      <div v-if="column.zones.done.length > 0" class="zone done-zone">
-        <span class="zone-label">Done</span>
-        <div class="zone-cards">
+    <!-- State columns -->
+    <template v-else-if="column.state">
+      <div class="cards" :class="{ 'cards-drop-preview': advanceDropState === 'valid' }">
+        <div
+          v-for="card in column.cards"
+          :key="card.id"
+          class="card-dice-target"
+          @dragover="onCardZoneDragOver"
+          @drop="onCardZoneDrop($event, card.name)"
+        >
           <CardTile
-            v-for="card in column.zones.done"
-            :key="card.id"
             :card="card"
             :forward-draggable="isForwardDraggable(card)"
             :from-column="column.id"
+            :droppable="isCardDroppable(card.name)"
+            :dice-draggable="canAssignDice"
+            :assigned-dice="assignedDiceFor(card.name)"
             :effort-highlight="effortHighlightFor(card.name)"
             :roll-ui="rollUiFor(card.name)"
+            @dice-drop="onCardDiceDrop"
           />
         </div>
+        <div
+          v-if="advanceDropState === 'valid'"
+          class="advance-slot"
+          aria-hidden="true"
+        />
       </div>
 
       <footer
@@ -567,9 +456,9 @@ const interactive = () => isColumnInteractive(props.column.id);
       <p v-if="canAssignDice" class="column-hint">
         骰子可在列底、卡片间拖放，或拖回顶栏取消分配
       </p>
-      <p v-else-if="canAdvanceFlow" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
+      <p v-else-if="canAdvanceFlow && !isRelease" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
       <p
-        v-if="advanceDropState === 'invalid' && advanceDropReason && column.zones"
+        v-if="advanceDropState === 'invalid' && advanceDropReason"
         class="drop-reject-hint"
       >
         {{ advanceDropReason }}
@@ -594,8 +483,8 @@ const interactive = () => isColumnInteractive(props.column.id);
           aria-hidden="true"
         />
       </div>
-      <p v-if="canAdvanceFlow && column.id === 'ready'" class="column-hint">
-        {{ canDeployToday ? '发布日：可将就绪卡片拖入已部署' : '今天不是发布日，请等待下一个发布日' }}
+      <p v-if="isRelease && column.id === 'ready'" class="column-hint">
+        发布日：将就绪卡片拖入已部署，完成后点击「完成发布日」
       </p>
       <p
         v-if="advanceDropState === 'invalid' && advanceDropReason"

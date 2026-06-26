@@ -15,7 +15,7 @@ import { useUiStore } from '../stores/uiStore';
 const game = useGameStore();
 const ui = useUiStore();
 
-const showSidePanel = computed(() => game.phase === GamePhase.TED_TRAINING);
+const showSidePanel = computed(() => game.phase === GamePhase.RELEASE);
 
 onMounted(() => {
   game.refreshSavedFlag();

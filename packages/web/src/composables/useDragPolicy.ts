@@ -1,4 +1,4 @@
-import { GamePhase, State, isValidAdvance, type PendingAction } from '@kanban-game/engine';
+import { GamePhase, State, isValidAdvance } from '@kanban-game/engine';
 import { computed } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 
@@ -9,6 +9,12 @@ const COLUMN_TO_STATE: Record<StateColumnId, State> = {
   analysis: State.ANALYSIS,
   development: State.DEVELOPMENT,
   test: State.TEST,
+};
+
+const STATE_EFFORT_FIELD: Record<State, 'analysis' | 'development' | 'test'> = {
+  [State.ANALYSIS]: 'analysis',
+  [State.DEVELOPMENT]: 'development',
+  [State.TEST]: 'test',
 };
 
 export function columnIdToState(columnId: string): State | null {
@@ -22,18 +28,6 @@ export function isStateColumnId(columnId: string): columnId is StateColumnId {
   return STATE_COLUMN_IDS.includes(columnId as StateColumnId);
 }
 
-function buildExpediteEligibleMap(
-  actions: readonly PendingAction[],
-): Map<State, Set<string>> {
-  const map = new Map<State, Set<string>>();
-  for (const action of actions) {
-    if (action.kind === 'expedite') {
-      map.set(action.state, new Set(action.eligibleCards));
-    }
-  }
-  return map;
-}
-
 export function useDragPolicy() {
   const game = useGameStore();
 
@@ -41,49 +35,37 @@ export function useDragPolicy() {
     () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
   );
 
+  const isRelease = computed(() => game.phase === GamePhase.RELEASE);
+
   const canReorderBacklog = computed(() => isPreparation.value);
 
   const canPullToSelected = computed(() => isPreparation.value);
 
-  const canAdvanceFlow = computed(() => isPreparation.value);
-
-  const canExpedite = computed(() => isPreparation.value);
+  const canAdvanceFlow = computed(() => isPreparation.value || isRelease.value);
 
   const canAssignDice = computed(() => isPreparation.value);
-
-  const expediteEligibleByColumn = computed(() =>
-    buildExpediteEligibleMap(game.pendingActions),
-  );
-
-  function isExpediteEligible(columnId: string, cardName: string): boolean {
-    if (!canExpedite.value) {
-      return false;
-    }
-    const state = columnIdToState(columnId);
-    if (!state) {
-      return false;
-    }
-    return expediteEligibleByColumn.value.get(state)?.has(cardName) ?? false;
-  }
 
   function isColumnInteractive(columnId: string): boolean {
     if (columnId === 'backlog') {
       return canReorderBacklog.value;
     }
     if (columnId === 'selected') {
-      return canPullToSelected.value || canAdvanceFlow.value;
+      return canPullToSelected.value || isPreparation.value;
     }
     if (isStateColumnId(columnId)) {
-      return canExpedite.value || canAssignDice.value || canAdvanceFlow.value;
+      return canAssignDice.value || isPreparation.value;
     }
     if (columnId === 'ready' || columnId === 'deployed') {
-      return canAdvanceFlow.value;
+      return isRelease.value || isPreparation.value;
     }
     return false;
   }
 
   function canReceiveAdvance(fromColumn: string, toColumn: string): boolean {
-    return canAdvanceFlow.value && isValidAdvance(fromColumn, toColumn);
+    if (fromColumn === 'ready' && toColumn === 'deployed') {
+      return isRelease.value && isValidAdvance(fromColumn, toColumn);
+    }
+    return isPreparation.value && isValidAdvance(fromColumn, toColumn);
   }
 
   function canDropDiceOnCard(columnId: string, cardName: string, diceIndex?: number): boolean {
@@ -95,11 +77,15 @@ export function useDragPolicy() {
       return false;
     }
     const column = game.boardView?.columns.find((c) => c.id === columnId);
-    if (!column?.zones) {
+    if (!column) {
       return false;
     }
-    const incomplete = [...column.zones.standard, ...column.zones.expedite];
-    if (!incomplete.some((card) => card.name === cardName)) {
+    const card = column.cards.find((item) => item.name === cardName);
+    if (!card) {
+      return false;
+    }
+    const effortField = STATE_EFFORT_FIELD[state];
+    if (card.effort[effortField] <= 0) {
       return false;
     }
     if (diceIndex === undefined) {
@@ -111,13 +97,11 @@ export function useDragPolicy() {
 
   return {
     isPreparation,
+    isRelease,
     canReorderBacklog,
     canPullToSelected,
     canAdvanceFlow,
-    canExpedite,
     canAssignDice,
-    expediteEligibleByColumn,
-    isExpediteEligible,
     isColumnInteractive,
     canDropDiceOnCard,
     canReceiveAdvance,

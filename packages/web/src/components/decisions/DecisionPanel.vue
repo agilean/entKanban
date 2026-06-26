@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
-import TedTrainingPanel from './TedTrainingPanel.vue';
+import BillingReleasePanel from './BillingReleasePanel.vue';
 
 const game = useGameStore();
 
-const tedTraining = computed(() =>
-  game.pendingActions.find((action) => action.kind === 'ted-training'),
+const billingSummary = computed(() =>
+  game.pendingActions.find((action) => action.kind === 'billing-summary'),
 );
 
-const hasContent = computed(() => Boolean(tedTraining.value));
+const hasContent = computed(() => Boolean(billingSummary.value));
 </script>
 
 <template>
   <aside v-if="hasContent" class="decision-panel">
     <header class="panel-header">
-      <h2>辅助操作</h2>
+      <h2>发布日</h2>
     </header>
 
     <div class="sections">
-      <TedTrainingPanel v-if="tedTraining" />
+      <BillingReleasePanel v-if="billingSummary" />
 
       <p v-if="game.isGameOver" class="game-over">游戏已结束，感谢游玩！</p>
     </div>

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { DaysFactory } from '../src/DaysFactory.js';
 import { GamePhase } from '../src/session/GamePhase.js';
 import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
@@ -21,6 +20,10 @@ function applyAllRolls(session: GameSession): void {
 function rollAndAdvanceDay(session: GameSession): void {
   rollDice(session);
   applyAllRolls(session);
+  if (session.getPhase() === GamePhase.RELEASE) {
+    const confirm = session.dispatch({ type: 'confirm-phase' });
+    expect(confirm.ok).toBe(true);
+  }
 }
 
 describe('GameSession', () => {
@@ -34,16 +37,12 @@ describe('GameSession', () => {
     expect(confirmAction && 'label' in confirmAction ? confirmAction.label : null).toBe('do-work');
   });
 
-  it('rejects the fourth wip adjustment', () => {
+  it('rejects wip adjustment', () => {
     const session = GameSession.createNew();
-    const adjustment = (day: number) =>
-      new WipLimitAdjustment(day, 0, 2, 2, 4, 3);
-
-    expect(session.dispatch({ type: 'adjust-wip-limits', adjustment: adjustment(11) }).ok).toBe(true);
-    expect(session.dispatch({ type: 'adjust-wip-limits', adjustment: adjustment(12) }).ok).toBe(true);
-    expect(session.dispatch({ type: 'adjust-wip-limits', adjustment: adjustment(13) }).ok).toBe(true);
-    const fourth = session.dispatch({ type: 'adjust-wip-limits', adjustment: adjustment(14) });
-    expect(fourth.ok).toBe(false);
+    const adjustment = new WipLimitAdjustment(11, 0, 2, 2, 4, 3);
+    const result = session.dispatch({ type: 'adjust-wip-limits', adjustment });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/WIP/);
   });
 
   it('reorders backlog during replenish', () => {
@@ -140,24 +139,20 @@ describe('GameSession', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('allows expedite and dice assignment during preparation', () => {
+  it('rejects expedite', () => {
+    const session = GameSession.createNew();
+    const result = session.dispatch({
+      type: 'expedite-card',
+      state: State.ANALYSIS,
+      cardName: 'S8',
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/加速/);
+  });
+
+  it('allows dice assignment during preparation', () => {
     const session = GameSession.createNew();
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
-
-    const day = new DaysFactory(false).getDay(9);
-    const analysisCard = session
-      .getBoard()
-      .getStateColumn(State.ANALYSIS)
-      .getExpeditableStandardCards(day)[0];
-
-    if (analysisCard) {
-      const expedite = session.dispatch({
-        type: 'expedite-card',
-        state: State.ANALYSIS,
-        cardName: analysisCard.getName(),
-      });
-      expect(expedite.ok).toBe(true);
-    }
 
     const cardName = session.getBoard().getStateColumn(State.DEVELOPMENT).getIncompleteCards()[0]!.getName();
     const assign = session.dispatch({
@@ -165,6 +160,25 @@ describe('GameSession', () => {
       assignments: [{ state: State.DEVELOPMENT, cardName, diceIndices: [2] }],
     });
     expect(assign.ok).toBe(true);
+  });
+
+  it('enters release phase on billing days after dice work', () => {
+    const session = GameSession.createNew();
+    rollDice(session);
+    applyAllRolls(session);
+    expect(session.getPhase()).toBe(GamePhase.RELEASE);
+    expect(session.getPendingActions().some((a) => a.kind === 'billing-summary')).toBe(true);
+  });
+
+  it('rejects deploy during replenish on billing day', () => {
+    const session = GameSession.createNew();
+    const result = session.dispatch({
+      type: 'advance-card',
+      fromColumn: 'ready',
+      toColumn: 'deployed',
+      cardName: 'S7',
+    });
+    expect(result.ok).toBe(false);
   });
 
   it('rolls dice using column dice and auto-advances to next day replenish', () => {
@@ -197,10 +211,6 @@ describe('GameSession', () => {
 
   it('serializes and restores session metadata', () => {
     const session = GameSession.createNew();
-    session.dispatch({
-      type: 'adjust-wip-limits',
-      adjustment: new WipLimitAdjustment(11, 0, 2, 2, 4, 3),
-    });
     rollAndAdvanceDay(session);
 
     const json = session.toJSON();
@@ -208,7 +218,6 @@ describe('GameSession', () => {
 
     expect(restored.getCurrentDay()).toBe(10);
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
-    expect(restored.getBoard().getWipAdjustmentCount()).toBe(1);
     expect(restored.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(
       json.backlogOrder,
     );

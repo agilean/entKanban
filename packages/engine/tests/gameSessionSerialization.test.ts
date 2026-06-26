@@ -3,7 +3,6 @@ import { captureBoardSnapshot } from '../src/session/boardSnapshot.js';
 import { GamePhase } from '../src/session/GamePhase.js';
 import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
-import { WipLimitAdjustment } from '../src/WipLimitAdjustment.js';
 
 function rollDice(session: GameSession): void {
   const result = session.dispatch({ type: 'roll-dice' });
@@ -21,6 +20,10 @@ function applyAllRolls(session: GameSession): void {
 function rollAndAdvanceDay(session: GameSession): void {
   rollDice(session);
   applyAllRolls(session);
+  if (session.getPhase() === GamePhase.RELEASE) {
+    const confirm = session.dispatch({ type: 'confirm-phase' });
+    expect(confirm.ok).toBe(true);
+  }
 }
 
 function boardSignature(session: GameSession): string {
@@ -51,12 +54,8 @@ describe('GameSession serialization', () => {
     expect(restored.getPendingActions()).toEqual(session.getPendingActions());
   });
 
-  it('round-trips wip adjustments and backlog order', () => {
+  it('round-trips backlog order after advancing a day', () => {
     const session = GameSession.createNew();
-    session.dispatch({
-      type: 'adjust-wip-limits',
-      adjustment: new WipLimitAdjustment(11, 0, 2, 2, 4, 3),
-    });
     rollAndAdvanceDay(session);
 
     const json = session.toJSON();
@@ -64,7 +63,6 @@ describe('GameSession serialization', () => {
 
     expect(restored.getCurrentDay()).toBe(10);
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
-    expect(restored.getBoard().getWipAdjustmentCount()).toBe(1);
     expect(restored.getBoard().getOptions().getCards().map((c) => c.getName())).toEqual(
       json.backlogOrder,
     );

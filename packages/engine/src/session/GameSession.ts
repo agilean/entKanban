@@ -10,6 +10,7 @@ import type { Card } from '../card/Card.js';
 import { createDaySnapshot } from '../history/createDaySnapshot.js';
 import { DaySnapshotStore } from '../history/DaySnapshotStore.js';
 import { FinancialSummary } from '../finance/FinancialSummary.js';
+import { isBillingDay } from '../finance/billingDays.js';
 import type { DiceRollApplyStep } from '../dice/DiceRollApplyStep.js';
 import {
   applyDiceRollStep,
@@ -244,7 +245,6 @@ export class GameSession {
   }
 
   private beginReplenishPhase(): void {
-    this.getCurrentDayObject().adjustWipLimits(this.board);
     this.phase = GamePhase.REPLENISH;
   }
 
@@ -258,12 +258,8 @@ export class GameSession {
     }
   }
 
-  private handleAdjustWip(adjustment: WipLimitAdjustment): DispatchResult {
-    if (!this.isPreparationPhase()) {
-      return { ok: false, error: 'WIP adjustment not allowed in current phase' };
-    }
-    this.board.putAdjustment(adjustment);
-    return this.success();
+  private handleAdjustWip(_adjustment: WipLimitAdjustment): DispatchResult {
+    return { ok: false, error: 'WIP 限制已固定，不可调整' };
   }
 
   private handleReorderBacklog(cardNames: string[]): DispatchResult {
@@ -287,7 +283,11 @@ export class GameSession {
     toColumn: string,
     cardName: string,
   ): DispatchResult {
-    if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
+    if (fromColumn === 'ready' && toColumn === 'deployed') {
+      if (this.phase !== GamePhase.RELEASE) {
+        return { ok: false, error: '请在发布阶段将就绪卡片拖入已部署' };
+      }
+    } else if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Card advance not allowed in current phase' };
     }
     const context = new Context(this.board, this.getCurrentDayObject());
@@ -320,16 +320,8 @@ export class GameSession {
     return this.success();
   }
 
-  private handleExpediteCard(state: State, cardName: string): DispatchResult {
-    if (!this.isPreparationPhase()) {
-      return { ok: false, error: 'Expedite not allowed in current phase' };
-    }
-    const card = this.board.findCardByName(cardName);
-    if (!card) {
-      return { ok: false, error: `Card not found: ${cardName}` };
-    }
-    this.board.getStateColumn(state).manualExpedite(card, this.getCurrentDayObject());
-    return this.success();
+  private handleExpediteCard(_state: State, _cardName: string): DispatchResult {
+    return { ok: false, error: '已取消加速区' };
   }
 
   private handleAssignDice(assignments: DiceAssignmentInput[]): DispatchResult {
@@ -354,6 +346,8 @@ export class GameSession {
     switch (this.phase) {
       case GamePhase.REPLENISH:
         return this.handleRollDice();
+      case GamePhase.RELEASE:
+        return this.finishReleasePhase();
       case GamePhase.DAY_COMPLETE:
         return this.startNextDay();
       default:
@@ -365,7 +359,6 @@ export class GameSession {
     if (this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Dice roll not allowed in current phase' };
     }
-    this.getCurrentDayObject().expediteTickets(this.board);
     const resolved = resolveDiceAssignments(this.board, this.manualDiceAssignments);
     if (resolved.length === 0) {
       return { ok: false, error: '请先将骰子分配到卡片上' };
@@ -403,8 +396,8 @@ export class GameSession {
     this.pendingRollSteps = null;
     this.appliedRollCount = 0;
 
-    if (this.currentDay === 17 && !this.trainingDecided) {
-      this.phase = GamePhase.TED_TRAINING;
+    if (isBillingDay(this.currentDay)) {
+      this.phase = GamePhase.RELEASE;
       return this.success();
     }
 
@@ -415,14 +408,26 @@ export class GameSession {
     return this.startNextDay();
   }
 
-  private finishEndOfDay(): void {
+  private finishReleasePhase(): DispatchResult {
+    if (this.phase !== GamePhase.RELEASE) {
+      return { ok: false, error: 'Not in release phase' };
+    }
+    const phaseAfterEnd = this.finishEndOfDay();
+    if (phaseAfterEnd === GamePhase.GAME_OVER) {
+      return this.success();
+    }
+    return this.startNextDay();
+  }
+
+  private finishEndOfDay(): GamePhase {
     this.getCurrentDayObject().endOfDay(this.board);
     this.snapshotStore.append(createDaySnapshot(this.board, this.currentDay));
     if (this.currentDay >= 21) {
       this.phase = GamePhase.GAME_OVER;
-      return;
+      return this.phase;
     }
     this.phase = GamePhase.DAY_COMPLETE;
+    return this.phase;
   }
 
   private startNextDay(): DispatchResult {
@@ -441,7 +446,6 @@ export class GameSession {
 
   private buildPendingActions(): PendingAction[] {
     const pending: PendingAction[] = [];
-    const day = this.getCurrentDayObject();
 
     switch (this.phase) {
       case GamePhase.REPLENISH: {
@@ -449,15 +453,6 @@ export class GameSession {
           kind: 'reorder-backlog',
           cardNames: this.board.getOptions().getCards().map((card) => card.getName()),
         });
-        for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
-          const eligible = this.board
-            .getStateColumn(state)
-            .getExpeditableStandardCards(day)
-            .map((card) => card.getName());
-          if (eligible.length > 0) {
-            pending.push({ kind: 'expedite', state, eligibleCards: eligible });
-          }
-        }
         pending.push({ kind: 'assign-dice', diceCount: this.board.getDice().length });
         pending.push({ kind: 'confirm', label: 'do-work' });
         break;
@@ -471,8 +466,9 @@ export class GameSession {
           });
         }
         break;
-      case GamePhase.TED_TRAINING:
-        pending.push({ kind: 'ted-training', day: 17 });
+      case GamePhase.RELEASE:
+        pending.push({ kind: 'billing-summary', billingDay: this.currentDay });
+        pending.push({ kind: 'confirm', label: 'finish-release' });
         break;
       case GamePhase.DAY_COMPLETE:
         pending.push({ kind: 'confirm', label: 'next-day' });

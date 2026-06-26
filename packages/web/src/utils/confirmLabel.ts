@@ -6,6 +6,7 @@ const CONFIRM_LABELS: Record<string, string> = {
   'expedite-remaining': '完成 Expedite',
   'assign-dice': '确认骰子分配',
   'do-work': '掷骰子',
+  'finish-release': '完成发布日',
   'next-day': '进入下一天',
 };
 

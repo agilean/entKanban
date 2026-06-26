@@ -61,7 +61,7 @@ describe('MargaretsFeatures', () => {
   it('introduces set 2 cards on day 12', () => {
     const board = new Board();
     board.clear();
-    new DaysFactory(true).getDay(12).endOfDay(board);
+    new MargaretsFeatures().execute(board);
     expect(board.getOptions().getCards()).toHaveLength(10);
   });
 });
@@ -107,30 +107,24 @@ describe('TammyHired', () => {
   it('hires Tammy and returns Ted when training was chosen', () => {
     const board = new Board();
     expect(board.getDiceForState(State.TEST)).toHaveLength(2);
-    new DaysFactory(true).getDay(18).endOfDay(board);
+    new TammyHired(true).execute(board);
     expect(board.getDiceForState(State.TEST)).toHaveLength(4);
   });
 
   it('does nothing when training was not chosen', () => {
     const board = new Board();
     expect(board.getDiceForState(State.TEST)).toHaveLength(2);
-    new DaysFactory(false).getDay(18).endOfDay(board);
+    new TammyHired(false).execute(board);
     expect(board.getDiceForState(State.TEST)).toHaveLength(2);
   });
 });
 
-describe('DaysFactory event days', () => {
-  it('wires day 10 with Pete event (blocker removed)', () => {
-    const board = new Board();
-    new DaysFactory(false).getDay(10).endOfDay(board);
-    const s10 = board.getCards().find((c) => c.getName() === 'S10');
-    expect(s10?.isBlocked()).toBe(false);
-  });
-
-  it('wires day 15 with E1 in backlog after clear', () => {
+describe('DaysFactory', () => {
+  it('returns plain days without event instructions', () => {
     const board = new Board();
     board.clear();
+    const before = board.getOptions().getCards().length;
     new DaysFactory(false).getDay(15).endOfDay(board);
-    expect(cardNames(board)).toContain('E1');
+    expect(board.getOptions().getCards().length).toBe(before);
   });
 });

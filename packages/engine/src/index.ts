@@ -13,6 +13,8 @@ export type { AdvanceCheckResult } from './board/advanceCheck.js';
 export { WipLimitAdjustment } from './WipLimitAdjustment.js';
 export { runDay, runDays } from './day/runDay.js';
 export { FinancialSummary } from './finance/FinancialSummary.js';
+export { BILLING_DAYS, isBillingDay } from './finance/billingDays.js';
+export type { BillingDay } from './finance/billingDays.js';
 export { RunConfiguration } from './simulation/RunConfiguration.js';
 export { runAutoGame, defaultRunConfiguration } from './simulation/runAutoGame.js';
 

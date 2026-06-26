@@ -52,8 +52,9 @@ function handleConfirm(): void {
 <template>
   <nav class="day-phase-bar" aria-label="日阶段进度">
     <div class="day-label">
-      <span class="day-number">Day {{ currentDay }}</span>
+      <span class="day-number">Day {{ game.currentDay }}</span>
       <span v-if="game.phase === GamePhase.DO_WORK" class="day-sub">工作中</span>
+      <span v-else-if="game.phase === GamePhase.RELEASE" class="day-sub release">发布日</span>
     </div>
 
     <ol class="steps">
@@ -114,6 +115,10 @@ function handleConfirm(): void {
   font-size: 0.6875rem;
   font-weight: 600;
   color: #2563eb;
+}
+
+.day-sub.release {
+  color: #15803d;
 }
 
 .steps {

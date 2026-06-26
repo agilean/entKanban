@@ -6,6 +6,7 @@ export enum GamePhase {
   EXPEDITE = 'expedite',
   ASSIGN_DICE = 'assign-dice',
   DO_WORK = 'do-work',
+  RELEASE = 'release',
   END_OF_DAY = 'end-of-day',
   TED_TRAINING = 'ted-training',
   DAY_COMPLETE = 'day-complete',
