@@ -1,11 +1,27 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
 import type { BoardView } from '../../utils/buildBoardView';
+import { endCardDrag } from '../../utils/cardDragState';
+import { endDiceDrag } from '../../utils/diceDragState';
 import DicePool from './DicePool.vue';
 import KanbanColumn from './KanbanColumn.vue';
 
 defineProps<{
   board: BoardView;
 }>();
+
+function onWindowDragEnd(): void {
+  endCardDrag();
+  endDiceDrag();
+}
+
+onMounted(() => {
+  window.addEventListener('dragend', onWindowDragEnd);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('dragend', onWindowDragEnd);
+});
 </script>
 
 <template>

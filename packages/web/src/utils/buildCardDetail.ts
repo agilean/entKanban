@@ -8,6 +8,7 @@ import {
   type Day,
 } from '@kanban-game/engine';
 import { getCardCatalogEntry } from './cardCatalog';
+import { formatBusinessValue } from './cardValue';
 import { computeWipAge } from './wipAge';
 
 export type CardDetailMetric = {
@@ -36,6 +37,10 @@ const SIZE_LABELS: Record<CardSize, string> = {
   [CardSize.LOW]: 'Low',
   [CardSize.NONE]: 'N/A',
 };
+
+function isStoryCard(kind: CardDetail['kind']): boolean {
+  return kind === 'standard';
+}
 
 function cardKind(card: Card): CardDetail['kind'] {
   if (card instanceof ExpediteCard) {
@@ -79,7 +84,13 @@ export function buildCardDetail(card: Card, currentDay: number, day: Day): CardD
   };
 
   push(safeMetric('类型', kindLabel(kind)));
-  push(safeMetric('规模', SIZE_LABELS[card.getSize()]));
+
+  const businessValue = formatBusinessValue(card.getSize());
+  if (isStoryCard(kind) && businessValue) {
+    push(safeMetric('价值', businessValue));
+  } else if (!isStoryCard(kind)) {
+    push(safeMetric('规模', SIZE_LABELS[card.getSize()]));
+  }
 
   if (card.getDaySelected() > 0) {
     push(safeMetric('选中于', `Day ${card.getDaySelected()}`));
@@ -96,12 +107,6 @@ export function buildCardDetail(card: Card, currentDay: number, day: Day): CardD
     } catch {
       // ignore incomplete lifecycle metrics
     }
-  }
-
-  try {
-    push(safeMetric('延迟成本 (7天)', `$${Math.round(card.getCostOfDelay(day)).toLocaleString()}`));
-  } catch {
-    // ignore
   }
 
   const dueDate = card.getDueDate();

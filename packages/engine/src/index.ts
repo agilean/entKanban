@@ -9,6 +9,7 @@ export { Context } from './Context.js';
 export { Board } from './Board.js';
 export { isValidAdvance, COLUMN_NEXT, COLUMN_UPSTREAM } from './board/columnFlow.js';
 export type { FlowColumnId } from './board/columnFlow.js';
+export type { AdvanceCheckResult } from './board/advanceCheck.js';
 export { WipLimitAdjustment } from './WipLimitAdjustment.js';
 export { runDay, runDays } from './day/runDay.js';
 export { FinancialSummary } from './finance/FinancialSummary.js';

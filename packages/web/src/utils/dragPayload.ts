@@ -1,4 +1,5 @@
 import { activeDiceDragIndex } from './diceDragState';
+import { readActiveCardDrag } from './cardDragState';
 
 export const DICE_INDEX_MIME = 'text/dice-index';
 export const CARD_NAME_MIME = 'text/card-name';
@@ -27,10 +28,29 @@ export function isDiceDrag(event: DragEvent): boolean {
 }
 
 export function isCardAdvanceDrag(event: DragEvent): boolean {
+  if (readActiveCardDrag()) {
+    return true;
+  }
   return transferTypes(event).includes(FROM_COLUMN_MIME);
 }
 
+export function readAdvanceDrag(event: DragEvent): { cardName: string; fromColumn: string } | null {
+  const active = readActiveCardDrag();
+  if (active) {
+    return active;
+  }
+  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
+  const fromColumn = event.dataTransfer?.getData(FROM_COLUMN_MIME);
+  if (cardName && fromColumn) {
+    return { cardName, fromColumn };
+  }
+  return null;
+}
+
 export function isExpediteCardDrag(event: DragEvent): boolean {
+  if (readActiveCardDrag()) {
+    return false;
+  }
   const types = transferTypes(event);
   return (
     types.includes(CARD_NAME_MIME) &&

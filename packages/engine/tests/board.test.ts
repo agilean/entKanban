@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ClassOfService } from '../src/ClassOfService.js';
 import { Board } from '../src/Board.js';
 import { Context } from '../src/Context.js';
 import { DaysFactory } from '../src/DaysFactory.js';
@@ -84,11 +85,38 @@ describe('Board advanceCard', () => {
 
   it('rejects advance when remaining work exists in source column', () => {
     const board = new Board();
-    const day = new DaysFactory(false).getDay(10);
-    const context = new Context(board, day);
 
-    expect(() => board.advanceCard('development', 'test', 'S6', context)).toThrow(
-      /remaining development work/i,
-    );
+    const check = board.canAdvanceCard('development', 'test', 'S6');
+    expect(check.ok).toBe(false);
+    if (!check.ok) {
+      expect(check.reason).toMatch(/development|S6|开发/);
+    }
+  });
+
+  it('rejects pull when selected wip is full', () => {
+    const board = new Board();
+    const context = new Context(board, new DaysFactory(false).getDay(10));
+
+    while (board.getSelected().getCards().length < board.getSelected().getLimit()) {
+      const next = board.getOptions().getCards()[0]?.getName();
+      if (!next) {
+        break;
+      }
+      board.getOptions().reorder([next, ...board.getOptions().getCards().map((c) => c.getName()).filter((n) => n !== next)]);
+      const card = board.getOptions().pull(context, ClassOfService.STANDARD);
+      if (!card) {
+        break;
+      }
+      card.onSelected(context);
+      board.getSelected().addCard(card, ClassOfService.STANDARD);
+    }
+
+    const blocked = board.getOptions().getCards()[0]?.getName();
+    expect(blocked).toBeDefined();
+    const check = board.canPullToSelected(blocked!);
+    expect(check.ok).toBe(false);
+    if (!check.ok) {
+      expect(check.reason).toMatch(/WIP|已满/);
+    }
   });
 });

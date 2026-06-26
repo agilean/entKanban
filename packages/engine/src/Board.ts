@@ -6,6 +6,8 @@ import {
   isValidAdvance,
   type FlowColumnId,
 } from './board/columnFlow.js';
+import type { AdvanceCheckResult } from './board/advanceCheck.js';
+import { COLUMN_LABELS, STATE_WORK_LABELS } from './board/advanceCheck.js';
 import { getCard } from './card/Cards.js';
 import type { Card } from './card/Card.js';
 import { DeployedColumn } from './column/DeployedColumn.js';
@@ -170,24 +172,100 @@ export class Board {
   }
 
   advanceCard(fromColumn: string, toColumn: string, cardName: string, context: Context): void {
+    const check = this.canAdvanceCard(fromColumn, toColumn, cardName);
+    if (!check.ok) {
+      throw new Error(check.reason);
+    }
+    const card = this.findCardByName(cardName)!;
+    this.removeCardFromColumn(fromColumn, card);
+    this.addCardToColumn(toColumn, card, context, this.removedCos);
+  }
+
+  canAdvanceCard(fromColumn: string, toColumn: string, cardName: string): AdvanceCheckResult {
     if (!isValidAdvance(fromColumn, toColumn)) {
-      throw new Error(`Cannot advance from ${fromColumn} to ${toColumn}`);
+      return { ok: false, reason: `不能从${labelColumn(fromColumn)}直接拖入${labelColumn(toColumn)}` };
     }
     const card = this.findCardByName(cardName);
     if (!card) {
-      throw new Error(`Card not found: ${cardName}`);
+      return { ok: false, reason: '找不到该卡片' };
     }
     if (!this.isCardInColumn(fromColumn, card)) {
-      throw new Error(`Card ${cardName} is not in ${fromColumn}`);
+      return { ok: false, reason: `卡片不在${labelColumn(fromColumn)}列` };
     }
 
     const fromState = COLUMN_STATE[fromColumn as FlowColumnId];
     if (fromState !== undefined && card.getRemainingWork(fromState) > 0) {
-      throw new Error(`Card ${cardName} still has remaining ${fromState} work`);
+      return {
+        ok: false,
+        reason: `${cardName} 还有未完成的${labelStateWork(fromState)}工作量`,
+      };
     }
 
-    this.removeCardFromColumn(fromColumn, card);
-    this.addCardToColumn(toColumn, card, context, this.removedCos);
+    const cos = this.getCardClassOfService(fromColumn, card);
+    const wip = this.getTargetWipStatus(toColumn, cos);
+    if (wip.full) {
+      return {
+        ok: false,
+        reason: `${labelColumn(toColumn)}列 WIP 已满（${wip.count}/${wip.limit}）`,
+      };
+    }
+
+    return { ok: true };
+  }
+
+  canPullToSelected(cardName: string): AdvanceCheckResult {
+    const card = this.findCardByName(cardName);
+    if (!card) {
+      return { ok: false, reason: '找不到该卡片' };
+    }
+    if (!this.getOptions().getCards().some((item) => item.getName() === cardName)) {
+      return { ok: false, reason: '卡片不在存量列' };
+    }
+    const selected = this.getSelected();
+    if (selected.getCards().length >= selected.getLimit()) {
+      return {
+        ok: false,
+        reason: `优先列 WIP 已满（${selected.getCards().length}/${selected.getLimit()}）`,
+      };
+    }
+    return { ok: true };
+  }
+
+  private getCardClassOfService(columnId: string, card: Card): ClassOfService {
+    if (columnId === 'analysis' || columnId === 'development' || columnId === 'test') {
+      const state = COLUMN_STATE[columnId as FlowColumnId]!;
+      for (const slot of this.getStateColumn(state).getPlacementSnapshot()) {
+        if (slot.name === card.getName()) {
+          return slot.cos;
+        }
+      }
+    }
+    return ClassOfService.STANDARD;
+  }
+
+  private getTargetWipStatus(
+    columnId: string,
+    cos: ClassOfService,
+  ): { full: boolean; count: number; limit: number } {
+    switch (columnId) {
+      case 'analysis':
+      case 'development':
+      case 'test': {
+        const column = this.getStateColumn(COLUMN_STATE[columnId as FlowColumnId]!);
+        const count = column.getCardsForCos(cos).length;
+        const limit =
+          cos === ClassOfService.EXPEDITE ? Number.MAX_SAFE_INTEGER : column.getLimit();
+        return { full: count >= limit, count, limit };
+      }
+      case 'selected': {
+        const selected = this.getSelected();
+        const count = selected.getCards().length;
+        const limit = selected.getLimit();
+        return { full: count >= limit, count, limit };
+      }
+      default:
+        return { full: false, count: 0, limit: Number.MAX_SAFE_INTEGER };
+    }
   }
 
   private removedCos: ClassOfService = ClassOfService.STANDARD;
@@ -293,4 +371,12 @@ export class Board {
     testColumn.enableSecondaryWorkers();
     this.readyToDeploy.setDeploymentFrequency(3);
   }
+}
+
+function labelColumn(columnId: string): string {
+  return COLUMN_LABELS[columnId] ?? columnId;
+}
+
+function labelStateWork(state: State): string {
+  return STATE_WORK_LABELS[state] ?? state;
 }

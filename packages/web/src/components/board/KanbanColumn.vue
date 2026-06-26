@@ -3,17 +3,19 @@ import { computed, ref, watch } from 'vue';
 import draggable from 'vuedraggable';
 import { useDragPolicy } from '../../composables/useDragPolicy';
 import { useGameStore } from '../../stores/gameStore';
+import { useUiStore } from '../../stores/uiStore';
 import type { CardView, ColumnView } from '../../utils/buildBoardView';
 import {
   CARD_NAME_MIME,
   DICE_INDEX_MIME,
-  FROM_COLUMN_MIME,
   isCardAdvanceDrag,
   isDiceDrag,
   isExpediteCardDrag,
+  readAdvanceDrag,
   readDiceIndex,
 } from '../../utils/dragPayload';
 import { beginDiceDrag } from '../../utils/diceDragState';
+import { endCardDrag } from '../../utils/cardDragState';
 import CardTile from './CardTile.vue';
 import DiceChip from './DiceChip.vue';
 
@@ -22,6 +24,7 @@ const props = defineProps<{
 }>();
 
 const game = useGameStore();
+const ui = useUiStore();
 const {
   canReorderBacklog,
   canPullToSelected,
@@ -31,7 +34,6 @@ const {
   isExpediteEligible,
   isColumnInteractive,
   canDropDiceOnCard,
-  canReceiveAdvance,
 } = useDragPolicy();
 
 const STATE_COLUMN_IDS = new Set(['analysis', 'development', 'test']);
@@ -45,6 +47,8 @@ const canReceiveAdvanceDrop = computed(
 const localCards = ref<CardView[]>([...props.column.cards]);
 const expediteDragOver = ref(false);
 const advanceDragOver = ref(false);
+const advanceDropState = ref<'valid' | 'invalid' | null>(null);
+const advanceDropReason = ref('');
 const diceRowDragOver = ref(false);
 const pendingPullCardName = ref<string | null>(null);
 
@@ -61,10 +65,21 @@ const replenishGroup = computed(() => ({
   put: false,
 }));
 
+const selectedHasWipSpace = computed(() => {
+  const selected = props.column.id === 'selected'
+    ? props.column
+    : game.boardView?.columns.find((item) => item.id === 'selected');
+  if (!selected || selected.limitLabel === '∞') {
+    return true;
+  }
+  const limit = Number(selected.limitLabel);
+  return selected.count < limit;
+});
+
 const selectedGroup = computed(() => ({
   name: 'replenish',
   pull: false,
-  put: canPullToSelected.value,
+  put: () => canPullToSelected.value && selectedHasWipSpace.value,
 }));
 
 function onBacklogDragStart(event: { oldIndex: number }): void {
@@ -75,8 +90,17 @@ function onBacklogDragEnd(event: { from: HTMLElement; to: HTMLElement }): void {
   if (event.from !== event.to) {
     const cardName = pendingPullCardName.value;
     pendingPullCardName.value = null;
-    if (cardName && canPullToSelected.value) {
-      game.pullToSelected(cardName);
+    if (!cardName || !canPullToSelected.value) {
+      return;
+    }
+    const check = game.checkPullToSelected(cardName);
+    if (!check.ok) {
+      ui.showDragToast(check.reason);
+      return;
+    }
+    const result = game.pullToSelected(cardName);
+    if (!result?.ok && result?.error) {
+      ui.showDragToast(result.error);
     }
     return;
   }
@@ -152,20 +176,51 @@ function isForwardDraggable(card: CardView): boolean {
   return canAdvanceFlow.value && card.advanceable === true;
 }
 
-function onAdvanceDragOver(event: DragEvent): void {
+function resetAdvanceDropPreview(): void {
+  advanceDragOver.value = false;
+  advanceDropState.value = null;
+  advanceDropReason.value = '';
+}
+
+function evaluateAdvanceDrop(event: DragEvent): boolean {
   if (!canReceiveAdvanceDrop.value || !isCardAdvanceDrag(event)) {
-    return;
+    resetAdvanceDropPreview();
+    return false;
   }
-  event.preventDefault();
+  const drag = readAdvanceDrag(event);
+  if (!drag) {
+    resetAdvanceDropPreview();
+    return false;
+  }
+  const check = game.checkAdvance(drag.fromColumn, props.column.id, drag.cardName);
+  if (check.ok) {
+    advanceDragOver.value = true;
+    advanceDropState.value = 'valid';
+    advanceDropReason.value = '';
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    return true;
+  }
   advanceDragOver.value = true;
+  advanceDropState.value = 'invalid';
+  advanceDropReason.value = check.reason;
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = 'none';
   }
+  return false;
+}
+
+function onAdvanceDragOver(event: DragEvent): void {
+  evaluateAdvanceDrop(event);
 }
 
 function onColumnDragOver(event: DragEvent): void {
   if (isDiceDrag(event) && canAssignDice.value && STATE_COLUMN_IDS.has(props.column.id)) {
     event.preventDefault();
+    resetAdvanceDropPreview();
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move';
     }
@@ -181,25 +236,32 @@ function onColumnDrop(event: DragEvent): void {
   onAdvanceDrop(event);
 }
 
-function onAdvanceDragLeave(): void {
-  advanceDragOver.value = false;
+function onAdvanceDragLeave(event: DragEvent): void {
+  const next = event.relatedTarget as Node | null;
+  const current = event.currentTarget as HTMLElement;
+  if (next && current.contains(next)) {
+    return;
+  }
+  resetAdvanceDropPreview();
 }
 
 function onAdvanceDrop(event: DragEvent): void {
   event.preventDefault();
-  advanceDragOver.value = false;
-  if (!canReceiveAdvanceDrop.value || isDiceDrag(event)) {
+  const drag = readAdvanceDrag(event);
+  resetAdvanceDropPreview();
+  endCardDrag();
+  if (!canReceiveAdvanceDrop.value || isDiceDrag(event) || !drag) {
     return;
   }
-  const cardName = event.dataTransfer?.getData(CARD_NAME_MIME);
-  const fromColumn = event.dataTransfer?.getData(FROM_COLUMN_MIME);
-  if (!cardName || !fromColumn) {
+  const check = game.checkAdvance(drag.fromColumn, props.column.id, drag.cardName);
+  if (!check.ok) {
+    ui.showDragToast(check.reason);
     return;
   }
-  if (!canReceiveAdvance(fromColumn, props.column.id)) {
-    return;
+  const result = game.advanceCard(drag.fromColumn, props.column.id, drag.cardName);
+  if (!result?.ok && result?.error) {
+    ui.showDragToast(result.error);
   }
-  game.advanceCard(fromColumn, props.column.id, cardName);
 }
 
 function assignedDiceFor(cardName: string) {
@@ -310,6 +372,8 @@ const interactive = () => isColumnInteractive(props.column.id);
     :class="{
       interactive: interactive(),
       'advance-drop-target': advanceDragOver,
+      'advance-drop-valid': advanceDropState === 'valid',
+      'advance-drop-invalid': advanceDropState === 'invalid',
     }"
     @dragover="onColumnDragOver"
     @dragleave="onAdvanceDragLeave"
@@ -319,6 +383,19 @@ const interactive = () => isColumnInteractive(props.column.id);
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
     </header>
+
+    <div
+      v-if="advanceDropState === 'valid' && canReceiveAdvanceDrop"
+      class="advance-placeholder"
+    >
+      放置卡片
+    </div>
+    <p
+      v-else-if="advanceDropState === 'invalid' && advanceDropReason"
+      class="drop-reject-hint"
+    >
+      {{ advanceDropReason }}
+    </p>
 
     <!-- Backlog: sort + drag to Selected -->
     <template v-if="column.id === 'backlog'">
@@ -513,6 +590,41 @@ const interactive = () => isColumnInteractive(props.column.id);
   border-color: #6366f1;
   background: #eef2ff;
   box-shadow: inset 0 0 0 2px #c7d2fe;
+}
+
+.kanban-column.advance-drop-valid {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  box-shadow: inset 0 0 0 2px #bbf7d0;
+}
+
+.kanban-column.advance-drop-invalid {
+  border-color: #dc2626;
+  background: #fef2f2;
+  box-shadow: inset 0 0 0 2px #fecaca;
+}
+
+.advance-placeholder {
+  margin-bottom: 0.375rem;
+  padding: 0.625rem 0.5rem;
+  border: 2px dashed #16a34a;
+  border-radius: 0.5rem;
+  background: rgb(240 253 244 / 80%);
+  color: #15803d;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.drop-reject-hint {
+  margin: 0 0 0.375rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .column-header {

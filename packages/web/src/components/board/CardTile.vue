@@ -3,7 +3,8 @@ import { computed, ref } from 'vue';
 import type { AssignedDiceView } from '../../stores/gameStore';
 import type { EffortField } from '../../utils/effortHighlight';
 import type { CardView } from '../../utils/buildBoardView';
-import { isDiceDrag } from '../../utils/dragPayload';
+import { beginCardDrag, endCardDrag } from '../../utils/cardDragState';
+import { CARD_NAME_MIME, FROM_COLUMN_MIME, isDiceDrag } from '../../utils/dragPayload';
 import { wipAgeSeverity } from '../../utils/wipAge';
 import CardDetailPopover from './CardDetailPopover.vue';
 import DiceChip from './DiceChip.vue';
@@ -69,8 +70,9 @@ const hasEffortUpdate = computed(() => {
 
 function handleDragStart(event: DragEvent): void {
   if (isForwardDragEnabled.value) {
-    event.dataTransfer?.setData('text/card-name', props.card.name);
-    event.dataTransfer?.setData('text/from-column', props.fromColumn ?? '');
+    beginCardDrag(props.card.name, props.fromColumn ?? '');
+    event.dataTransfer?.setData(CARD_NAME_MIME, props.card.name);
+    event.dataTransfer?.setData(FROM_COLUMN_MIME, props.fromColumn ?? '');
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
     }
@@ -81,6 +83,10 @@ function handleDragStart(event: DragEvent): void {
     return;
   }
   emit('dragStart', event, props.card.name);
+}
+
+function handleDragEnd(): void {
+  endCardDrag();
 }
 
 function handleDragEnter(event: DragEvent): void {
@@ -149,6 +155,7 @@ function closeDetail(): void {
     }"
     :draggable="isAnyDragEnabled"
     @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"
     @dragover="handleDragOver"

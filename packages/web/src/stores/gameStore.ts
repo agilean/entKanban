@@ -318,6 +318,20 @@ export const useGameStore = defineStore('game', () => {
     return assignDice(updated, activeTab);
   }
 
+  function checkAdvance(fromColumn: string, toColumn: string, cardName: string) {
+    if (!session.value) {
+      return { ok: false as const, reason: '尚未开始游戏' };
+    }
+    return session.value.getBoard().canAdvanceCard(fromColumn, toColumn, cardName);
+  }
+
+  function checkPullToSelected(cardName: string) {
+    if (!session.value) {
+      return { ok: false as const, reason: '尚未开始游戏' };
+    }
+    return session.value.getBoard().canPullToSelected(cardName);
+  }
+
   function getAssignedDiceForCard(cardName: string): AssignedDiceView[] {
     if (!boardView.value) {
       return [];
@@ -379,6 +393,8 @@ export const useGameStore = defineStore('game', () => {
     addDiceToCard,
     unassignDice,
     getAssignedDiceForCard,
+    checkAdvance,
+    checkPullToSelected,
     getEffortHighlight,
     hasEffortHighlight,
     clearEffortHighlights,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { GamePhase } from '@kanban-game/engine';
 import { computed, onMounted } from 'vue';
+import DragToast from '../components/board/DragToast.vue';
 import DayPhaseBar from '../components/board/DayPhaseBar.vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
 import AnalyticsView from '../components/charts/AnalyticsView.vue';
@@ -50,6 +51,7 @@ onMounted(() => {
           </div>
           <DecisionPanel />
         </div>
+        <DragToast />
       </template>
     </template>
   </AppLayout>
