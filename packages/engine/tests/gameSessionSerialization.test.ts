@@ -12,8 +12,6 @@ function confirm(session: GameSession): void {
 
 function walkStandUp(session: GameSession): void {
   confirm(session);
-  confirm(session);
-  confirm(session);
 }
 
 function boardSignature(session: GameSession): string {
@@ -79,13 +77,11 @@ describe('GameSession serialization', () => {
     expect(restored.getPendingActions().some((a) => a.kind === 'blocker-rolls')).toBe(true);
   });
 
-  it('round-trips manual dice assignments during assign-dice phase', () => {
+  it('round-trips manual dice assignments during preparation phase', () => {
     const session = GameSession.createNew();
     confirm(session);
-    confirm(session);
-    confirm(session);
 
-    expect(session.getPhase()).toBe(GamePhase.ASSIGN_DICE);
+    expect(session.getPhase()).toBe(GamePhase.REPLENISH);
 
     const analysisCard = session
       .getBoard()
@@ -104,7 +100,17 @@ describe('GameSession serialization', () => {
     expect(session.dispatch({ type: 'assign-dice', assignments }).ok).toBe(true);
 
     const restored = GameSession.fromJSON(session.toJSON());
-    expect(restored.getPhase()).toBe(GamePhase.ASSIGN_DICE);
+    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
     expect(restored.toJSON().manualDiceAssignments).toEqual(assignments);
+  });
+
+  it('migrates saved assign-dice phase to preparation on load', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+    const json = session.toJSON();
+    json.phase = GamePhase.ASSIGN_DICE;
+
+    const restored = GameSession.fromJSON(json);
+    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
   });
 });

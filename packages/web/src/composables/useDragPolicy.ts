@@ -37,21 +37,19 @@ function buildExpediteEligibleMap(
 export function useDragPolicy() {
   const game = useGameStore();
 
-  const canReorderBacklog = computed(
+  const isPreparation = computed(
     () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
   );
 
-  const canPullToSelected = computed(
-    () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
-  );
+  const canReorderBacklog = computed(() => isPreparation.value);
 
-  const canAdvanceFlow = computed(
-    () => game.phase === GamePhase.REPLENISH || game.phase === GamePhase.SETUP,
-  );
+  const canPullToSelected = computed(() => isPreparation.value);
 
-  const canExpedite = computed(() => game.phase === GamePhase.EXPEDITE);
+  const canAdvanceFlow = computed(() => isPreparation.value);
 
-  const canAssignDice = computed(() => game.phase === GamePhase.ASSIGN_DICE);
+  const canExpedite = computed(() => isPreparation.value);
+
+  const canAssignDice = computed(() => isPreparation.value);
 
   const expediteEligibleByColumn = computed(() =>
     buildExpediteEligibleMap(game.pendingActions),
@@ -105,6 +103,7 @@ export function useDragPolicy() {
   }
 
   return {
+    isPreparation,
     canReorderBacklog,
     canPullToSelected,
     canAdvanceFlow,

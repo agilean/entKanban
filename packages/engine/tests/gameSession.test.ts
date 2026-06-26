@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DaysFactory } from '../src/DaysFactory.js';
 import { GamePhase } from '../src/session/GamePhase.js';
 import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
@@ -10,8 +11,6 @@ function confirm(session: GameSession): void {
 }
 
 function walkStandUp(session: GameSession): void {
-  confirm(session);
-  confirm(session);
   confirm(session);
 }
 
@@ -149,12 +148,44 @@ describe('GameSession', () => {
 
   it('rejects illegal actions in wrong phase', () => {
     const session = GameSession.createNew();
+    confirm(session);
+    walkStandUp(session);
+
     const result = session.dispatch({
       type: 'expedite-card',
       state: State.TEST,
       cardName: 'S3',
     });
     expect(result.ok).toBe(false);
+  });
+
+  it('allows expedite and dice assignment during preparation', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+
+    expect(session.getPhase()).toBe(GamePhase.REPLENISH);
+
+    const day = new DaysFactory(false).getDay(10);
+    const analysisCard = session
+      .getBoard()
+      .getStateColumn(State.ANALYSIS)
+      .getExpeditableStandardCards(day)[0];
+
+    if (analysisCard) {
+      const expedite = session.dispatch({
+        type: 'expedite-card',
+        state: State.ANALYSIS,
+        cardName: analysisCard.getName(),
+      });
+      expect(expedite.ok).toBe(true);
+    }
+
+    const cardName = session.getBoard().getStateColumn(State.DEVELOPMENT).getIncompleteCards()[0]!.getName();
+    const assign = session.dispatch({
+      type: 'assign-dice',
+      assignments: [{ state: State.DEVELOPMENT, cardName, diceIndices: [2] }],
+    });
+    expect(assign.ok).toBe(true);
   });
 
   it('walks through a full day step by step', () => {

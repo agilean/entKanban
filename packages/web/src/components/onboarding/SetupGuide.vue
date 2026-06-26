@@ -16,8 +16,8 @@ const visible = computed(() => props.currentDay === 9 && props.phase === GamePha
     <p>你正在 <strong>Day 9</strong> 准备阶段。当前棋盘是团队的真实状态。</p>
     <ul>
       <li>浏览各列 WIP 与卡片位置，点击卡片右上角 ⓘ 查看详情。</li>
-      <li>可拖拽调整存量 / 优先顺序，或从存量填充优先列；也可将已完成当前阶段的卡片拖入下一列。</li>
-      <li>准备好后点击「开始 Day 10」，每轮从<strong>填充</strong>阶段开始。</li>
+      <li>准备阶段可填充优先列、拖入 Expedite 加速、将列底骰子拖到卡片上分配。</li>
+      <li>分配完成后点击「掷骰子」开始工作；Day 9 点击「开始 Day 10」进入正式循环。</li>
     </ul>
   </aside>
 </template>

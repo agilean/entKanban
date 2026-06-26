@@ -174,6 +174,31 @@ function assignedDiceFor(cardName: string): string[] {
   return game.getAssignedDiceLabels(cardName);
 }
 
+const assignedDiceIndices = computed(() => {
+  const indices = new Set<number>();
+  for (const assignment of game.pendingDiceAssignments) {
+    for (const index of assignment.diceIndices) {
+      indices.add(index);
+    }
+  }
+  return indices;
+});
+
+const availableColumnDice = computed(() =>
+  props.column.dice.filter((die) => !assignedDiceIndices.value.has(die.index)),
+);
+
+function isDiceDraggable(diceIndex: number): boolean {
+  return canAssignDice.value && !assignedDiceIndices.value.has(diceIndex);
+}
+
+function onDiceDragStart(event: DragEvent, diceIndex: number): void {
+  event.dataTransfer?.setData('text/dice-index', String(diceIndex));
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy';
+  }
+}
+
 function isCardDraggable(cardName: string): boolean {
   return isExpediteEligible(props.column.id, cardName);
 }
@@ -313,10 +338,17 @@ const interactive = () => isColumnInteractive(props.column.id);
         </div>
       </div>
 
-      <footer v-if="column.dice.length > 0" class="dice-row">
-        <DiceChip v-for="die in column.dice" :key="die.id" :dice="die" />
+      <footer v-if="availableColumnDice.length > 0" class="dice-row">
+        <DiceChip
+          v-for="die in availableColumnDice"
+          :key="die.id"
+          :dice="die"
+          :draggable="isDiceDraggable(die.index)"
+          @drag-start="onDiceDragStart"
+        />
       </footer>
-      <p v-if="canAdvanceFlow" class="column-hint">填充阶段：可将已完成本阶段工作的卡片拖入下一列</p>
+      <p v-if="canAssignDice" class="column-hint">将列底骰子拖到本列卡片上</p>
+      <p v-else-if="canAdvanceFlow" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
     </template>
 
     <!-- Simple columns (Ready, Deployed) -->

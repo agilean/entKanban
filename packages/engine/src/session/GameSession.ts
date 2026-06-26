@@ -106,6 +106,8 @@ export class GameSession {
     }
     if (session.phase === GamePhase.ADJUST_WIP) {
       session.beginReplenishPhase();
+    } else {
+      session.migrateLegacyPhase();
     }
     DayStore.setDay(session.getDaysFactory().getDay(session.currentDay));
     return session;
@@ -215,10 +217,20 @@ export class GameSession {
     };
   }
 
+  private isPreparationPhase(): boolean {
+    return this.phase === GamePhase.SETUP || this.phase === GamePhase.REPLENISH;
+  }
+
   private beginReplenishPhase(): void {
     this.getCurrentDayObject().adjustWipLimits(this.board);
     this.lastBlockerRolls = this.getCurrentDayObject().removeBlockers(this.board);
     this.phase = GamePhase.REPLENISH;
+  }
+
+  private migrateLegacyPhase(): void {
+    if (this.phase === GamePhase.EXPEDITE || this.phase === GamePhase.ASSIGN_DICE) {
+      this.phase = GamePhase.REPLENISH;
+    }
   }
 
   private handleAdjustWip(adjustment: WipLimitAdjustment): DispatchResult {
@@ -284,7 +296,7 @@ export class GameSession {
   }
 
   private handleExpediteCard(state: State, cardName: string): DispatchResult {
-    if (this.phase !== GamePhase.EXPEDITE) {
+    if (!this.isPreparationPhase()) {
       return { ok: false, error: 'Expedite not allowed in current phase' };
     }
     const card = this.board.findCardByName(cardName);
@@ -296,7 +308,7 @@ export class GameSession {
   }
 
   private handleAssignDice(assignments: DiceAssignmentInput[]): DispatchResult {
-    if (this.phase !== GamePhase.ASSIGN_DICE) {
+    if (!this.isPreparationPhase()) {
       return { ok: false, error: 'Dice assignment not allowed in current phase' };
     }
     this.manualDiceAssignments = assignments;
@@ -323,13 +335,7 @@ export class GameSession {
       case GamePhase.REPLENISH:
         this.getCurrentDayObject().replenishSelected(this.board);
         this.lastBlockerRolls = [];
-        this.phase = GamePhase.EXPEDITE;
-        return this.success();
-      case GamePhase.EXPEDITE:
         this.getCurrentDayObject().expediteTickets(this.board);
-        this.phase = GamePhase.ASSIGN_DICE;
-        return this.success();
-      case GamePhase.ASSIGN_DICE:
         this.applyDiceAssignments();
         this.phase = GamePhase.DO_WORK;
         return this.success();
@@ -408,13 +414,7 @@ export class GameSession {
     const day = this.getCurrentDayObject();
 
     switch (this.phase) {
-      case GamePhase.SETUP:
-        pending.push({
-          kind: 'confirm',
-          label: 'start-day-10',
-        });
-        break;
-      case GamePhase.REPLENISH:
+      case GamePhase.REPLENISH: {
         if (this.lastBlockerRolls.length > 0) {
           pending.push({ kind: 'blocker-rolls', rolls: [...this.lastBlockerRolls] });
         }
@@ -422,9 +422,6 @@ export class GameSession {
           kind: 'reorder-backlog',
           cardNames: this.board.getOptions().getCards().map((card) => card.getName()),
         });
-        pending.push({ kind: 'confirm', label: 'replenish' });
-        break;
-      case GamePhase.EXPEDITE:
         for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
           const eligible = this.board
             .getStateColumn(state)
@@ -434,12 +431,27 @@ export class GameSession {
             pending.push({ kind: 'expedite', state, eligibleCards: eligible });
           }
         }
-        pending.push({ kind: 'confirm', label: 'expedite-remaining' });
-        break;
-      case GamePhase.ASSIGN_DICE:
         pending.push({ kind: 'assign-dice', diceCount: this.board.getDice().length });
-        pending.push({ kind: 'confirm', label: 'assign-dice' });
+        pending.push({ kind: 'confirm', label: 'finish-prep' });
         break;
+      }
+      case GamePhase.SETUP: {
+        for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
+          const eligible = this.board
+            .getStateColumn(state)
+            .getExpeditableStandardCards(day)
+            .map((card) => card.getName());
+          if (eligible.length > 0) {
+            pending.push({ kind: 'expedite', state, eligibleCards: eligible });
+          }
+        }
+        pending.push({ kind: 'assign-dice', diceCount: this.board.getDice().length });
+        pending.push({
+          kind: 'confirm',
+          label: 'start-day-10',
+        });
+        break;
+      }
       case GamePhase.DO_WORK:
         pending.push({ kind: 'confirm', label: 'do-work' });
         break;

@@ -40,7 +40,7 @@ function handleDiceDragStart(event: DragEvent, diceIndex: number): void {
 <template>
   <section v-if="canAssignDice && availableDice.length > 0" class="dice-pool">
     <h3 class="pool-title">分配骰子</h3>
-    <p class="pool-hint">将骰子拖到对应列的卡片上</p>
+    <p class="pool-hint">也可从各列底部的骰子拖到对应卡片上</p>
     <div class="dice-list">
       <DiceChip
         v-for="die in availableDice"
