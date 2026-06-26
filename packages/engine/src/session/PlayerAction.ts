@@ -16,4 +16,6 @@ export type PlayerAction =
   | { type: 'expedite-card'; state: State; cardName: string }
   | { type: 'assign-dice'; assignments: DiceAssignmentInput[] }
   | { type: 'send-ted-to-training'; training: boolean }
+  | { type: 'roll-dice' }
+  | { type: 'apply-roll-step'; index: number }
   | { type: 'confirm-phase' };

@@ -246,7 +246,8 @@ export class StateColumn extends LimitedColumn {
       if (placement.done && card.getRemainingWork(this.state) > 0) {
         card.doWork(this.state, card.getRemainingWork(this.state));
       }
-      this.addCard(card, placement.cos);
+      const queue = placement.done ? this.done(placement.cos) : this.todo(placement.cos);
+      queue.add(card);
     }
   }
 

@@ -203,8 +203,7 @@ function closeDetail(): void {
       />
     </div>
 
-    <footer v-if="card.blocked || card.dueDate" class="card-footer">
-      <span v-if="card.blocked" class="blocker">Blocker {{ card.blockerRemaining }}</span>
+    <footer v-if="card.dueDate" class="card-footer">
       <span v-if="card.dueDate" class="due-date">Due D{{ card.dueDate }}</span>
     </footer>
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { GamePhase } from '@kanban-game/engine';
 import { computed, onMounted } from 'vue';
-import BlockerRollsBanner from '../components/board/BlockerRollsBanner.vue';
 import DayPhaseBar from '../components/board/DayPhaseBar.vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
 import AnalyticsView from '../components/charts/AnalyticsView.vue';
@@ -16,10 +15,6 @@ const game = useGameStore();
 const ui = useUiStore();
 
 const showSidePanel = computed(() => game.phase === GamePhase.TED_TRAINING);
-
-const blockerRolls = computed(() =>
-  game.pendingActions.find((action) => action.kind === 'blocker-rolls'),
-);
 
 onMounted(() => {
   game.refreshSavedFlag();
@@ -48,8 +43,6 @@ onMounted(() => {
       <template v-else>
         <SetupGuide :phase="game.phase" :current-day="game.currentDay" />
         <DayPhaseBar :phase="game.phase" :current-day="game.currentDay" />
-
-        <BlockerRollsBanner v-if="blockerRolls" :rolls="blockerRolls.rolls" />
 
         <div class="game-layout" :class="{ 'with-panel': showSidePanel }">
           <div class="board-area">

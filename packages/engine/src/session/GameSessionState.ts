@@ -1,4 +1,4 @@
-import type { BlockerRollResult } from '../Day.js';
+import type { DiceRollApplyStep } from '../dice/DiceRollApplyStep.js';
 import type { DaySnapshot } from '../history/DaySnapshot.js';
 import type { BoardSnapshot } from './boardSnapshot.js';
 import type { GamePhase } from './GamePhase.js';
@@ -23,6 +23,7 @@ export type GameSessionState = {
   wipAdjustments: WipAdjustmentState[];
   snapshots: DaySnapshot[];
   board: BoardSnapshot;
-  blockerRolls?: BlockerRollResult[];
   manualDiceAssignments?: DiceAssignmentInput[] | null;
+  pendingRollSteps?: DiceRollApplyStep[] | null;
+  appliedRollCount?: number;
 };

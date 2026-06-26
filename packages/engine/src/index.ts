@@ -61,6 +61,12 @@ export { RandomDice } from './dice/RandomDice.js';
 export { StateDice } from './dice/StateDice.js';
 export { DiceGroup } from './dice/DiceGroup.js';
 export type { Dice } from './dice/Dice.js';
+export type { DiceRollApplyStep } from './dice/DiceRollApplyStep.js';
+export {
+  resolveDiceAssignments,
+  buildDiceRollPreview,
+  applyDiceRollStep,
+} from './dice/rollDicePreview.js';
 
 export type { DiceAssignmentStrategy } from './policies/DiceAssignmentStrategy.js';
 export { NoCrossSkillingDiceAssignmentStrategy } from './policies/NoCrossSkillingDiceAssignmentStrategy.js';

@@ -1,7 +1,7 @@
 import { Board } from '../Board.js';
 import { ClassOfService } from '../ClassOfService.js';
 import { Context } from '../Context.js';
-import type { BlockerRollResult, Day } from '../Day.js';
+import type { Day } from '../Day.js';
 import { DaysFactory } from '../DaysFactory.js';
 import { DayStore } from '../DayStore.js';
 import { State } from '../State.js';
@@ -10,7 +10,12 @@ import type { Card } from '../card/Card.js';
 import { createDaySnapshot } from '../history/createDaySnapshot.js';
 import { DaySnapshotStore } from '../history/DaySnapshotStore.js';
 import { FinancialSummary } from '../finance/FinancialSummary.js';
-import { DiceGroup } from '../dice/DiceGroup.js';
+import type { DiceRollApplyStep } from '../dice/DiceRollApplyStep.js';
+import {
+  applyDiceRollStep,
+  buildDiceRollPreview,
+  resolveDiceAssignments,
+} from '../dice/rollDicePreview.js';
 import type { DiceAssignmentStrategy } from '../policies/DiceAssignmentStrategy.js';
 import { NoCrossSkillingDiceAssignmentStrategy } from '../policies/NoCrossSkillingDiceAssignmentStrategy.js';
 import type { DispatchResult } from './DispatchResult.js';
@@ -29,7 +34,8 @@ export type GameSessionOptions = {
 export class GameSession {
   private trainingDecided: boolean;
   private manualDiceAssignments: DiceAssignmentInput[] | null = null;
-  private lastBlockerRolls: BlockerRollResult[] = [];
+  private pendingRollSteps: DiceRollApplyStep[] | null = null;
+  private appliedRollCount = 0;
 
   private constructor(
     private readonly board: Board,
@@ -96,13 +102,16 @@ export class GameSession {
         ),
       );
     }
-    if (state.blockerRolls) {
-      session.lastBlockerRolls = [...state.blockerRolls];
-    }
     if (state.manualDiceAssignments !== undefined) {
       session.manualDiceAssignments = state.manualDiceAssignments
         ? [...state.manualDiceAssignments]
         : null;
+    }
+    if (state.pendingRollSteps !== undefined) {
+      session.pendingRollSteps = state.pendingRollSteps ? [...state.pendingRollSteps] : null;
+    }
+    if (state.appliedRollCount !== undefined) {
+      session.appliedRollCount = state.appliedRollCount;
     }
     if (session.phase === GamePhase.ADJUST_WIP) {
       session.beginReplenishPhase();
@@ -131,6 +140,14 @@ export class GameSession {
 
   getManualDiceAssignments(): readonly DiceAssignmentInput[] | null {
     return this.manualDiceAssignments ? [...this.manualDiceAssignments] : null;
+  }
+
+  getPendingRollSteps(): readonly DiceRollApplyStep[] {
+    return this.pendingRollSteps ? [...this.pendingRollSteps] : [];
+  }
+
+  getAppliedRollCount(): number {
+    return this.appliedRollCount;
   }
 
   getSnapshots(): readonly ReturnType<DaySnapshotStore['getAll']>[number][] {
@@ -167,8 +184,9 @@ export class GameSession {
       })),
       snapshots: this.snapshotStore.toArray(),
       board: captureBoardSnapshot(this.board),
-      blockerRolls: this.lastBlockerRolls.length > 0 ? [...this.lastBlockerRolls] : undefined,
       manualDiceAssignments: this.manualDiceAssignments,
+      pendingRollSteps: this.pendingRollSteps,
+      appliedRollCount: this.appliedRollCount,
     };
   }
 
@@ -189,6 +207,10 @@ export class GameSession {
           return this.handleExpediteCard(action.state, action.cardName);
         case 'assign-dice':
           return this.handleAssignDice(action.assignments);
+        case 'roll-dice':
+          return this.handleRollDice();
+        case 'apply-roll-step':
+          return this.handleApplyRollStep(action.index);
         case 'send-ted-to-training':
           return this.handleTedTraining(action.training);
         case 'confirm-phase':
@@ -223,7 +245,6 @@ export class GameSession {
 
   private beginReplenishPhase(): void {
     this.getCurrentDayObject().adjustWipLimits(this.board);
-    this.lastBlockerRolls = this.getCurrentDayObject().removeBlockers(this.board);
     this.phase = GamePhase.REPLENISH;
   }
 
@@ -332,15 +353,7 @@ export class GameSession {
   private handleConfirmPhase(): DispatchResult {
     switch (this.phase) {
       case GamePhase.REPLENISH:
-        return this.finishPreparationAndAdvanceDay();
-      case GamePhase.DO_WORK:
-        this.getCurrentDayObject().doTheWork(new Context(this.board, this.getCurrentDayObject()));
-        if (this.currentDay === 17 && !this.trainingDecided) {
-          this.phase = GamePhase.TED_TRAINING;
-        } else {
-          this.finishEndOfDay();
-        }
-        return this.success();
+        return this.handleRollDice();
       case GamePhase.DAY_COMPLETE:
         return this.startNextDay();
       default:
@@ -348,53 +361,58 @@ export class GameSession {
     }
   }
 
-  /** 完成准备 → 掷骰工作 → 日终结算 → 自动进入下一天准备（legacy 存档仍可在 DO_WORK 单独确认） */
-  private finishPreparationAndAdvanceDay(): DispatchResult {
-    this.getCurrentDayObject().replenishSelected(this.board);
-    this.lastBlockerRolls = [];
+  private handleRollDice(): DispatchResult {
+    if (this.phase !== GamePhase.REPLENISH) {
+      return { ok: false, error: 'Dice roll not allowed in current phase' };
+    }
     this.getCurrentDayObject().expediteTickets(this.board);
-    this.applyDiceAssignments();
-    this.getCurrentDayObject().doTheWork(new Context(this.board, this.getCurrentDayObject()));
+    const resolved = resolveDiceAssignments(this.board, this.manualDiceAssignments);
+    if (resolved.length === 0) {
+      return { ok: false, error: '请先将骰子分配到卡片上' };
+    }
+    this.pendingRollSteps = buildDiceRollPreview(this.board, resolved);
+    this.appliedRollCount = 0;
+    this.phase = GamePhase.DO_WORK;
+    return this.success();
+  }
+
+  private handleApplyRollStep(index: number): DispatchResult {
+    if (this.phase !== GamePhase.DO_WORK || !this.pendingRollSteps) {
+      return { ok: false, error: 'No dice roll to apply' };
+    }
+    if (index !== this.appliedRollCount) {
+      return { ok: false, error: 'Roll steps must be applied in order' };
+    }
+    const step = this.pendingRollSteps[index];
+    if (!step) {
+      return { ok: false, error: 'Invalid roll step index' };
+    }
+    applyDiceRollStep(this.board, step);
+    this.appliedRollCount += 1;
+    if (this.appliedRollCount >= this.pendingRollSteps.length) {
+      return this.finishDiceWorkDay();
+    }
+    return this.success();
+  }
+
+  private finishDiceWorkDay(): DispatchResult {
+    for (const state of Object.values(State)) {
+      this.board.getStateColumn(state).clearDiceAssignments();
+    }
+    this.manualDiceAssignments = null;
+    this.pendingRollSteps = null;
+    this.appliedRollCount = 0;
+
     if (this.currentDay === 17 && !this.trainingDecided) {
       this.phase = GamePhase.TED_TRAINING;
       return this.success();
     }
+
     this.finishEndOfDay();
     if (this.phase === GamePhase.GAME_OVER) {
       return this.success();
     }
     return this.startNextDay();
-  }
-
-  private applyDiceAssignments(): void {
-    if (this.manualDiceAssignments && this.manualDiceAssignments.length > 0) {
-      for (const state of Object.values(State)) {
-        this.board.getStateColumn(state).clearDiceAssignments();
-      }
-      const groupsByState = new Map<State, DiceGroup[]>();
-      const allDice = this.board.getDice();
-      for (const assignment of this.manualDiceAssignments) {
-        const card = this.board.findCardByName(assignment.cardName);
-        if (!card) {
-          throw new Error(`Card not found: ${assignment.cardName}`);
-        }
-        const dice = assignment.diceIndices.map((index) => {
-          if (index < 0 || index >= allDice.length) {
-            throw new Error(`Invalid dice index: ${index}`);
-          }
-          return allDice[index]!;
-        });
-        const groups = groupsByState.get(assignment.state) ?? [];
-        groups.push(new DiceGroup(card, ...dice));
-        groupsByState.set(assignment.state, groups);
-      }
-      for (const [state, groups] of groupsByState) {
-        this.board.getStateColumn(state).assignDice(...groups);
-      }
-    } else {
-      this.getCurrentDayObject().assignDice(this.board);
-    }
-    this.manualDiceAssignments = null;
   }
 
   private finishEndOfDay(): void {
@@ -427,9 +445,6 @@ export class GameSession {
 
     switch (this.phase) {
       case GamePhase.REPLENISH: {
-        if (this.lastBlockerRolls.length > 0) {
-          pending.push({ kind: 'blocker-rolls', rolls: [...this.lastBlockerRolls] });
-        }
         pending.push({
           kind: 'reorder-backlog',
           cardNames: this.board.getOptions().getCards().map((card) => card.getName()),
@@ -448,7 +463,13 @@ export class GameSession {
         break;
       }
       case GamePhase.DO_WORK:
-        pending.push({ kind: 'confirm', label: 'do-work' });
+        if (this.pendingRollSteps && this.pendingRollSteps.length > 0) {
+          pending.push({
+            kind: 'dice-roll-preview',
+            steps: [...this.pendingRollSteps],
+            appliedCount: this.appliedRollCount,
+          });
+        }
         break;
       case GamePhase.TED_TRAINING:
         pending.push({ kind: 'ted-training', day: 17 });

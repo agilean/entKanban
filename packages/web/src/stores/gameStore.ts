@@ -109,6 +109,20 @@ export const useGameStore = defineStore('game', () => {
     void revision.value;
     return session.value?.getManualDiceAssignments() ?? [];
   });
+  const pendingRollPreview = computed(() => {
+    void revision.value;
+    const preview = session.value
+      ?.getPendingActions()
+      .find((action) => action.kind === 'dice-roll-preview');
+    if (preview && preview.kind === 'dice-roll-preview') {
+      return preview.steps;
+    }
+    return session.value?.getPendingRollSteps() ?? [];
+  });
+  const appliedRollCount = computed(() => {
+    void revision.value;
+    return session.value?.getAppliedRollCount() ?? 0;
+  });
 
   function bumpRevision(): void {
     revision.value += 1;
@@ -183,6 +197,14 @@ export const useGameStore = defineStore('game', () => {
 
   function confirmPhase(activeTab: AppTab = 'board'): DispatchResult | undefined {
     return dispatchAndSave({ type: 'confirm-phase' }, activeTab);
+  }
+
+  function rollDice(activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'roll-dice' }, activeTab);
+  }
+
+  function applyRollStep(index: number, activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'apply-roll-step', index }, activeTab);
   }
 
   function adjustWipLimits(adjustment: WipLimitAdjustment, activeTab: AppTab = 'board'): DispatchResult | undefined {
@@ -293,6 +315,8 @@ export const useGameStore = defineStore('game', () => {
     isGameOver,
     hasSavedGame,
     pendingDiceAssignments,
+    pendingRollPreview,
+    appliedRollCount,
     startNewGame,
     resetGame,
     persistToStorage,
@@ -301,6 +325,8 @@ export const useGameStore = defineStore('game', () => {
     dispatch,
     dispatchAndSave,
     confirmPhase,
+    rollDice,
+    applyRollStep,
     adjustWipLimits,
     reorderBacklog,
     pullToSelected,

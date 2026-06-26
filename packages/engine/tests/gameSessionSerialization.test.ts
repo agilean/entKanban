@@ -5,13 +5,22 @@ import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
 import { WipLimitAdjustment } from '../src/WipLimitAdjustment.js';
 
-function confirm(session: GameSession): void {
-  const result = session.dispatch({ type: 'confirm-phase' });
+function rollDice(session: GameSession): void {
+  const result = session.dispatch({ type: 'roll-dice' });
   expect(result.ok).toBe(true);
 }
 
+function applyAllRolls(session: GameSession): void {
+  const steps = session.getPendingRollSteps();
+  for (let index = 0; index < steps.length; index += 1) {
+    const result = session.dispatch({ type: 'apply-roll-step', index });
+    expect(result.ok).toBe(true);
+  }
+}
+
 function rollAndAdvanceDay(session: GameSession): void {
-  confirm(session);
+  rollDice(session);
+  applyAllRolls(session);
 }
 
 function boardSignature(session: GameSession): string {
@@ -27,12 +36,11 @@ describe('GameSession serialization', () => {
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
   });
 
-  it('round-trips mid-game board with blocker and snapshots', () => {
+  it('round-trips mid-game board with snapshots', () => {
     const session = GameSession.createNew();
     rollAndAdvanceDay(session);
     rollAndAdvanceDay(session);
 
-    expect(session.getBoard().findCardByName('S10')?.isBlocked()).toBe(true);
     expect(session.getSnapshots().length).toBe(2);
 
     const restored = GameSession.fromJSON(session.toJSON());
@@ -40,7 +48,6 @@ describe('GameSession serialization', () => {
     expect(restored.getCurrentDay()).toBe(session.getCurrentDay());
     expect(restored.getPhase()).toBe(session.getPhase());
     expect(restored.getSnapshots().length).toBe(2);
-    expect(restored.getBoard().findCardByName('S10')?.isBlocked()).toBe(true);
     expect(restored.getPendingActions()).toEqual(session.getPendingActions());
   });
 
@@ -64,16 +71,14 @@ describe('GameSession serialization', () => {
     expect(boardSignature(restored)).toBe(boardSignature(session));
   });
 
-  it('round-trips replenish phase blocker rolls when present', () => {
+  it('round-trips pending roll preview during do-work', () => {
     const session = GameSession.createNew();
-    const json = session.toJSON();
-    json.blockerRolls = [{ cardName: 'S6', roll: 4, delta: 4 }];
-    json.phase = GamePhase.REPLENISH;
-    json.currentDay = 11;
+    rollDice(session);
 
-    const restored = GameSession.fromJSON(json);
-    expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
-    expect(restored.getPendingActions().some((a) => a.kind === 'blocker-rolls')).toBe(true);
+    const restored = GameSession.fromJSON(session.toJSON());
+    expect(restored.getPhase()).toBe(GamePhase.DO_WORK);
+    expect(restored.getPendingRollSteps()).toEqual(session.getPendingRollSteps());
+    expect(restored.getPendingActions().some((a) => a.kind === 'dice-roll-preview')).toBe(true);
   });
 
   it('round-trips manual dice assignments during preparation phase', () => {

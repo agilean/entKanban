@@ -20,11 +20,11 @@ function cardNames(board: Board): string[] {
 }
 
 describe('PeteFromPlatformTeam', () => {
-  it('adds blocker to S10', () => {
+  it('no longer adds blocker to S10', () => {
     const board = new Board();
     new Day(10, new NoCrossSkillingDiceAssignmentStrategy(), new PeteFromPlatformTeam()).endOfDay(board);
     const s10 = board.getCards().find((c) => c.getName() === 'S10');
-    expect(s10?.isBlocked()).toBe(true);
+    expect(s10?.isBlocked()).toBe(false);
   });
 });
 
@@ -120,11 +120,11 @@ describe('TammyHired', () => {
 });
 
 describe('DaysFactory event days', () => {
-  it('wires day 10 with Pete event', () => {
+  it('wires day 10 with Pete event (blocker removed)', () => {
     const board = new Board();
     new DaysFactory(false).getDay(10).endOfDay(board);
     const s10 = board.getCards().find((c) => c.getName() === 'S10');
-    expect(s10?.isBlocked()).toBe(true);
+    expect(s10?.isBlocked()).toBe(false);
   });
 
   it('wires day 15 with E1 in backlog after clear', () => {

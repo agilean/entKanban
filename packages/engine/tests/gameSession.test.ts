@@ -5,14 +5,22 @@ import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
 import { WipLimitAdjustment } from '../src/WipLimitAdjustment.js';
 
-function confirm(session: GameSession): void {
-  const result = session.dispatch({ type: 'confirm-phase' });
+function rollDice(session: GameSession): void {
+  const result = session.dispatch({ type: 'roll-dice' });
   expect(result.ok).toBe(true);
 }
 
-/** 一次确认：准备 → 掷骰工作 → 日终 → 下一天准备 */
+function applyAllRolls(session: GameSession): void {
+  const steps = session.getPendingRollSteps();
+  for (let index = 0; index < steps.length; index += 1) {
+    const result = session.dispatch({ type: 'apply-roll-step', index });
+    expect(result.ok).toBe(true);
+  }
+}
+
 function rollAndAdvanceDay(session: GameSession): void {
-  confirm(session);
+  rollDice(session);
+  applyAllRolls(session);
 }
 
 describe('GameSession', () => {
@@ -122,11 +130,9 @@ describe('GameSession', () => {
 
   it('rejects illegal actions in wrong phase', () => {
     const session = GameSession.createNew();
-    const json = session.toJSON();
-    json.phase = GamePhase.DO_WORK;
-    const restored = GameSession.fromJSON(json);
+    rollDice(session);
 
-    const result = restored.dispatch({
+    const result = session.dispatch({
       type: 'expedite-card',
       state: State.TEST,
       cardName: 'S3',
@@ -161,7 +167,7 @@ describe('GameSession', () => {
     expect(assign.ok).toBe(true);
   });
 
-  it('rolls dice and auto-advances to next day replenish', () => {
+  it('rolls dice using column dice and auto-advances to next day replenish', () => {
     const session = GameSession.createNew();
     expect(session.getCurrentDay()).toBe(9);
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
@@ -180,15 +186,6 @@ describe('GameSession', () => {
 
     expect(session.getCurrentDay()).toBe(11);
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
-  });
-
-  it('applies pete blocker on day 10 end of day', () => {
-    const session = GameSession.createNew();
-    rollAndAdvanceDay(session);
-    rollAndAdvanceDay(session);
-
-    const s10 = session.getBoard().findCardByName('S10');
-    expect(s10?.isBlocked()).toBe(true);
   });
 
   it('rejects ted training outside ted-training phase', () => {
@@ -233,5 +230,13 @@ describe('GameSession', () => {
 
     const restored = GameSession.fromJSON(json);
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
+  });
+
+  it('exposes dice roll preview after rolling', () => {
+    const session = GameSession.createNew();
+    rollDice(session);
+    expect(session.getPhase()).toBe(GamePhase.DO_WORK);
+    expect(session.getPendingRollSteps().length).toBeGreaterThan(0);
+    expect(session.getPendingActions().some((a) => a.kind === 'dice-roll-preview')).toBe(true);
   });
 });
