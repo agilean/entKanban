@@ -80,8 +80,14 @@ export const useGameStore = defineStore('game', () => {
   const diceRollUi = ref<DiceRollUiState | null>(null);
 
   const hasSession = computed(() => session.value !== null);
-  const currentDay = computed(() => session.value?.getCurrentDay() ?? 9);
-  const phase = computed(() => session.value?.getPhase() ?? GamePhase.REPLENISH);
+  const currentDay = computed(() => {
+    void revision.value;
+    return session.value?.getCurrentDay() ?? 9;
+  });
+  const phase = computed(() => {
+    void revision.value;
+    return session.value?.getPhase() ?? GamePhase.REPLENISH;
+  });
   const pendingActions = computed((): readonly PendingAction[] => {
     void revision.value;
     return session.value?.getPendingActions() ?? [];
@@ -191,14 +197,15 @@ export const useGameStore = defineStore('game', () => {
     return { mode: 'preview', step };
   }
 
-  function canDeployToday(): boolean {
+  const canDeployToday = computed(() => {
+    void revision.value;
     if (!session.value) {
       return false;
     }
     const day = session.value.getCurrentDay();
     const frequency = session.value.getBoard().getReadyToDeploy().getDeploymentFrequency();
     return day % frequency === 0;
-  }
+  });
 
   function clearEffortHighlights(): void {
     effortHighlights.value = {};

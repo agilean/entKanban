@@ -381,7 +381,7 @@ function isCardDroppable(cardName: string): boolean {
   return canDropDiceOnCard(props.column.id, cardName);
 }
 
-const canDeployToday = computed(() => game.canDeployToday());
+const canDeployToday = computed(() => game.canDeployToday);
 
 const interactive = () => isColumnInteractive(props.column.id);
 </script>

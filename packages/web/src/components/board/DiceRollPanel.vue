@@ -41,8 +41,10 @@ async function handleApply(): Promise<void> {
   if (busy.value || steps.value.length === 0) {
     return;
   }
+  game.setDiceRollApplying(0);
+  const pendingSteps = game.pendingRollPreview;
   const start = game.appliedRollCount;
-  for (let index = start; index < steps.value.length; index += 1) {
+  for (let index = start; index < pendingSteps.length; index += 1) {
     game.setDiceRollApplying(index);
     await delay(550);
     const result = game.applyRollStep(index, ui.activeTab);
