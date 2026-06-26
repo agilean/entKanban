@@ -158,6 +158,10 @@ export const useGameStore = defineStore('game', () => {
     return dispatchAndSave({ type: 'pull-to-selected', cardName }, activeTab);
   }
 
+  function reorderSelected(cardNames: string[], activeTab: AppTab = 'board'): DispatchResult | undefined {
+    return dispatchAndSave({ type: 'reorder-selected', cardNames }, activeTab);
+  }
+
   function expediteCard(state: State, cardName: string, activeTab: AppTab = 'board'): DispatchResult | undefined {
     return dispatchAndSave({ type: 'expedite-card', state, cardName }, activeTab);
   }
@@ -236,6 +240,7 @@ export const useGameStore = defineStore('game', () => {
     adjustWipLimits,
     reorderBacklog,
     pullToSelected,
+    reorderSelected,
     expediteCard,
     assignDice,
     sendTedToTraining,

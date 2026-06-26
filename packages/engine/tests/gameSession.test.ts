@@ -84,6 +84,29 @@ describe('GameSession', () => {
     expect(session.getBoard().getSelected().getCards().map((c) => c.getName())).toContain(topCard);
   });
 
+  it('reorders selected during replenish', () => {
+    const session = GameSession.createNew();
+    confirm(session);
+    confirm(session);
+
+    while (session.getBoard().getSelected().getCards().length < 2) {
+      const next = session.getBoard().getOptions().getCards()[0]?.getName();
+      if (!next) {
+        break;
+      }
+      session.dispatch({ type: 'pull-to-selected', cardName: next });
+    }
+
+    const original = session.getBoard().getSelected().getCards().map((c) => c.getName());
+    if (original.length < 2) {
+      return;
+    }
+    const reversed = [...original].reverse();
+    const result = session.dispatch({ type: 'reorder-selected', cardNames: reversed });
+    expect(result.ok).toBe(true);
+    expect(session.getBoard().getSelected().getCards().map((c) => c.getName())).toEqual(reversed);
+  });
+
   it('rejects pull to selected when wip is full', () => {
     const session = GameSession.createNew();
     confirm(session);

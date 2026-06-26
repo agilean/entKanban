@@ -66,6 +66,15 @@ function onSelectedAdd(): void {
   pendingPullCardName.value = null;
 }
 
+function onSelectedDragEnd(event: { from: HTMLElement; to: HTMLElement }): void {
+  if (event.from !== event.to) {
+    return;
+  }
+  if (canPullToSelected.value) {
+    game.reorderSelected(localCards.value.map((item) => item.name));
+  }
+}
+
 function onCardDragStart(event: DragEvent, cardName: string): void {
   event.dataTransfer?.setData('text/card-name', cardName);
   if (event.dataTransfer) {
@@ -166,26 +175,29 @@ const interactive = () => isColumnInteractive(props.column.id);
       </p>
     </template>
 
-    <!-- Selected: receive from Backlog -->
+    <!-- Selected: receive from Backlog + reorder -->
     <template v-else-if="column.id === 'selected'">
       <draggable
         v-model="localCards"
         item-key="id"
         class="cards cards-droppable"
-        :class="{ 'drop-active': canPullToSelected }"
+        :class="{ 'drop-active': canPullToSelected, 'cards-draggable': canPullToSelected }"
         :group="selectedGroup"
-        :sort="false"
+        :sort="canPullToSelected"
+        :disabled="!canPullToSelected"
         :animation="150"
         ghost-class="sortable-ghost"
+        drag-class="sortable-drag"
         @add="onSelectedAdd"
+        @end="onSelectedDragEnd"
       >
         <template #item="{ element }">
-          <div class="sortable-card-wrap">
+          <div class="sortable-card-wrap" :data-card-name="element.name">
             <CardTile :card="element" />
           </div>
         </template>
       </draggable>
-      <p v-if="canPullToSelected" class="column-hint">从 Backlog 拖入卡片</p>
+      <p v-if="canPullToSelected" class="column-hint">拖拽调整优先级，或从 Backlog 接收卡片</p>
     </template>
 
     <!-- State columns with zones -->

@@ -174,6 +174,8 @@ export class GameSession {
           return this.handleAdjustWip(action.adjustment);
         case 'reorder-backlog':
           return this.handleReorderBacklog(action.cardNames);
+        case 'reorder-selected':
+          return this.handleReorderSelected(action.cardNames);
         case 'pull-to-selected':
           return this.handlePullToSelected(action.cardName);
         case 'expedite-card':
@@ -225,6 +227,18 @@ export class GameSession {
       return { ok: false, error: 'Backlog reorder not allowed in current phase' };
     }
     this.board.getOptions().reorder(cardNames);
+    return this.success();
+  }
+
+  private handleReorderSelected(cardNames: string[]): DispatchResult {
+    if (
+      this.phase !== GamePhase.SETUP &&
+      this.phase !== GamePhase.ADJUST_WIP &&
+      this.phase !== GamePhase.REPLENISH
+    ) {
+      return { ok: false, error: 'Selected reorder not allowed in current phase' };
+    }
+    this.board.getSelected().reorder(cardNames);
     return this.success();
   }
 

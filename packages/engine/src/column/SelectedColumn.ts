@@ -52,6 +52,22 @@ export class SelectedColumn extends LimitedColumn {
     this.cards.setComparator(comparator);
   }
 
+  reorder(cardNames: string[]): void {
+    const current = this.getCards();
+    const byName = new Map(current.map((card) => [card.getName(), card]));
+    const ordered = cardNames.map((name) => {
+      const card = byName.get(name);
+      if (!card) {
+        throw new Error(`Card not in selected: ${name}`);
+      }
+      return card;
+    });
+    if (ordered.length !== current.length) {
+      throw new Error('Reorder must include all selected cards');
+    }
+    this.cards.setOrder(ordered);
+  }
+
   clear(): void {
     this.cards.clear();
   }
