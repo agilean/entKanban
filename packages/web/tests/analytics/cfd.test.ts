@@ -8,6 +8,7 @@ import {
 } from '../../src/utils/analytics';
 import { expectCfdSnapshotValid, expectCfdTimelineMonotonic } from '../helpers/analyticsAssertions';
 import { simulateCardFlow } from '../helpers/cardFlowSimulation';
+import { OFFICIAL_DEPLOY_FLOW } from '../fixtures/cardFlowScenarios';
 
 describe('computeCfdFromWipCounts', () => {
   it('derives monotonic cumulative boundaries from WIP snapshot', () => {
@@ -84,24 +85,7 @@ describe('buildCfdOption', () => {
 
 describe('CFD with simulated card flow', () => {
   it('keeps cumulative boundaries monotonic as cards deploy over multiple days', () => {
-    const snapshots = simulateCardFlow(
-      [
-        {
-          day: 9,
-          actions: [
-            { type: 'advance', fromColumn: 'ready', toColumn: 'deployed', cardName: 'S1' },
-            { type: 'advance', fromColumn: 'ready', toColumn: 'deployed', cardName: 'S2' },
-          ],
-        },
-        {
-          day: 12,
-          actions: [
-            { type: 'advance', fromColumn: 'ready', toColumn: 'deployed', cardName: 'S4' },
-          ],
-        },
-      ],
-      12,
-    );
+    const snapshots = simulateCardFlow(OFFICIAL_DEPLOY_FLOW, 12);
 
     const timeline = buildTimeline(snapshots, 12, null, 0);
     expectCfdTimelineMonotonic(timeline);

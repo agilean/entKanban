@@ -97,33 +97,47 @@ export function buildCfdOption(timeline: TimelinePoint[]) {
   };
 }
 
+/** Card-type colors matching getKanban physical chart markers. */
+export const CARD_TYPE_COLORS = {
+  standard: '#92400e',
+  fixed: '#ea580c',
+  intangible: '#9333ea',
+  expedite: '#64748b',
+} as const;
+
+export function getCardTypeColor(name: string): string {
+  const prefix = name.charAt(0);
+  switch (prefix) {
+    case 'S':
+      return CARD_TYPE_COLORS.standard;
+    case 'F':
+      return CARD_TYPE_COLORS.fixed;
+    case 'I':
+      return CARD_TYPE_COLORS.intangible;
+    case 'E':
+      return CARD_TYPE_COLORS.expedite;
+    default:
+      return CARD_TYPE_COLORS.expedite;
+  }
+}
+
 export function buildControlChartOption(metrics: DeployedCardMetrics[]) {
   const labels = metrics.map((card) => card.name);
-  const cycleTimes = metrics.map((card) => card.cycleTime);
-  const mean =
-    cycleTimes.length === 0
-      ? 0
-      : cycleTimes.reduce((sum, value) => sum + value, 0) / cycleTimes.length;
 
   return {
     tooltip: { trigger: 'axis' },
     grid: { left: 40, right: 16, top: 24, bottom: 40 },
     xAxis: { type: 'category', data: labels, axisLabel: { rotate: 45 } },
-    yAxis: { type: 'value', name: 'Cycle Time' },
+    yAxis: { type: 'value', name: 'Lead Time' },
     series: [
       {
-        name: 'Cycle Time',
-        type: 'line',
-        data: cycleTimes,
-        symbolSize: 8,
-        itemStyle: { color: '#2563eb' },
-      },
-      {
-        name: 'Mean',
-        type: 'line',
-        data: labels.map(() => Number(mean.toFixed(2))),
-        lineStyle: { type: 'dashed', color: '#ef4444' },
-        symbol: 'none',
+        name: 'Lead Time',
+        type: 'scatter',
+        data: metrics.map((card) => ({
+          value: card.leadTime,
+          itemStyle: { color: getCardTypeColor(card.name) },
+        })),
+        symbolSize: 10,
       },
     ],
   };
