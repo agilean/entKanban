@@ -24,6 +24,7 @@ import { NoCrossSkillingDiceAssignmentStrategy } from '../policies/NoCrossSkilli
 import type { DispatchResult } from './DispatchResult.js';
 import { GamePhase } from './GamePhase.js';
 import { applyBoardSnapshot, captureBoardSnapshot } from './boardSnapshot.js';
+import type { CardEffectEvent } from './CardEffectEvent.js';
 import type { GameSessionState } from './GameSessionState.js';
 import type { PendingAction } from './PendingAction.js';
 import type { DiceAssignmentInput, PlayerAction } from './PlayerAction.js';
@@ -238,11 +239,12 @@ export class GameSession {
     return this.getDaysFactory().getDay(this.currentDay);
   }
 
-  private success(): DispatchResult {
+  private success(effects: CardEffectEvent[] = []): DispatchResult {
     return {
       ok: true,
       phase: this.phase,
       pendingActions: this.buildPendingActions(),
+      effects: effects.length > 0 ? effects : undefined,
     };
   }
 
@@ -298,7 +300,7 @@ export class GameSession {
     }
     const context = new Context(this.board, this.getCurrentDayObject());
     this.board.advanceCard(fromColumn, toColumn, cardName, context);
-    return this.success();
+    return this.success(context.takeEffectEvents());
   }
 
   private handlePullToSelected(cardName: string): DispatchResult {
@@ -403,9 +405,9 @@ export class GameSession {
     this.appliedRollCount = 0;
 
     if (isBillingDay(this.currentDay)) {
-      this.runBillingDayRelease();
+      const effects = this.runBillingDayRelease();
       this.phase = GamePhase.RELEASE;
-      return this.success();
+      return this.success(effects);
     }
 
     this.finishEndOfDay();
@@ -419,19 +421,21 @@ export class GameSession {
     if (this.phase !== GamePhase.RELEASE) {
       return { ok: false, error: 'Not in release phase' };
     }
-    this.autoDeployReadyCards();
+    const context = new Context(this.board, this.getCurrentDayObject());
+    this.autoDeployReadyCards(context);
+    const effects = context.takeEffectEvents();
     const phaseAfterEnd = this.finishEndOfDay();
     if (phaseAfterEnd === GamePhase.GAME_OVER) {
-      return this.success();
+      return this.success(effects);
     }
-    return this.startNextDay();
+    return this.startNextDay(effects);
   }
 
-  private runBillingDayRelease(): void {
+  private runBillingDayRelease(): CardEffectEvent[] {
     const context = new Context(this.board, this.getCurrentDayObject());
-
     this.pullTestCompleteToReady(context);
-    this.autoDeployReadyCards();
+    this.autoDeployReadyCards(context);
+    return context.takeEffectEvents();
   }
 
   private pullTestCompleteToReady(context: Context): void {
@@ -456,8 +460,7 @@ export class GameSession {
     }
   }
 
-  private autoDeployReadyCards(): void {
-    const context = new Context(this.board, this.getCurrentDayObject());
+  private autoDeployReadyCards(context: Context): void {
     const readyNames = this.board
       .getReadyToDeploy()
       .getCards()
@@ -478,18 +481,18 @@ export class GameSession {
     return this.phase;
   }
 
-  private startNextDay(): DispatchResult {
+  private startNextDay(carryEffects: CardEffectEvent[] = []): DispatchResult {
     if (this.phase !== GamePhase.DAY_COMPLETE) {
       return { ok: false, error: 'Not ready for next day' };
     }
     this.currentDay += 1;
     if (this.currentDay > 21) {
       this.phase = GamePhase.GAME_OVER;
-      return this.success();
+      return this.success(carryEffects);
     }
     DayStore.setDay(this.getDaysFactory().getDay(this.currentDay));
     this.beginReplenishPhase();
-    return this.success();
+    return this.success(carryEffects);
   }
 
   private buildPendingActions(): PendingAction[] {

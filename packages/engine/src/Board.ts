@@ -17,6 +17,7 @@ import { SelectedColumn } from './column/SelectedColumn.js';
 import { StateColumn } from './column/StateColumn.js';
 import { RandomDice } from './dice/RandomDice.js';
 import { StateDice } from './dice/StateDice.js';
+import { recordDeployEffects, recordReadyEffects } from './session/cardEffectEvents.js';
 import { chainComparator } from './policies/chainComparator.js';
 import { businessValueCompare, intangiblesFirstCompare } from './policies/prioritisation.js';
 import type { WipLimitAdjustment } from './WipLimitAdjustment.js';
@@ -358,10 +359,12 @@ export class Board {
         return;
       case 'ready':
         card.onReadyToDeploy(context);
+        recordReadyEffects(context, card);
         this.readyToDeploy.addCard(card, cos);
         return;
       case 'deployed':
         card.onDeployed(context);
+        recordDeployEffects(context, card);
         this.deployed.addCard(card, cos);
         return;
       default:

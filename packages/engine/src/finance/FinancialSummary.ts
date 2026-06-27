@@ -8,8 +8,10 @@ export class FinancialSummary {
   constructor(board: Board) {
     for (const card of board.getCards()) {
       if (card instanceof FixedDateCard) {
-        this.newSubscribers[card.getDueDate()] += card.getSubscribers();
-        this.finesAndPayments[card.getDueDate()] += card.getFineOrPayment();
+        if (card.getDayDeployed() > 0) {
+          this.newSubscribers[card.getDueDate()] += card.getSubscribers();
+          this.finesAndPayments[card.getDueDate()] += card.getFineOrPayment();
+        }
       } else if (card.getDayDeployed() > 0) {
         const billingDay = FinancialSummary.getBillingDay(card.getDayDeployed());
         this.newSubscribers[billingDay] += card.getSubscribers();

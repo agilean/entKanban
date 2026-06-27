@@ -5,6 +5,8 @@ import {
   GameSession,
   State,
   WipLimitAdjustment,
+  mergeEffectEvents,
+  type CardEffectEvent,
   type DaySnapshot,
   type DiceAssignmentInput,
   type DispatchResult,
@@ -78,6 +80,7 @@ export const useGameStore = defineStore('game', () => {
   const boardEpoch = ref(0);
   const effortHighlights = ref<Record<string, Partial<Record<EffortField, true>>>>({});
   const diceRollUi = ref<DiceRollUiState | null>(null);
+  const releaseEffectEvents = ref<readonly CardEffectEvent[]>([]);
 
   const hasSession = computed(() => session.value !== null);
   const currentDay = computed(() => {
@@ -274,6 +277,7 @@ export const useGameStore = defineStore('game', () => {
     lastError.value = null;
     clearEffortHighlights();
     closeDiceRollUi();
+    releaseEffectEvents.value = [];
     clearSavedGame();
     refreshSavedFlag();
     bumpRevision();
@@ -288,12 +292,26 @@ export const useGameStore = defineStore('game', () => {
       lastError.value = '尚未开始游戏';
       return { ok: false, error: '尚未开始游戏' };
     }
+    const prevPhase = session.value.getPhase();
     const result = session.value.dispatch(action);
     boardEpoch.value += 1;
     if (!result.ok) {
       lastError.value = result.error;
     } else {
       lastError.value = null;
+      if (result.effects?.length) {
+        if (result.phase === GamePhase.RELEASE && prevPhase === GamePhase.DO_WORK) {
+          releaseEffectEvents.value = [...result.effects];
+        } else {
+          releaseEffectEvents.value = mergeEffectEvents(
+            [...releaseEffectEvents.value],
+            [...result.effects],
+          );
+        }
+      }
+      if (result.phase === GamePhase.REPLENISH && prevPhase === GamePhase.RELEASE) {
+        releaseEffectEvents.value = [];
+      }
       bumpRevision();
     }
     return result;
@@ -455,6 +473,7 @@ export const useGameStore = defineStore('game', () => {
     appliedRollCount,
     effortHighlights,
     diceRollUi,
+    releaseEffectEvents,
     isDiceRollActive,
     openDiceRollResults,
     setDiceRollApplying,

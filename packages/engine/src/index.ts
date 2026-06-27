@@ -25,6 +25,8 @@ export type { DispatchResult } from './session/DispatchResult.js';
 export type { GameSessionState, WipAdjustmentState } from './session/GameSessionState.js';
 export type { BoardSnapshot, CardWorkSnapshot, StateColumnSlot } from './session/boardSnapshot.js';
 export { captureBoardSnapshot, applyBoardSnapshot } from './session/boardSnapshot.js';
+export type { CardEffectEvent, CardEffectKind } from './session/CardEffectEvent.js';
+export { replaySpecialCardEffects, mergeEffectEvents } from './session/cardEffectEvents.js';
 export { GameSession } from './session/GameSession.js';
 export type { GameSessionOptions } from './session/GameSession.js';
 

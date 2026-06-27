@@ -6,6 +6,7 @@ import { getCard } from '../card/Cards.js';
 import type { Card } from '../card/Card.js';
 import { RandomDice } from '../dice/RandomDice.js';
 import { StateDice } from '../dice/StateDice.js';
+import { replaySpecialCardEffects } from './cardEffectEvents.js';
 
 export type CardWorkSnapshot = {
   name: string;
@@ -42,6 +43,7 @@ export type BoardSnapshot = {
   testLimitsEnabled: boolean;
   testSecondaryWorkers: boolean;
   deploymentFrequency: number;
+  testI2BoostEnabled?: boolean;
 };
 
 function asAbstractCard(card: Card): AbstractCard {
@@ -72,6 +74,7 @@ export function captureBoardSnapshot(board: Board): BoardSnapshot {
     testLimitsEnabled: testColumn.areLimitsEnabled(),
     testSecondaryWorkers: testColumn.canAssignSecondaryWorkers(),
     deploymentFrequency: board.getReadyToDeploy().getDeploymentFrequency(),
+    testI2BoostEnabled: testColumn.isI2TestBoostEnabled(),
   };
 }
 
@@ -130,4 +133,9 @@ export function applyBoardSnapshot(board: Board, snapshot: BoardSnapshot): void 
   testColumn.restorePlacements(snapshot.test, cardsByName);
   addNamedCards(board.getReadyToDeploy(), snapshot.ready, cardsByName);
   addNamedCards(board.getDeployed(), snapshot.deployed, cardsByName);
+
+  if (snapshot.testI2BoostEnabled) {
+    testColumn.enableI2TestBoost();
+  }
+  replaySpecialCardEffects(board);
 }

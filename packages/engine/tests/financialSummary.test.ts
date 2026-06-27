@@ -40,16 +40,15 @@ describe('FinancialSummary', () => {
     expect(summary.getTotalSubscribersToDate(21)).toBe(20);
   });
 
-  it('counts fines and payments', () => {
+  it('does not count F1 fine before deployment', () => {
     const summary = new FinancialSummary(makeBoard());
-    expect(summary.getFinesOrPayments(15)).toBe(-1500);
-    expect(summary.getFinesOrPayments(18)).toBe(0);
+    expect(summary.getFinesOrPayments(15)).toBe(0);
   });
 
-  it('does not change F1 fine when delivered on time', () => {
+  it('fines F1 when deployed late', () => {
     const f1 = getCard('F1');
     f1.onSelected(new Context(new Board(), new DaysFactory(true).getDay(10)));
-    f1.onDeployed(new Context(new Board(), new DaysFactory(true).getDay(15)));
+    f1.onDeployed(new Context(new Board(), new DaysFactory(true).getDay(16)));
 
     const board = new Board();
     board.getDeployed().addCard(f1, ClassOfService.STANDARD);
@@ -58,9 +57,16 @@ describe('FinancialSummary', () => {
     expect(summary.getFinesOrPayments(15)).toBe(-1500);
   });
 
-  it('fines F1 when late', () => {
-    const summary = new FinancialSummary(makeBoard());
-    expect(summary.getFinesOrPayments(15)).toBe(-1500);
+  it('does not fine F1 when delivered on time', () => {
+    const f1 = getCard('F1');
+    f1.onSelected(new Context(new Board(), new DaysFactory(true).getDay(10)));
+    f1.onDeployed(new Context(new Board(), new DaysFactory(true).getDay(15)));
+
+    const board = new Board();
+    board.getDeployed().addCard(f1, ClassOfService.STANDARD);
+
+    const summary = new FinancialSummary(board);
+    expect(summary.getFinesOrPayments(15)).toBe(0);
   });
 
   it('does not pay E1 when late', () => {
@@ -88,7 +94,7 @@ describe('FinancialSummary', () => {
     const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getBillingCycleGrossProfit(9)).toBe(200);
     expect(summary.getBillingCycleGrossProfit(12)).toBe(300);
-    expect(summary.getBillingCycleGrossProfit(15)).toBe(-1100);
+    expect(summary.getBillingCycleGrossProfit(15)).toBe(400);
     expect(summary.getBillingCycleGrossProfit(18)).toBe(500);
     expect(summary.getBillingCycleGrossProfit(21)).toBe(600);
   });
@@ -97,9 +103,9 @@ describe('FinancialSummary', () => {
     const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getTotalGrossProfitToDate(9)).toBe(200);
     expect(summary.getTotalGrossProfitToDate(12)).toBe(500);
-    expect(summary.getTotalGrossProfitToDate(15)).toBe(-600);
-    expect(summary.getTotalGrossProfitToDate(18)).toBe(-100);
-    expect(summary.getTotalGrossProfitToDate(21)).toBe(500);
+    expect(summary.getTotalGrossProfitToDate(15)).toBe(900);
+    expect(summary.getTotalGrossProfitToDate(18)).toBe(1400);
+    expect(summary.getTotalGrossProfitToDate(21)).toBe(2000);
   });
 
   it('formats a summary table', () => {

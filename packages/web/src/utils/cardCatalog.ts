@@ -16,7 +16,7 @@ const ENTRIES: Record<string, CardCatalogEntry> = {
   I1: {
     title: 'Infrastructure',
     description: '无形价值卡：基础设施改进，不计入财务订阅但优先流动。',
-    effect: '部署后，就绪列每天均可部署（部署频率变为 1）。',
+    effect: '进入就绪列后，就绪列改为每日均可发布（部署频率变为 1）。',
   },
   I2: {
     title: 'Technical Debt',
@@ -30,11 +30,13 @@ const ENTRIES: Record<string, CardCatalogEntry> = {
   },
   F1: {
     title: 'Fixed Date Feature',
-    description: '固定交付日功能，逾期有罚金。',
+    description: '固定交付日功能，须在 Day 15 前部署。',
+    effect: '按期交付免 $1,500 罚金；逾期在发布日扣 $1,500。',
   },
   F2: {
     title: 'Fixed Date Feature',
     description: '固定交付日功能，按期交付有奖励。',
+    effect: '须在指定交付日前部署；按期交付获得 $500 奖励，逾期无奖励。',
   },
   S10: {
     title: 'Blocked Development Item',

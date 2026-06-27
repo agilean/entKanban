@@ -1,7 +1,6 @@
 import type { Day } from '../Day.js';
 import type { Context } from '../Context.js';
 import { ClassOfService } from '../ClassOfService.js';
-import { State } from '../State.js';
 import { AbstractCard } from './AbstractCard.js';
 import { CardSize } from './Card.js';
 import { getCard } from './Cards.js';
@@ -32,17 +31,6 @@ export class IntangibleCard extends AbstractCard {
 
     if (this.getName() === 'I1') {
       context.getBoard().getReadyToDeploy().setDeploymentFrequency(1);
-    }
-    if (this.getName() === 'I2') {
-      const test = context.getBoard().getStateColumn(State.TEST);
-      test.getIncompleteCards().forEach((c) => {
-        c.doWork(State.TEST, Math.min(2, c.getRemainingWork(State.TEST)));
-      });
-      test.addListener({
-        cardAdded: (c) => {
-          c.doWork(State.TEST, 2);
-        },
-      });
     }
   }
 

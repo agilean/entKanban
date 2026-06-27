@@ -19,6 +19,7 @@ export class StateColumn extends LimitedColumn {
   private comparator: (a: Card, b: Card) => number = wipAgingCompare;
   private readonly listeners = new Set<ColumnListener>();
   private secondaryWorkers = true;
+  private i2TestBoostEnabled = false;
 
   constructor(
     private readonly state: State,
@@ -87,6 +88,26 @@ export class StateColumn extends LimitedColumn {
         }
       }
     }
+  }
+
+  enableI2TestBoost(): boolean {
+    if (this.state !== State.TEST || this.i2TestBoostEnabled) {
+      return false;
+    }
+    this.i2TestBoostEnabled = true;
+    for (const card of this.getIncompleteCards()) {
+      card.doWork(State.TEST, Math.min(2, card.getRemainingWork(State.TEST)));
+    }
+    this.addListener({
+      cardAdded: (card) => {
+        card.doWork(State.TEST, Math.min(2, card.getRemainingWork(State.TEST)));
+      },
+    });
+    return true;
+  }
+
+  isI2TestBoostEnabled(): boolean {
+    return this.i2TestBoostEnabled;
   }
 
   private todo(cos: ClassOfService): MutablePriorityQueue<Card> {
@@ -225,6 +246,7 @@ export class StateColumn extends LimitedColumn {
     this.groups = [];
     this.rolled = false;
     this.secondaryWorkers = true;
+    this.i2TestBoostEnabled = false;
     this.enableLimits();
   }
 
