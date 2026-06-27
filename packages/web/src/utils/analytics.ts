@@ -163,19 +163,30 @@ export function buildControlChartOption(metrics: DeployedCardMetrics[]) {
   const labels = metrics.map((card) => card.name);
 
   return {
-    tooltip: { trigger: 'axis' },
-    grid: { left: 40, right: 16, top: 24, bottom: 40 },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: { name: string; value: number }) =>
+        `${params.name}: ${params.value} 天`,
+    },
+    grid: { left: 40, right: 16, top: 32, bottom: 40 },
     xAxis: { type: 'category', data: labels, axisLabel: { rotate: 45 } },
-    yAxis: { type: 'value', name: 'Lead Time' },
+    yAxis: { type: 'value', name: 'Lead Time', minInterval: 1 },
     series: [
       {
         name: 'Lead Time',
-        type: 'scatter',
+        type: 'line',
         data: metrics.map((card) => ({
           value: card.leadTime,
           itemStyle: { color: getCardTypeColor(card.name) },
         })),
         symbolSize: 10,
+        lineStyle: { width: 0 },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}',
+          fontSize: 11,
+        },
       },
     ],
   };
@@ -210,23 +221,6 @@ export function buildLeadTimeOption(metrics: DeployedCardMetrics[], p85: number)
         type: 'bar',
         data: counts,
         itemStyle: { color: '#8b5cf6' },
-      },
-    ],
-  };
-}
-
-export function buildRunChartOption(timeline: TimelinePoint[]) {
-  return {
-    tooltip: { trigger: 'axis' },
-    grid: { left: 40, right: 16, top: 24, bottom: 28 },
-    xAxis: { type: 'category', data: timeline.map((point) => `D${point.day}`) },
-    yAxis: { type: 'value', name: 'Deployed' },
-    series: [
-      {
-        name: 'Deployed',
-        type: 'bar',
-        data: timeline.map((point) => point.deployedToday.length),
-        itemStyle: { color: '#16a34a' },
       },
     ],
   };

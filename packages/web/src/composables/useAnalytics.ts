@@ -6,7 +6,6 @@ import {
   buildCfdOption,
   buildControlChartOption,
   buildLeadTimeOption,
-  buildRunChartOption,
   buildTimeline,
   percentile,
 } from '../utils/analytics';
@@ -34,7 +33,6 @@ export function useAnalytics() {
   const leadTimeOption = computed(() =>
     buildLeadTimeOption(deployedMetrics.value, leadTimeP85.value),
   );
-  const runOption = computed(() => buildRunChartOption(timeline.value));
 
   const financialSummary = computed(() => game.financialSummary);
 
@@ -47,7 +45,6 @@ export function useAnalytics() {
     cfdOption,
     controlOption,
     leadTimeOption,
-    runOption,
     financialSummary,
     hasData,
   };

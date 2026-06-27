@@ -5,7 +5,6 @@ import CfdChart from './CfdChart.vue';
 import ControlChart from './ControlChart.vue';
 import FinancialTable from './FinancialTable.vue';
 import LeadTimeChart from './LeadTimeChart.vue';
-import RunChart from './RunChart.vue';
 
 const ui = useUiStore();
 
@@ -13,7 +12,6 @@ const componentByTab: Record<Exclude<AppTab, 'board'>, object> = {
   cfd: CfdChart,
   control: ControlChart,
   leadtime: LeadTimeChart,
-  run: RunChart,
   finance: FinancialTable,
 };
 

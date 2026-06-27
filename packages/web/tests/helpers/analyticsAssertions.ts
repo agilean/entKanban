@@ -51,6 +51,8 @@ export function expectCfdTimelineMonotonic(timeline: TimelinePoint[]): void {
 type EChartsSeries = {
   name: string;
   type: string;
+  lineStyle?: { width: number };
+  label?: { show: boolean };
   data: Array<number | { value: number; itemStyle?: { color?: string } }>;
 };
 
@@ -75,7 +77,9 @@ export function expectControlChartOptionValid(
 
   const [series] = option.series;
   expect(series!.name).toBe('Lead Time');
-  expect(series!.type).toBe('scatter');
+  expect(series!.type).toBe('line');
+  expect(series!.lineStyle).toMatchObject({ width: 0 });
+  expect(series!.label).toMatchObject({ show: true });
   expect(seriesLeadTimeValues(series!)).toEqual(expectedMetrics.map((card) => card.leadTime));
 
   for (let i = 0; i < expectedMetrics.length; i++) {

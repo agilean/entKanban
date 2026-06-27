@@ -9,7 +9,7 @@ const { controlOption, deployedMetrics } = useAnalytics();
 <template>
   <section class="chart-panel">
     <h2>控制图</h2>
-    <p class="desc">已部署卡片的 Lead Time（Day Deployed − Day Selected），按部署顺序，颜色对应票种</p>
+    <p class="desc">按交付顺序展示每张已部署卡片的 Lead Time（Day Deployed − Day Selected）</p>
     <ChartEmpty v-if="deployedMetrics.length === 0" message="完成部署后显示控制图" />
     <BaseChart v-else :option="controlOption" />
   </section>

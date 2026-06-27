@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export type AppTab = 'board' | 'cfd' | 'control' | 'leadtime' | 'run' | 'finance';
+export type AppTab = 'board' | 'cfd' | 'control' | 'leadtime' | 'finance';
 
 export const useUiStore = defineStore('ui', () => {
   const activeTab = ref<AppTab>('board');

@@ -291,7 +291,7 @@ export const useGameStore = defineStore('game', () => {
     lastError.value = null;
     bumpRevision();
     refreshSavedFlag();
-    return payload.activeTab ?? 'board';
+    return payload.activeTab === 'run' ? 'control' : (payload.activeTab ?? 'board');
   }
 
   function startNewGame(): void {

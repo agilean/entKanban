@@ -14,7 +14,6 @@ const tabs: Array<{ id: AppTab; label: string }> = [
   { id: 'cfd', label: 'CFD' },
   { id: 'control', label: '控制图' },
   { id: 'leadtime', label: '前置时间' },
-  { id: 'run', label: 'Run Chart' },
   { id: 'finance', label: '财务' },
 ];
 
