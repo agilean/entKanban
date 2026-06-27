@@ -187,6 +187,37 @@ describe('GameSession', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('does not auto-advance analysis or development cards on billing day release', () => {
+    const session = GameSession.createNew({ diceRoller: new LoadedDice(1) });
+    session.dispatch({
+      type: 'assign-dice',
+      assignments: [
+        { state: State.ANALYSIS, cardName: 'S8', diceIndices: [0] },
+        { state: State.ANALYSIS, cardName: 'S10', diceIndices: [1] },
+        { state: State.DEVELOPMENT, cardName: 'S5', diceIndices: [2] },
+        { state: State.DEVELOPMENT, cardName: 'S6', diceIndices: [3] },
+        { state: State.DEVELOPMENT, cardName: 'S7', diceIndices: [4] },
+        { state: State.TEST, cardName: 'S3', diceIndices: [5] },
+        { state: State.TEST, cardName: 'S5', diceIndices: [6] },
+      ],
+    });
+    rollDice(session);
+    applyAllRolls(session);
+
+    const board = session.getBoard();
+    expect(board.getStateColumn(State.ANALYSIS).getCards().map((c) => c.getName()).sort()).toEqual([
+      'S10',
+      'S8',
+    ]);
+    expect(board.getStateColumn(State.DEVELOPMENT).getCards().map((c) => c.getName()).sort()).toEqual([
+      'S5',
+      'S6',
+      'S7',
+      'S9',
+    ]);
+    expect(board.findCardByName('S8')!.getRemainingWork(State.ANALYSIS)).toBe(0);
+  });
+
   it('auto-deploys ready and test-complete cards after dice on billing day', () => {
     const session = GameSession.createNew({ diceRoller: new LoadedDice(6) });
     session.dispatch({

@@ -430,12 +430,30 @@ export class GameSession {
   private runBillingDayRelease(): void {
     const context = new Context(this.board, this.getCurrentDayObject());
 
-    for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
-      this.board.getStateColumn(state).promoteCompletedWork();
-    }
-
-    this.board.getReadyToDeploy().doTheWork(context);
+    this.pullTestCompleteToReady(context);
     this.autoDeployReadyCards();
+  }
+
+  private pullTestCompleteToReady(context: Context): void {
+    const testColumn = this.board.getStateColumn(State.TEST);
+    testColumn.promoteCompletedWork();
+
+    const completedInTest = testColumn
+      .getCards()
+      .filter((card) => card.getRemainingWork(State.TEST) === 0)
+      .map((card) => card.getName());
+
+    for (const name of completedInTest) {
+      const check = this.board.canAdvanceCard(
+        'test',
+        'ready',
+        name,
+        context.getDay().getOrdinal(),
+      );
+      if (check.ok) {
+        this.board.advanceCard('test', 'ready', name, context);
+      }
+    }
   }
 
   private autoDeployReadyCards(): void {
