@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Board } from '../src/Board.js';
+import { Context } from '../src/Context.js';
+import { DaysFactory } from '../src/DaysFactory.js';
 import { captureWipCounts, createDaySnapshot } from '../src/history/createDaySnapshot.js';
 
 describe('DaySnapshot', () => {
@@ -8,12 +10,17 @@ describe('DaySnapshot', () => {
     const counts = captureWipCounts(board);
 
     expect(counts.backlog).toBeGreaterThan(0);
-    expect(counts.deployed).toBe(3);
+    expect(counts.readyToDeploy).toBe(3);
+    expect(counts.deployed).toBe(0);
     expect(counts.selected).toBe(1);
   });
 
-  it('creates snapshot with financial total', () => {
+  it('creates snapshot with financial total after day 9 release', () => {
     const board = new Board();
+    const context = new Context(board, new DaysFactory(false).getDay(9));
+    for (const name of ['S1', 'S2', 'S4']) {
+      board.advanceCard('ready', 'deployed', name, context);
+    }
     const snapshot = createDaySnapshot(board, 9);
 
     expect(snapshot.day).toBe(9);

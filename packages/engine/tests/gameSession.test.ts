@@ -31,7 +31,12 @@ describe('GameSession', () => {
     const session = GameSession.createNew();
     expect(session.getCurrentDay()).toBe(9);
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
-    expect(session.getBoard().getDeployed().getCards().length).toBe(3);
+    expect(session.getBoard().getDeployed().getCards().length).toBe(0);
+    expect(session.getBoard().getReadyToDeploy().getCards().map((c) => c.getName())).toEqual([
+      'S1',
+      'S2',
+      'S4',
+    ]);
     const confirmAction = session.getPendingActions().find((a) => a.kind === 'confirm');
     expect(confirmAction).toBeDefined();
     expect(confirmAction && 'label' in confirmAction ? confirmAction.label : null).toBe('do-work');
@@ -179,6 +184,27 @@ describe('GameSession', () => {
       cardName: 'S7',
     });
     expect(result.ok).toBe(false);
+  });
+
+  it('auto-deploys ready cards when finishing release phase', () => {
+    const session = GameSession.createNew();
+    rollDice(session);
+    applyAllRolls(session);
+    expect(session.getPhase()).toBe(GamePhase.RELEASE);
+    expect(session.getBoard().getReadyToDeploy().getCards().map((c) => c.getName())).toEqual([
+      'S1',
+      'S2',
+      'S4',
+    ]);
+
+    const confirm = session.dispatch({ type: 'confirm-phase' });
+    expect(confirm.ok).toBe(true);
+    expect(session.getBoard().getDeployed().getCards().map((c) => c.getName())).toEqual([
+      'S1',
+      'S2',
+      'S4',
+    ]);
+    expect(session.getBoard().getReadyToDeploy().getCards()).toEqual([]);
   });
 
   it('rolls dice using column dice and auto-advances to next day replenish', () => {

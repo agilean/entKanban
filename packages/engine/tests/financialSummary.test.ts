@@ -12,9 +12,18 @@ function makeBoard(): Board {
   return new Board();
 }
 
+function makeBoardWithDay9Release(): Board {
+  const board = makeBoard();
+  const context = new Context(board, new Day(9));
+  for (const name of ['S1', 'S2', 'S4']) {
+    board.advanceCard('ready', 'deployed', name, context);
+  }
+  return board;
+}
+
 describe('FinancialSummary', () => {
   it('counts new subscribers this billing cycle', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getNewSubscribers(9)).toBe(20);
     expect(summary.getNewSubscribers(12)).toBe(0);
     expect(summary.getNewSubscribers(15)).toBe(0);
@@ -23,7 +32,7 @@ describe('FinancialSummary', () => {
   });
 
   it('counts total subscribers to date', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getTotalSubscribersToDate(9)).toBe(20);
     expect(summary.getTotalSubscribersToDate(12)).toBe(20);
     expect(summary.getTotalSubscribersToDate(15)).toBe(20);
@@ -67,7 +76,7 @@ describe('FinancialSummary', () => {
   });
 
   it('calculates billing cycle revenue', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getBillingCycleRevenue(9)).toBe(200);
     expect(summary.getBillingCycleRevenue(12)).toBe(300);
     expect(summary.getBillingCycleRevenue(15)).toBe(400);
@@ -76,7 +85,7 @@ describe('FinancialSummary', () => {
   });
 
   it('calculates billing cycle gross profit', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getBillingCycleGrossProfit(9)).toBe(200);
     expect(summary.getBillingCycleGrossProfit(12)).toBe(300);
     expect(summary.getBillingCycleGrossProfit(15)).toBe(-1100);
@@ -85,7 +94,7 @@ describe('FinancialSummary', () => {
   });
 
   it('calculates gross profit to date', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.getTotalGrossProfitToDate(9)).toBe(200);
     expect(summary.getTotalGrossProfitToDate(12)).toBe(500);
     expect(summary.getTotalGrossProfitToDate(15)).toBe(-600);
@@ -94,7 +103,7 @@ describe('FinancialSummary', () => {
   });
 
   it('formats a summary table', () => {
-    const summary = new FinancialSummary(makeBoard());
+    const summary = new FinancialSummary(makeBoardWithDay9Release());
     expect(summary.toString()).toContain('New Subscribers');
     expect(summary.toString()).toContain('Day 21');
   });

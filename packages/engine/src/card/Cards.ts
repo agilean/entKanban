@@ -8,10 +8,10 @@ import type { Card } from './Card.js';
 
 export function getCard(name: string): Card {
   switch (name) {
-    case 'S1': return new StandardCard('S1', CardSize.LOW, 0, 0, 0, new VariableSubscriberProfile([9, 9, 7, 7, 7, 6, 5, 5, 5, 3, 0, -2, -4, -4, -5]), 1, 9);
-    case 'S2': return new StandardCard('S2', CardSize.LOW, 0, 0, 0, new VariableSubscriberProfile([10, 9, 7, 7, 5, 4, 4, 4, 4, 3, 3, 2, 2, 1, 0]), 1, 9);
+    case 'S1': return new StandardCard('S1', CardSize.LOW, 0, 0, 0, new VariableSubscriberProfile([9, 9, 7, 7, 7, 6, 5, 5, 5, 3, 0, -2, -4, -4, -5]), 1, 0);
+    case 'S2': return new StandardCard('S2', CardSize.LOW, 0, 0, 0, new VariableSubscriberProfile([10, 9, 7, 7, 5, 4, 4, 4, 4, 3, 3, 2, 2, 1, 0]), 1, 0);
     case 'S3': return new StandardCard('S3', CardSize.MEDIUM, 0, 0, 6, new VariableSubscriberProfile([14, 14, 14, 14, 13, 13, 12, 10, 8, 8, 8, 5, 4, 2, 1]), 2);
-    case 'S4': return new StandardCard('S4', CardSize.HIGH, 0, 0, 0, new VariableSubscriberProfile([16, 14, 14, 13, 11, 11, 11, 11, 11, 11, 11, 10, 9, 8, 7]), 3, 9);
+    case 'S4': return new StandardCard('S4', CardSize.HIGH, 0, 0, 0, new VariableSubscriberProfile([16, 14, 14, 13, 11, 11, 11, 11, 11, 11, 11, 10, 9, 8, 7]), 3, 0);
     case 'S5': return new StandardCard('S5', CardSize.MEDIUM, 0, 0, 9, new VariableSubscriberProfile([13, 13, 12, 12, 12, 11, 11, 8, 8, 8, 6, 6, 6, 6, 4]), 3);
     case 'S6': return new StandardCard('S6', CardSize.HIGH, 0, 2, 8, new VariableSubscriberProfile([17, 16, 16, 16, 16, 16, 14, 14, 14, 13, 13, 13, 12, 12, 9]), 4);
     case 'S7': return new StandardCard('S7', CardSize.HIGH, 0, 5, 8, new VariableSubscriberProfile([16, 16, 16, 14, 13, 12, 11, 11, 10, 9, 7, 7, 7, 6, 5]), 5);

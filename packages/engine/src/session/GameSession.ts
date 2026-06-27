@@ -412,11 +412,23 @@ export class GameSession {
     if (this.phase !== GamePhase.RELEASE) {
       return { ok: false, error: 'Not in release phase' };
     }
+    this.autoDeployReadyCards();
     const phaseAfterEnd = this.finishEndOfDay();
     if (phaseAfterEnd === GamePhase.GAME_OVER) {
       return this.success();
     }
     return this.startNextDay();
+  }
+
+  private autoDeployReadyCards(): void {
+    const context = new Context(this.board, this.getCurrentDayObject());
+    const readyNames = this.board
+      .getReadyToDeploy()
+      .getCards()
+      .map((card) => card.getName());
+    for (const name of readyNames) {
+      this.board.advanceCard('ready', 'deployed', name, context);
+    }
   }
 
   private finishEndOfDay(): GamePhase {

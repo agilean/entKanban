@@ -22,7 +22,8 @@ describe('Board initial layout', () => {
   it('matches Java Board.initCards()', () => {
     const board = new Board();
 
-    expect(cardNames(board.getDeployed().getCards())).toEqual(['S1', 'S2', 'S4']);
+    expect(cardNames(board.getDeployed().getCards())).toEqual([]);
+    expect(cardNames(board.getReadyToDeploy().getCards())).toEqual(['S1', 'S2', 'S4']);
     expect(cardNames(board.getStateColumn(State.TEST).getCards())).toEqual(['S3']);
     expect(sortCardNames(cardNames(board.getStateColumn(State.DEVELOPMENT).getCards()))).toEqual([
       'S5',

@@ -55,9 +55,9 @@ export class Board {
   }
 
   private initCards(): void {
-    this.deployed.addCard(getCard('S1'), ClassOfService.STANDARD);
-    this.deployed.addCard(getCard('S2'), ClassOfService.STANDARD);
-    this.deployed.addCard(getCard('S4'), ClassOfService.STANDARD);
+    this.readyToDeploy.addCard(getCard('S1'), ClassOfService.STANDARD);
+    this.readyToDeploy.addCard(getCard('S2'), ClassOfService.STANDARD);
+    this.readyToDeploy.addCard(getCard('S4'), ClassOfService.STANDARD);
     this.getStateColumn(State.TEST).addCard(getCard('S3'), ClassOfService.STANDARD);
     this.getStateColumn(State.DEVELOPMENT).addCard(getCard('S5'), ClassOfService.STANDARD);
     this.getStateColumn(State.DEVELOPMENT).addCard(getCard('S6'), ClassOfService.STANDARD);
