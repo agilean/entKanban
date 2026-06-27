@@ -9,6 +9,7 @@ import {
   type CardEffectEvent,
   type DaySnapshot,
   type DiceAssignmentInput,
+  type DiceRollLogEntry,
   type DispatchResult,
   type PendingAction,
   type PlayerAction,
@@ -21,6 +22,22 @@ import { buildBoardView } from '../utils/buildBoardView';
 import { stateToEffortField, type EffortField } from '../utils/effortHighlight';
 import { endDiceDrag } from '../utils/diceDragState';
 import { clearSavedGame, loadGame, saveGame, type SavedGamePayload } from '../utils/saveGame';
+import {
+  appendDiceRollLogEntry,
+  diceRollArchiveCount,
+  downloadDiceRollArchive,
+  loadDiceRollArchive,
+  syncSessionDiceRollLog,
+} from '../utils/diceRollLogStorage';
+import {
+  checkReplayServerHealth,
+  downloadReplayFromServer,
+  getReplaySessionId,
+  pushDiceRollToServer,
+  resetReplaySessionId,
+  syncSessionSnapshot,
+  type ReplaySyncStatus,
+} from '../utils/replayApi';
 import type { AppTab } from './uiStore';
 
 export type AssignedDiceView = {
@@ -154,6 +171,13 @@ export const useGameStore = defineStore('game', () => {
     void revision.value;
     return session.value?.getAppliedRollCount() ?? 0;
   });
+  const diceRollLog = computed(() => {
+    void revision.value;
+    return session.value?.getDiceRollLog() ?? [];
+  });
+  const diceRollArchiveSize = ref(diceRollArchiveCount());
+  const replayServerStatus = ref<ReplaySyncStatus>('idle');
+  const replaySessionId = ref(getReplaySessionId());
 
   const isDiceRollActive = computed(() => diceRollUi.value?.visible === true);
 
@@ -259,6 +283,54 @@ export const useGameStore = defineStore('game', () => {
     return Boolean(highlight && Object.keys(highlight).length > 0);
   }
 
+  function persistDiceRollLogEntry(entry: DiceRollLogEntry): void {
+    appendDiceRollLogEntry(entry);
+    diceRollArchiveSize.value = diceRollArchiveCount();
+    void (async () => {
+      if (session.value) {
+        await syncSessionSnapshot(session.value.toJSON());
+      }
+      const ok = await pushDiceRollToServer(entry);
+      replayServerStatus.value = ok ? 'online' : 'offline';
+    })();
+  }
+
+  async function refreshReplayServerStatus(): Promise<boolean> {
+    replayServerStatus.value = 'syncing';
+    const online = await checkReplayServerHealth();
+    replayServerStatus.value = online ? 'online' : 'offline';
+    return online;
+  }
+
+  async function syncReplayToServer(): Promise<boolean> {
+    if (!session.value) {
+      return false;
+    }
+    replayServerStatus.value = 'syncing';
+    const ok = await syncSessionSnapshot(session.value.toJSON());
+    replayServerStatus.value = ok ? 'online' : 'offline';
+    return ok;
+  }
+
+  async function exportServerReplay(): Promise<void> {
+    await syncReplayToServer();
+    await downloadReplayFromServer(replaySessionId.value);
+  }
+
+  function exportDiceRollLog(): void {
+    if (session.value) {
+      syncSessionDiceRollLog(session.value.getDiceRollLog());
+      diceRollArchiveSize.value = diceRollArchiveCount();
+    }
+    downloadDiceRollArchive();
+  }
+
+  function getDiceRollArchivePreview(): ReturnType<typeof loadDiceRollArchive> {
+    syncSessionDiceRollLog(session.value?.getDiceRollLog() ?? []);
+    diceRollArchiveSize.value = diceRollArchiveCount();
+    return loadDiceRollArchive();
+  }
+
   function bumpRevision(): void {
     revision.value += 1;
   }
@@ -280,6 +352,9 @@ export const useGameStore = defineStore('game', () => {
     };
     saveGame(payload);
     refreshSavedFlag();
+    void syncSessionSnapshot(session.value.toJSON()).then((ok) => {
+      replayServerStatus.value = ok ? 'online' : 'offline';
+    });
   }
 
   function loadFromStorage(): AppTab | null {
@@ -289,6 +364,9 @@ export const useGameStore = defineStore('game', () => {
     }
     session.value = GameSession.fromJSON(payload.session);
     lastError.value = null;
+    syncSessionDiceRollLog(session.value.getDiceRollLog());
+    diceRollArchiveSize.value = diceRollArchiveCount();
+    void syncReplayToServer();
     bumpRevision();
     refreshSavedFlag();
     return payload.activeTab === 'run' ? 'control' : (payload.activeTab ?? 'board');
@@ -301,6 +379,7 @@ export const useGameStore = defineStore('game', () => {
     closeDiceRollUi();
     releaseEffectEvents.value = [];
     clearSavedGame();
+    replaySessionId.value = resetReplaySessionId();
     refreshSavedFlag();
     bumpRevision();
   }
@@ -329,6 +408,9 @@ export const useGameStore = defineStore('game', () => {
       }
       if (result.phase === GamePhase.REPLENISH && prevPhase === GamePhase.RELEASE) {
         releaseEffectEvents.value = [];
+      }
+      if (result.diceRollLogged) {
+        persistDiceRollLogEntry(result.diceRollLogged);
       }
       bumpRevision();
     }
@@ -489,6 +571,10 @@ export const useGameStore = defineStore('game', () => {
     pendingDiceAssignments,
     pendingRollPreview,
     appliedRollCount,
+    diceRollLog,
+    diceRollArchiveSize,
+    replayServerStatus,
+    replaySessionId,
     effortHighlights,
     diceRollUi,
     releaseEffectEvents,
@@ -500,6 +586,11 @@ export const useGameStore = defineStore('game', () => {
     canDeployToday,
     startNewGame,
     resetGame,
+    exportDiceRollLog,
+    exportServerReplay,
+    refreshReplayServerStatus,
+    syncReplayToServer,
+    getDiceRollArchivePreview,
     persistToStorage,
     loadFromStorage,
     refreshSavedFlag,

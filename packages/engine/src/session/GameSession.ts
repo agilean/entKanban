@@ -9,6 +9,10 @@ import { WipLimitAdjustment } from '../WipLimitAdjustment.js';
 import type { Card } from '../card/Card.js';
 import { createDaySnapshot } from '../history/createDaySnapshot.js';
 import { DaySnapshotStore } from '../history/DaySnapshotStore.js';
+import {
+  cloneDiceRollLogEntry,
+  type DiceRollLogEntry,
+} from '../history/DiceRollLogEntry.js';
 import { FinancialSummary } from '../finance/FinancialSummary.js';
 import { isBillingDay } from '../finance/billingDays.js';
 import type { Dice } from '../dice/Dice.js';
@@ -41,6 +45,7 @@ export class GameSession {
   private manualDiceAssignments: DiceAssignmentInput[] | null = null;
   private pendingRollSteps: DiceRollApplyStep[] | null = null;
   private appliedRollCount = 0;
+  private diceRollLog: DiceRollLogEntry[] = [];
 
   private constructor(
     private readonly board: Board,
@@ -121,6 +126,9 @@ export class GameSession {
     if (state.appliedRollCount !== undefined) {
       session.appliedRollCount = state.appliedRollCount;
     }
+    if (state.diceRollLog !== undefined) {
+      session.diceRollLog = state.diceRollLog.map(cloneDiceRollLogEntry);
+    }
     if (session.phase === GamePhase.ADJUST_WIP) {
       session.beginReplenishPhase();
     } else {
@@ -156,6 +164,10 @@ export class GameSession {
 
   getAppliedRollCount(): number {
     return this.appliedRollCount;
+  }
+
+  getDiceRollLog(): readonly DiceRollLogEntry[] {
+    return this.diceRollLog.map(cloneDiceRollLogEntry);
   }
 
   getSnapshots(): readonly ReturnType<DaySnapshotStore['getAll']>[number][] {
@@ -195,6 +207,7 @@ export class GameSession {
       manualDiceAssignments: this.manualDiceAssignments,
       pendingRollSteps: this.pendingRollSteps,
       appliedRollCount: this.appliedRollCount,
+      diceRollLog: this.diceRollLog.map(cloneDiceRollLogEntry),
     };
   }
 
@@ -239,13 +252,41 @@ export class GameSession {
     return this.getDaysFactory().getDay(this.currentDay);
   }
 
-  private success(effects: CardEffectEvent[] = []): DispatchResult {
+  private success(
+    effects: CardEffectEvent[] = [],
+    diceRollLogged?: DiceRollLogEntry,
+  ): DispatchResult {
     return {
       ok: true,
       phase: this.phase,
       pendingActions: this.buildPendingActions(),
       effects: effects.length > 0 ? effects : undefined,
+      diceRollLogged,
     };
+  }
+
+  private recordCompletedDiceRoll(): DiceRollLogEntry | undefined {
+    if (!this.pendingRollSteps || this.pendingRollSteps.length === 0) {
+      return undefined;
+    }
+
+    const entry: DiceRollLogEntry = {
+      day: this.currentDay,
+      recordedAt: new Date().toISOString(),
+      assignments: (this.manualDiceAssignments ?? []).map((assignment) => ({
+        state: assignment.state,
+        cardName: assignment.cardName,
+        diceIndices: [...assignment.diceIndices],
+      })),
+      steps: this.pendingRollSteps.map((step) => ({
+        ...step,
+        diceIndices: [...step.diceIndices],
+        dieLabels: [...step.dieLabels],
+        rollValues: [...step.rollValues],
+      })),
+    };
+    this.diceRollLog.push(entry);
+    return entry;
   }
 
   private isPreparationPhase(): boolean {
@@ -400,6 +441,8 @@ export class GameSession {
   }
 
   private finishDiceWorkDay(): DispatchResult {
+    const diceRollLogged = this.recordCompletedDiceRoll();
+
     for (const state of Object.values(State)) {
       this.board.getStateColumn(state).clearDiceAssignments();
     }
@@ -410,14 +453,14 @@ export class GameSession {
     if (isBillingDay(this.currentDay)) {
       const effects = this.runBillingDayRelease();
       this.phase = GamePhase.RELEASE;
-      return this.success(effects);
+      return this.success(effects, diceRollLogged);
     }
 
     this.finishEndOfDay();
     if (this.phase === GamePhase.GAME_OVER) {
-      return this.success();
+      return this.success([], diceRollLogged);
     }
-    return this.startNextDay();
+    return this.startNextDay([], diceRollLogged);
   }
 
   private finishReleasePhase(): DispatchResult {
@@ -481,7 +524,10 @@ export class GameSession {
     return this.phase;
   }
 
-  private startNextDay(carryEffects: CardEffectEvent[] = []): DispatchResult {
+  private startNextDay(
+    carryEffects: CardEffectEvent[] = [],
+    diceRollLogged?: DiceRollLogEntry,
+  ): DispatchResult {
     if (this.phase !== GamePhase.DAY_COMPLETE) {
       return { ok: false, error: 'Not ready for next day' };
     }
@@ -491,11 +537,11 @@ export class GameSession {
     this.currentDay += 1;
     if (this.currentDay > 21) {
       this.phase = GamePhase.GAME_OVER;
-      return this.success(carryEffects);
+      return this.success(carryEffects, diceRollLogged);
     }
     DayStore.setDay(this.getDaysFactory().getDay(this.currentDay));
     this.beginReplenishPhase();
-    return this.success(carryEffects);
+    return this.success(carryEffects, diceRollLogged);
   }
 
   private buildPendingActions(): PendingAction[] {

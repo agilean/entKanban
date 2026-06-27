@@ -307,6 +307,32 @@ describe('GameSession', () => {
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
   });
 
+  it('records dice assignment and roll points in the session log', () => {
+    const session = GameSession.createNew({ diceRoller: new LoadedDice(4) });
+    const devCard = session
+      .getBoard()
+      .getStateColumn(State.DEVELOPMENT)
+      .getIncompleteCards()[0]!
+      .getName();
+    session.dispatch({
+      type: 'assign-dice',
+      assignments: [{ state: State.DEVELOPMENT, cardName: devCard, diceIndices: [2] }],
+    });
+    expect(session.dispatch({ type: 'roll-dice' }).ok).toBe(true);
+    applyAllRolls(session);
+
+    const log = session.getDiceRollLog();
+    expect(log).toHaveLength(1);
+    expect(log[0]!.day).toBe(9);
+    expect(log[0]!.assignments).toEqual([
+      { state: State.DEVELOPMENT, cardName: devCard, diceIndices: [2] },
+    ]);
+    expect(log[0]!.steps).toHaveLength(1);
+    expect(log[0]!.steps[0]!.rollValues).toEqual([4]);
+    expect(log[0]!.steps[0]!.totalRoll).toBe(4);
+    expect(log[0]!.recordedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
   it('rejects roll without manual dice assignment', () => {
     const session = GameSession.createNew();
     const result = session.dispatch({ type: 'roll-dice' });

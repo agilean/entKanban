@@ -1,0 +1,25 @@
+{
+  "name": "@kanban-game/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-sqlite --watch src/index.ts",
+    "start": "node --experimental-sqlite dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "node --experimental-sqlite ./node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@kanban-game/engine": "workspace:*",
+    "hono": "^4.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.32",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

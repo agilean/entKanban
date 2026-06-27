@@ -4,10 +4,12 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "dev": "pnpm --filter @kanban-game/engine build && pnpm --filter @kanban-game/web dev"
+    "dev": "pnpm --filter @kanban-game/engine build && pnpm --parallel --filter @kanban-game/web --filter @kanban-game/server dev",
+    "dev:web": "pnpm --filter @kanban-game/engine build && pnpm --filter @kanban-game/web dev",
+    "dev:server": "pnpm --filter @kanban-game/server dev"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "packageManager": "pnpm@11.9.0"
 }

@@ -33,6 +33,8 @@ export type { GameSessionOptions } from './session/GameSession.js';
 export type { DaySnapshot, ColumnWipCounts, DeployedCardMetrics } from './history/DaySnapshot.js';
 export { DaySnapshotStore } from './history/DaySnapshotStore.js';
 export { createDaySnapshot, captureWipCounts } from './history/createDaySnapshot.js';
+export type { DiceRollLogEntry } from './history/DiceRollLogEntry.js';
+export { cloneDiceRollLogEntry } from './history/DiceRollLogEntry.js';
 
 export type { BlockerRollResult } from './Day.js';
 

@@ -74,6 +74,18 @@ describe('GameSession serialization', () => {
     expect(boardSignature(restored)).toBe(boardSignature(session));
   });
 
+  it('round-trips dice roll log entries', () => {
+    const session = GameSession.createNew();
+    assignAllDice(session);
+    rollDice(session);
+    applyAllRolls(session);
+
+    expect(session.getDiceRollLog()).toHaveLength(1);
+
+    const restored = GameSession.fromJSON(session.toJSON());
+    expect(restored.getDiceRollLog()).toEqual(session.getDiceRollLog());
+  });
+
   it('round-trips pending roll preview during do-work', () => {
     const session = GameSession.createNew();
     rollDice(session);

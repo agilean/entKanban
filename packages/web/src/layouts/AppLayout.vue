@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ENGINE_VERSION } from '@kanban-game/engine';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
@@ -25,6 +25,33 @@ const subtitle = computed(() => {
 });
 
 const isDev = import.meta.env.DEV;
+
+const replayStatusLabel = computed(() => {
+  switch (game.replayServerStatus) {
+    case 'online':
+      return '回放库已连接';
+    case 'offline':
+      return '回放库离线';
+    case 'syncing':
+      return '同步中…';
+    default:
+      return '回放库';
+  }
+});
+
+onMounted(() => {
+  void game.refreshReplayServerStatus();
+});
+
+function handleExportServerReplay(): void {
+  void game.exportServerReplay().catch((error: unknown) => {
+    window.alert(error instanceof Error ? error.message : '导出回放失败');
+  });
+}
+
+function handleExportDiceLog(): void {
+  game.exportDiceRollLog();
+}
 
 function handleSave(): void {
   game.persistToStorage(ui.activeTab);
@@ -68,8 +95,20 @@ function handleOpenGuide(): void {
       <div class="header-actions">
         <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
         <span class="version">Engine {{ ENGINE_VERSION }}</span>
+        <span
+          v-if="game.hasSession"
+          class="replay-status"
+          :class="game.replayServerStatus"
+          :title="`Session ${game.replaySessionId}`"
+        >
+          {{ replayStatusLabel }}
+        </span>
         <template v-if="game.hasSession">
           <button type="button" class="btn" @click="handleOpenGuide">游戏说明</button>
+          <button type="button" class="btn" @click="handleExportServerReplay">导出服务器回放</button>
+          <button type="button" class="btn" @click="handleExportDiceLog">
+            导出骰子日志{{ game.diceRollArchiveSize > 0 ? ` (${game.diceRollArchiveSize})` : '' }}
+          </button>
           <button type="button" class="btn" @click="handleSave">存档</button>
           <button v-if="game.hasSavedGame" type="button" class="btn" @click="handleLoad">读档</button>
           <button type="button" class="btn" @click="handleNewGame">新游戏</button>
@@ -147,6 +186,29 @@ function handleOpenGuide(): void {
 .version {
   font-size: 0.75rem;
   color: #94a3b8;
+}
+
+.replay-status {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.replay-status.online {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.replay-status.offline {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.replay-status.syncing {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .dev-link {
