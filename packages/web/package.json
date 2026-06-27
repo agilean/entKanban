@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
     "dev": "vite",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@kanban-game/engine": "workspace:*",
@@ -22,6 +23,7 @@
     "@vue/tsconfig": "^0.7.0",
     "typescript": "^5.8.3",
     "vite": "^8.0.0",
+    "vitest": "^4.1.0",
     "vue-tsc": "^2.2.8"
   }
 }

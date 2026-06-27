@@ -2,15 +2,47 @@ import type { ColumnWipCounts, DaySnapshot, DeployedCardMetrics } from '@kanban-
 
 export type TimelinePoint = DaySnapshot & { provisional?: boolean };
 
-const CFD_COLUMNS: Array<{ key: keyof ColumnWipCounts; label: string; color: string }> = [
-  { key: 'backlog', label: 'Backlog', color: '#94a3b8' },
-  { key: 'selected', label: 'Selected', color: '#60a5fa' },
-  { key: 'analysis', label: 'Analysis', color: '#3b82f6' },
-  { key: 'development', label: 'Development', color: '#22c55e' },
-  { key: 'test', label: 'Test', color: '#f59e0b' },
-  { key: 'readyToDeploy', label: 'Ready', color: '#a855f7' },
-  { key: 'deployed', label: 'Deployed', color: '#64748b' },
+/** CFD stack order: Deployed (bottom) → Backlog (top), matching Kanban convention. */
+export const CFD_STAGE_ORDER: readonly (keyof ColumnWipCounts)[] = [
+  'deployed',
+  'readyToDeploy',
+  'test',
+  'development',
+  'analysis',
+  'selected',
+  'backlog',
 ];
+
+const CFD_COLUMNS: Array<{ key: keyof ColumnWipCounts; label: string; color: string }> = [
+  { key: 'deployed', label: 'Deployed', color: '#64748b' },
+  { key: 'readyToDeploy', label: 'Ready', color: '#a855f7' },
+  { key: 'test', label: 'Test', color: '#f59e0b' },
+  { key: 'development', label: 'Development', color: '#22c55e' },
+  { key: 'analysis', label: 'Analysis', color: '#3b82f6' },
+  { key: 'selected', label: 'Selected', color: '#60a5fa' },
+  { key: 'backlog', label: 'Backlog', color: '#94a3b8' },
+];
+
+export type CfdComputed = {
+  /** WIP per stage, same order as CFD_STAGE_ORDER. */
+  bands: number[];
+  /** Cumulative upper bounds (cards that have reached each stage), monotonic non-decreasing. */
+  boundaries: number[];
+  /** Total cards in the system at this point in time. */
+  total: number;
+};
+
+/** Derive CFD bands and cumulative "passed through" boundaries from a WIP snapshot. */
+export function computeCfdFromWipCounts(wip: ColumnWipCounts): CfdComputed {
+  const bands = CFD_STAGE_ORDER.map((key) => wip[key]);
+  const boundaries: number[] = [];
+  let cum = 0;
+  for (const height of bands) {
+    cum += height;
+    boundaries.push(cum);
+  }
+  return { bands, boundaries, total: cum };
+}
 
 export function buildTimeline(
   snapshots: readonly DaySnapshot[],
@@ -52,15 +84,15 @@ export function buildCfdOption(timeline: TimelinePoint[]) {
     legend: { top: 0 },
     grid: { left: 40, right: 16, top: 40, bottom: 28 },
     xAxis: { type: 'category', data: days },
-    yAxis: { type: 'value', name: 'WIP' },
-    series: CFD_COLUMNS.map((column) => ({
+    yAxis: { type: 'value', name: '累计卡片数' },
+    series: CFD_COLUMNS.map((column, stageIndex) => ({
       name: column.label,
       type: 'line',
       stack: 'cfd',
       areaStyle: { opacity: 0.85 },
       emphasis: { focus: 'series' },
       itemStyle: { color: column.color },
-      data: timeline.map((point) => point.wipCounts[column.key]),
+      data: timeline.map((point) => computeCfdFromWipCounts(point.wipCounts).bands[stageIndex]!),
     })),
   };
 }

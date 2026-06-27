@@ -9,7 +9,7 @@ const { cfdOption, hasData } = useAnalytics();
 <template>
   <section class="chart-panel">
     <h2>累积流图 (CFD)</h2>
-    <p class="desc">各列 WIP 随时间堆叠变化</p>
+    <p class="desc">每日累计穿过各状态的卡片数；色带厚度为当前 WIP</p>
     <ChartEmpty v-if="!hasData" />
     <BaseChart v-else :option="cfdOption" />
   </section>
