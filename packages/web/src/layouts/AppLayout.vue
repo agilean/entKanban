@@ -38,12 +38,24 @@ function handleLoad(): void {
   }
 }
 
+function handleStartNewGame(): void {
+  game.startNewGame();
+  ui.setTab('board');
+  ui.resetSetupGuideForNewGame();
+}
+
 function handleNewGame(): void {
   if (game.hasSession && !window.confirm('开始新游戏将清除当前进度，确定吗？')) {
     return;
   }
   game.resetGame();
   ui.setTab('board');
+  ui.resetSetupGuideForNewGame();
+}
+
+function handleOpenGuide(): void {
+  ui.setTab('board');
+  ui.openSetupGuide();
 }
 </script>
 
@@ -58,11 +70,12 @@ function handleNewGame(): void {
         <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
         <span class="version">Engine {{ ENGINE_VERSION }}</span>
         <template v-if="game.hasSession">
+          <button type="button" class="btn" @click="handleOpenGuide">游戏说明</button>
           <button type="button" class="btn" @click="handleSave">存档</button>
           <button v-if="game.hasSavedGame" type="button" class="btn" @click="handleLoad">读档</button>
           <button type="button" class="btn" @click="handleNewGame">新游戏</button>
         </template>
-        <button v-else type="button" class="btn primary" @click="game.startNewGame()">
+        <button v-else type="button" class="btn primary" @click="handleStartNewGame">
           新游戏
         </button>
         <button

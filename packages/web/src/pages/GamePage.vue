@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { GamePhase } from '@kanban-game/engine';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import DragToast from '../components/board/DragToast.vue';
 import DayPhaseBar from '../components/board/DayPhaseBar.vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
@@ -17,6 +17,22 @@ const ui = useUiStore();
 
 const showSidePanel = computed(() => game.phase === GamePhase.RELEASE);
 
+watch(
+  () => [game.hasSession, game.currentDay, game.phase] as const,
+  ([hasSession, day, phase]) => {
+    if (
+      hasSession &&
+      day === 9 &&
+      phase === GamePhase.REPLENISH &&
+      !ui.setupGuideDismissed &&
+      !ui.setupGuideOpen
+    ) {
+      ui.openSetupGuide();
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   game.refreshSavedFlag();
   const restoredTab = game.loadFromStorage();
@@ -24,12 +40,15 @@ onMounted(() => {
     ui.setTab(restoredTab);
   } else if (!game.hasSession) {
     game.startNewGame();
+    ui.resetSetupGuideForNewGame();
   }
 });
 </script>
 
 <template>
   <AppLayout>
+    <SetupGuide />
+
     <section v-if="!game.hasSession" class="empty">
       <p>正在初始化游戏…</p>
     </section>
@@ -42,7 +61,6 @@ onMounted(() => {
       <AnalyticsView v-if="ui.activeTab !== 'board'" />
 
       <template v-else>
-        <SetupGuide :phase="game.phase" :current-day="game.currentDay" />
         <DayPhaseBar :phase="game.phase" :current-day="game.currentDay" />
 
         <div class="game-layout" :class="{ 'with-panel': showSidePanel }">
