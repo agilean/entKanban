@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COLUMN_NEXT, type FlowColumnId } from '@kanban-game/engine';
 import { computed, ref, watch } from 'vue';
 import draggable from 'vuedraggable';
 import { useDragPolicy } from '../../composables/useDragPolicy';
@@ -127,7 +128,14 @@ function onCardDiceDrop(event: DragEvent, cardName: string): void {
 }
 
 function isForwardDraggable(card: CardView): boolean {
-  return canAdvanceFlow.value && card.advanceable === true;
+  if (!canAdvanceFlow.value) {
+    return false;
+  }
+  const next = COLUMN_NEXT[props.column.id as FlowColumnId];
+  if (!next) {
+    return false;
+  }
+  return game.checkAdvance(props.column.id, next, card.name).ok;
 }
 
 function resetAdvanceDropPreview(): void {
@@ -452,9 +460,9 @@ const interactive = () => isColumnInteractive(props.column.id);
       </div>
 
       <footer
-        v-if="canAssignDice && column.dice.length > 0"
+        v-if="canAssignDice && column.state && column.dice.length > 0"
         class="dice-row"
-        :class="{ 'drag-over': diceRowDragOver }"
+        :class="{ 'drag-over': diceRowDragOver, empty: availableColumnDice.length === 0 }"
         @dragover="onDiceRowDragOver"
         @dragleave="onDiceRowDragLeave"
         @drop="onDiceRowDrop"
@@ -466,9 +474,10 @@ const interactive = () => isColumnInteractive(props.column.id);
           :draggable="isDiceDraggable(die.index)"
           @drag-start="onDiceDragStart"
         />
+        <span v-if="availableColumnDice.length === 0" class="dice-row-empty">拖回此处取消分配</span>
       </footer>
-      <p v-if="canAssignDice" class="column-hint">
-        骰子可在列底、卡片间拖放，或拖回顶栏取消分配
+      <p v-if="canAssignDice && column.state" class="column-hint">
+        从列底拖骰子到卡片；从卡片拖回列底可取消分配
       </p>
       <p v-else-if="canAdvanceFlow && !isRelease" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
       <p
@@ -756,5 +765,16 @@ const interactive = () => isColumnInteractive(props.column.id);
   border-color: #2563eb;
   background: #eff6ff;
   box-shadow: inset 0 0 0 1px #dbeafe;
+}
+
+.dice-row.empty {
+  min-height: 1.75rem;
+  justify-content: center;
+}
+
+.dice-row-empty {
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 </style>

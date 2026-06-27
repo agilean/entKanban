@@ -3,7 +3,6 @@ import { onMounted, onUnmounted } from 'vue';
 import type { BoardView } from '../../utils/buildBoardView';
 import { endCardDrag } from '../../utils/cardDragState';
 import { endDiceDrag } from '../../utils/diceDragState';
-import DicePool from './DicePool.vue';
 import KanbanColumn from './KanbanColumn.vue';
 
 defineProps<{
@@ -26,7 +25,6 @@ onUnmounted(() => {
 
 <template>
   <div class="kanban-board-wrap">
-    <DicePool :board="board" />
     <div class="kanban-board-area">
       <div class="kanban-board">
         <KanbanColumn

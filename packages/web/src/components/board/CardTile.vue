@@ -190,8 +190,10 @@ function closeDetail(): void {
       'effort-updated': hasEffortUpdate,
       'roll-active': rollUi?.mode === 'rolling',
       'roll-done': rollUi?.mode === 'done',
+      'advance-ready': isForwardDragEnabled,
     }"
     :draggable="isAnyDragEnabled"
+    :title="isForwardDragEnabled ? '可拖入下一阶段' : undefined"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
     @dragenter="handleDragEnter"
@@ -339,6 +341,31 @@ function closeDetail(): void {
 .card-tile.draggable:active {
   cursor: grabbing;
   opacity: 0.75;
+}
+
+.card-tile.advance-ready {
+  border-color: #86efac;
+  background-color: #f7fef9;
+  box-shadow: none;
+}
+
+.card-tile.advance-ready.kind-expedite {
+  background-color: #fff8f8;
+  border-color: #86efac;
+}
+
+.card-tile.advance-ready.kind-fixed-date {
+  background-color: #fffef5;
+  border-color: #86efac;
+}
+
+.card-tile.advance-ready.kind-intangible {
+  background-color: #faf8ff;
+  border-color: #86efac;
+}
+
+.card-tile.advance-ready.draggable {
+  cursor: grab;
 }
 
 .card-tile.droppable {
