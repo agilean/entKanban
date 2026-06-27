@@ -15,27 +15,28 @@ export function resolveDiceAssignments(
   board: Board,
   manual: readonly DiceAssignmentInput[] | null,
 ): DiceAssignmentInput[] {
+  if (manual === null) {
+    return [];
+  }
+
+  const result: DiceAssignmentInput[] = [];
+  for (const assignment of manual) {
+    const diceIndices = [...assignment.diceIndices];
+    if (diceIndices.length === 0) {
+      continue;
+    }
+    result.push({ ...assignment, diceIndices });
+  }
+
+  return result;
+}
+
+/** Auto-assign all dice to incomplete cards — for simulations/tests only. */
+export function buildDefaultDiceAssignments(board: Board): DiceAssignmentInput[] {
   const usedIndices = new Set<number>();
   const result: DiceAssignmentInput[] = [];
-
-  if (manual) {
-    for (const assignment of manual) {
-      const diceIndices = [...assignment.diceIndices];
-      if (diceIndices.length === 0) {
-        continue;
-      }
-      for (const index of diceIndices) {
-        usedIndices.add(index);
-      }
-      result.push({ ...assignment, diceIndices });
-    }
-  }
-
-  if (manual !== null) {
-    return result;
-  }
-
   const allDice = board.getDice();
+
   for (const state of STATE_ORDER) {
     const unassigned = allDice
       .map((die, index) => ({ die, index }))

@@ -7,21 +7,31 @@ import { StateDice } from '../src/dice/StateDice.js';
 import { LoadedDice } from './helpers/LoadedDice.js';
 import {
   applyDiceRollStep,
+  buildDefaultDiceAssignments,
   buildDiceRollPreview,
   resolveDiceAssignments,
 } from '../src/dice/rollDicePreview.js';
 
 describe('rollDicePreview', () => {
-  it('resolves unassigned dice to incomplete cards in the column', () => {
+  it('builds default assignments for unassigned dice', () => {
     const board = new Board();
     board.clear();
     board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
     board.getStateColumn(State.TEST).addCard(getCard('S3'), ClassOfService.STANDARD);
 
-    const resolved = resolveDiceAssignments(board, null);
+    const resolved = buildDefaultDiceAssignments(board);
     expect(resolved).toEqual([
       { state: State.TEST, cardName: 'S3', diceIndices: [0] },
     ]);
+  });
+
+  it('returns empty when no manual assignments were made', () => {
+    const board = new Board();
+    board.clear();
+    board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
+    board.getStateColumn(State.TEST).addCard(getCard('S3'), ClassOfService.STANDARD);
+
+    expect(resolveDiceAssignments(board, null)).toEqual([]);
   });
 
   it('applies rolled points to card effort', () => {

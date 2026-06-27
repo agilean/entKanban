@@ -69,6 +69,7 @@ export type { Dice } from './dice/Dice.js';
 export type { DiceRollApplyStep } from './dice/DiceRollApplyStep.js';
 export {
   resolveDiceAssignments,
+  buildDefaultDiceAssignments,
   buildDiceRollPreview,
   applyDiceRollStep,
 } from './dice/rollDicePreview.js';

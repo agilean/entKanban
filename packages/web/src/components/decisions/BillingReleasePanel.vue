@@ -39,7 +39,7 @@ const effectEvents = computed(() => game.releaseEffectEvents);
   <section class="billing-panel">
     <header>
       <h3>Day {{ billingDay }} 发布与收益</h3>
-      <p class="hint">测试完成与就绪卡片已在掷骰后自动发布，确认收益后点击下方按钮进入下一天</p>
+      <p class="hint">测试完成与就绪卡片已在掷骰后自动发布，确认收益后点击「完成发布日」，再点击「进入下一天」开始新一天</p>
     </header>
 
     <section v-if="effectEvents.length > 0" class="effects">

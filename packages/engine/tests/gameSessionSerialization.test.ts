@@ -3,8 +3,10 @@ import { captureBoardSnapshot } from '../src/session/boardSnapshot.js';
 import { GamePhase } from '../src/session/GamePhase.js';
 import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
+import { assignAllDice } from './helpers/assignAllDice.js';
 
 function rollDice(session: GameSession): void {
+  assignAllDice(session);
   const result = session.dispatch({ type: 'roll-dice' });
   expect(result.ok).toBe(true);
 }
@@ -23,6 +25,9 @@ function rollAndAdvanceDay(session: GameSession): void {
   if (session.getPhase() === GamePhase.RELEASE) {
     const confirm = session.dispatch({ type: 'confirm-phase' });
     expect(confirm.ok).toBe(true);
+    expect(session.getPhase()).toBe(GamePhase.DAY_COMPLETE);
+    const next = session.dispatch({ type: 'confirm-phase' });
+    expect(next.ok).toBe(true);
   }
 }
 

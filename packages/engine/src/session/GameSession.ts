@@ -367,6 +367,9 @@ export class GameSession {
     if (this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Dice roll not allowed in current phase' };
     }
+    if (this.manualDiceAssignments === null) {
+      return { ok: false, error: '请先将骰子分配到卡片上' };
+    }
     const resolved = resolveDiceAssignments(this.board, this.manualDiceAssignments);
     if (resolved.length === 0) {
       return { ok: false, error: '请先将骰子分配到卡片上' };
@@ -425,10 +428,7 @@ export class GameSession {
     this.autoDeployReadyCards(context);
     const effects = context.takeEffectEvents();
     const phaseAfterEnd = this.finishEndOfDay();
-    if (phaseAfterEnd === GamePhase.GAME_OVER) {
-      return this.success(effects);
-    }
-    return this.startNextDay(effects);
+    return this.success(effects);
   }
 
   private runBillingDayRelease(): CardEffectEvent[] {
@@ -485,6 +485,9 @@ export class GameSession {
     if (this.phase !== GamePhase.DAY_COMPLETE) {
       return { ok: false, error: 'Not ready for next day' };
     }
+    this.manualDiceAssignments = null;
+    this.pendingRollSteps = null;
+    this.appliedRollCount = 0;
     this.currentDay += 1;
     if (this.currentDay > 21) {
       this.phase = GamePhase.GAME_OVER;

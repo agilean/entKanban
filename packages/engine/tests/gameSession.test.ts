@@ -4,8 +4,10 @@ import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
 import { WipLimitAdjustment } from '../src/WipLimitAdjustment.js';
 import { LoadedDice } from './helpers/LoadedDice.js';
+import { assignAllDice } from './helpers/assignAllDice.js';
 
 function rollDice(session: GameSession): void {
+  assignAllDice(session);
   const result = session.dispatch({ type: 'roll-dice' });
   expect(result.ok).toBe(true);
 }
@@ -24,6 +26,9 @@ function rollAndAdvanceDay(session: GameSession): void {
   if (session.getPhase() === GamePhase.RELEASE) {
     const confirm = session.dispatch({ type: 'confirm-phase' });
     expect(confirm.ok).toBe(true);
+    expect(session.getPhase()).toBe(GamePhase.DAY_COMPLETE);
+    const next = session.dispatch({ type: 'confirm-phase' });
+    expect(next.ok).toBe(true);
   }
 }
 
@@ -170,6 +175,7 @@ describe('GameSession', () => {
 
   it('enters release phase on billing days after dice work', () => {
     const session = GameSession.createNew();
+    assignAllDice(session);
     rollDice(session);
     applyAllRolls(session);
     expect(session.getPhase()).toBe(GamePhase.RELEASE);
@@ -301,8 +307,49 @@ describe('GameSession', () => {
     expect(restored.getPhase()).toBe(GamePhase.REPLENISH);
   });
 
+  it('rejects roll without manual dice assignment', () => {
+    const session = GameSession.createNew();
+    const result = session.dispatch({ type: 'roll-dice' });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/分配/);
+  });
+
+  it('finishes billing release on day complete before advancing to next day', () => {
+    const session = GameSession.createNew();
+    rollAndAdvanceDay(session);
+    rollAndAdvanceDay(session);
+    rollAndAdvanceDay(session);
+
+    expect(session.getCurrentDay()).toBe(12);
+    assignAllDice(session);
+    rollDice(session);
+    applyAllRolls(session);
+    expect(session.getPhase()).toBe(GamePhase.RELEASE);
+
+    const effortBefore = session.getBoard().findCardByName('S8')!.getRemainingWork(State.DEVELOPMENT);
+    const finishRelease = session.dispatch({ type: 'confirm-phase' });
+    expect(finishRelease.ok).toBe(true);
+    expect(session.getCurrentDay()).toBe(12);
+    expect(session.getPhase()).toBe(GamePhase.DAY_COMPLETE);
+    expect(session.getPendingRollSteps()).toEqual([]);
+    expect(session.getBoard().findCardByName('S8')!.getRemainingWork(State.DEVELOPMENT)).toBe(
+      effortBefore,
+    );
+
+    const nextDay = session.dispatch({ type: 'confirm-phase' });
+    expect(nextDay.ok).toBe(true);
+    expect(session.getCurrentDay()).toBe(13);
+    expect(session.getPhase()).toBe(GamePhase.REPLENISH);
+    expect(session.getPendingRollSteps()).toEqual([]);
+    expect(session.getManualDiceAssignments()).toBeNull();
+    expect(session.getBoard().findCardByName('S8')!.getRemainingWork(State.DEVELOPMENT)).toBe(
+      effortBefore,
+    );
+  });
+
   it('exposes dice roll preview after rolling', () => {
     const session = GameSession.createNew();
+    assignAllDice(session);
     rollDice(session);
     expect(session.getPhase()).toBe(GamePhase.DO_WORK);
     expect(session.getPendingRollSteps().length).toBeGreaterThan(0);
