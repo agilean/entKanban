@@ -2,7 +2,9 @@ export type CardEffectKind =
   | 'f1-on-time'
   | 'f1-late-fine'
   | 'i1-continuous-delivery'
+  | 'i1-deployed'
   | 'i2-test-boost'
+  | 'i2-deployed'
   | 'i3-backlog-cards';
 
 export type CardEffectEvent = {

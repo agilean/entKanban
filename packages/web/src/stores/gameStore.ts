@@ -322,14 +322,10 @@ export const useGameStore = defineStore('game', () => {
     } else {
       lastError.value = null;
       if (result.effects?.length) {
-        if (result.phase === GamePhase.RELEASE && prevPhase === GamePhase.DO_WORK) {
-          releaseEffectEvents.value = [...result.effects];
-        } else {
-          releaseEffectEvents.value = mergeEffectEvents(
-            [...releaseEffectEvents.value],
-            [...result.effects],
-          );
-        }
+        releaseEffectEvents.value = mergeEffectEvents(
+          [...releaseEffectEvents.value],
+          [...result.effects],
+        );
       }
       if (result.phase === GamePhase.REPLENISH && prevPhase === GamePhase.RELEASE) {
         releaseEffectEvents.value = [];

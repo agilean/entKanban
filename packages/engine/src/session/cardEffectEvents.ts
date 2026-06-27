@@ -48,6 +48,24 @@ export function recordDeployEffects(context: Context, card: Card): void {
       message: 'I3 已生效：存量加入 S29–S33 五张新功能卡',
     });
   }
+
+  if (card.getName() === 'I1') {
+    context.recordEffect({
+      cardName: 'I1',
+      kind: 'i1-deployed',
+      day,
+      message: 'I1 已部署：就绪列改为每日均可发布（持续生效）',
+    });
+  }
+
+  if (card.getName() === 'I2') {
+    context.recordEffect({
+      cardName: 'I2',
+      kind: 'i2-deployed',
+      day,
+      message: 'I2 已部署：测试列所有卡测试工作量 -2（持续生效）',
+    });
+  }
 }
 
 export function replaySpecialCardEffects(board: Board): void {

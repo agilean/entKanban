@@ -344,7 +344,18 @@ const interactive = () => isColumnInteractive(props.column.id);
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
       <span v-if="column.id === 'ready' && isRelease" class="release-badge">发布日</span>
-      <span v-if="column.i2TestBoostActive" class="i2-badge" title="I2 已生效：测试工作量 -2">
+      <span
+        v-if="column.i1DailyDeployActive"
+        class="i1-badge"
+        title="I1 已生效：就绪列改为每日均可发布"
+      >
+        每日发布
+      </span>
+      <span
+        v-if="column.i2TestBoostActive"
+        class="i2-badge"
+        title="I2 已生效：测试列所有卡测试工作量 -2"
+      >
         I2 · 测试 −2
       </span>
     </header>
@@ -611,6 +622,17 @@ const interactive = () => isColumnInteractive(props.column.id);
   border-radius: 0.25rem;
   white-space: nowrap;
   border: 1px solid #c4b5fd;
+}
+
+.i1-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  border: 1px solid #86efac;
 }
 
 .wip {

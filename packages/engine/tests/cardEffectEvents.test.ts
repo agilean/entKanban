@@ -47,6 +47,38 @@ describe('card effect events', () => {
     expect(deployContext.takeEffectEvents().some((e) => e.kind === 'i2-test-boost')).toBe(false);
   });
 
+  it('records I1 and I2 deploy notices like I3', () => {
+    const board = new Board();
+    board.clear();
+    const i1 = getCard('I1');
+    i1.onSelected(new Context(board, new Day(10)));
+    board.getReadyToDeploy().addCard(i1, ClassOfService.STANDARD);
+    board.getReadyToDeploy().setDeploymentFrequency(1);
+
+    const i1Context = new Context(board, new Day(15));
+    board.advanceCard('ready', 'deployed', 'I1', i1Context);
+    expect(i1Context.takeEffectEvents()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ cardName: 'I1', kind: 'i1-deployed' }),
+      ]),
+    );
+
+    const board2 = new Board();
+    board2.clear();
+    const i2 = getCard('I2');
+    i2.onSelected(new Context(board2, new Day(10)));
+    board2.getStateColumn(State.TEST).enableI2TestBoost();
+    board2.getReadyToDeploy().addCard(i2, ClassOfService.STANDARD);
+
+    const i2Context = new Context(board2, new Day(15));
+    board2.advanceCard('ready', 'deployed', 'I2', i2Context);
+    expect(i2Context.takeEffectEvents()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ cardName: 'I2', kind: 'i2-deployed' }),
+      ]),
+    );
+  });
+
   it('records F1 on-time and late deploy outcomes', () => {
     const onTimeBoard = new Board();
     onTimeBoard.clear();

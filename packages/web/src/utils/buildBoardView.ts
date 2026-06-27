@@ -53,6 +53,8 @@ export type ColumnView = {
   state?: State;
   zones?: ColumnZones;
   i2TestBoostActive?: boolean;
+  /** I1 active: ready column deploys every day (frequency = 1). */
+  i1DailyDeployActive?: boolean;
 };
 
 export type BoardView = {
@@ -226,6 +228,7 @@ export function buildBoardView(board: Board, currentDay: number): BoardView {
       count: board.getReadyToDeploy().getCards().length,
       cards: board.getReadyToDeploy().getCards().map((c) => mapCard(c, 'ready', currentDay)),
       dice: [],
+      i1DailyDeployActive: board.getReadyToDeploy().getDeploymentFrequency() === 1,
     },
     {
       id: 'deployed',
