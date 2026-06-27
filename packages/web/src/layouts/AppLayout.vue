@@ -43,6 +43,10 @@ onMounted(() => {
   void game.refreshReplayServerStatus();
 });
 
+function handleExportSystemLog(): void {
+  game.exportSystemLog();
+}
+
 function handleExportServerReplay(): void {
   void game.exportServerReplay().catch((error: unknown) => {
     window.alert(error instanceof Error ? error.message : '导出回放失败');
@@ -105,6 +109,9 @@ function handleOpenGuide(): void {
         </span>
         <template v-if="game.hasSession">
           <button type="button" class="btn" @click="handleOpenGuide">游戏说明</button>
+          <button type="button" class="btn" @click="handleExportSystemLog">
+            导出系统日志{{ game.systemLogSize > 0 ? ` (${game.systemLogSize})` : '' }}
+          </button>
           <button type="button" class="btn" @click="handleExportServerReplay">导出服务器回放</button>
           <button type="button" class="btn" @click="handleExportDiceLog">
             导出骰子日志{{ game.diceRollArchiveSize > 0 ? ` (${game.diceRollArchiveSize})` : '' }}

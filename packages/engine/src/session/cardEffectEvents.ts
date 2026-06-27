@@ -3,7 +3,37 @@ import type { Board } from '../Board.js';
 import type { Context } from '../Context.js';
 import { FixedDateCard } from '../card/FixedDateCard.js';
 import type { Card } from '../card/Card.js';
-import type { CardEffectEvent } from './CardEffectEvent.js';
+import type { CardEffectEvent, CardEffectKind } from './CardEffectEvent.js';
+
+const EFFECT_KIND_PRIORITY: Record<CardEffectKind, number> = {
+  'i1-deployed': 20,
+  'i1-continuous-delivery': 10,
+  'i2-deployed': 20,
+  'i2-test-boost': 10,
+  'i3-backlog-cards': 20,
+  'f1-on-time': 20,
+  'f1-late-fine': 20,
+};
+
+/** One display line per card — prefer deploy/最终状态 over 生效提示. */
+export function consolidateReleaseEffectEvents(
+  events: readonly CardEffectEvent[],
+): CardEffectEvent[] {
+  const byCard = new Map<string, CardEffectEvent>();
+  for (const event of events) {
+    const existing = byCard.get(event.cardName);
+    if (!existing) {
+      byCard.set(event.cardName, event);
+      continue;
+    }
+    const existingPriority = EFFECT_KIND_PRIORITY[existing.kind] ?? 0;
+    const nextPriority = EFFECT_KIND_PRIORITY[event.kind] ?? 0;
+    if (nextPriority >= existingPriority) {
+      byCard.set(event.cardName, event);
+    }
+  }
+  return [...byCard.values()].sort((a, b) => a.cardName.localeCompare(b.cardName));
+}
 
 export function recordReadyEffects(context: Context, card: Card): void {
   const day = context.getDay().getOrdinal();

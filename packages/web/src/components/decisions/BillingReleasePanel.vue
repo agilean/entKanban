@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useGameStore } from '../../stores/gameStore';
+import { isBillingDay } from '@kanban-game/engine';
 
 const game = useGameStore();
 
@@ -33,13 +34,24 @@ const rows = computed(() => {
 });
 
 const effectEvents = computed(() => game.releaseEffectEvents);
+
+const isBillingRelease = computed(() => isBillingDay(billingDay.value));
+const isDailyRelease = computed(
+  () => game.boardView?.columns.find((column) => column.id === 'ready')?.i1DailyDeployActive,
+);
 </script>
 
 <template>
   <section class="billing-panel">
     <header>
-      <h3>Day {{ billingDay }} 发布与收益</h3>
-      <p class="hint">测试完成与就绪卡片已在掷骰后自动发布，确认收益后点击「完成发布日」，再点击「进入下一天」开始新一天</p>
+      <h3>Day {{ billingDay }} {{ isBillingRelease ? '发布与收益' : '每日发布' }}</h3>
+      <p v-if="isBillingRelease" class="hint">
+        测试完成与就绪卡片已在掷骰后自动发布，确认收益后点击「完成发布日」，再点击「进入下一天」开始新一天
+      </p>
+      <p v-else-if="isDailyRelease" class="hint">
+        I1 已生效：每日发布日。测试完成与就绪卡片已自动发布，确认后点击「完成发布日」→「进入下一天」
+      </p>
+      <p v-else class="hint">测试完成与就绪卡片已在掷骰后自动发布，确认后进入下一天</p>
     </header>
 
     <section v-if="effectEvents.length > 0" class="effects">
@@ -52,7 +64,7 @@ const effectEvents = computed(() => game.releaseEffectEvents);
       </ul>
     </section>
 
-    <dl v-if="summary" class="metrics">
+    <dl v-if="summary && isBillingRelease" class="metrics">
       <div v-for="row in rows" :key="row.label" class="metric-row">
         <dt>{{ row.label }}</dt>
         <dd :class="{ profit: row.label.includes('毛利'), fine: row.label.includes('罚金') && row.value < 0 }">

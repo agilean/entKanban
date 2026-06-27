@@ -6,6 +6,7 @@ import {
   State,
   WipLimitAdjustment,
   mergeEffectEvents,
+  consolidateReleaseEffectEvents,
   type CardEffectEvent,
   type DaySnapshot,
   type DiceAssignmentInput,
@@ -38,6 +39,7 @@ import {
   syncSessionSnapshot,
   type ReplaySyncStatus,
 } from '../utils/replayApi';
+import { appendGameEvent, gameEventLogCount, downloadGameEventLog } from '../utils/gameEventLog';
 import type { AppTab } from './uiStore';
 
 export type AssignedDiceView = {
@@ -178,6 +180,7 @@ export const useGameStore = defineStore('game', () => {
   const diceRollArchiveSize = ref(diceRollArchiveCount());
   const replayServerStatus = ref<ReplaySyncStatus>('idle');
   const replaySessionId = ref(getReplaySessionId());
+  const systemLogSize = ref(gameEventLogCount());
 
   const isDiceRollActive = computed(() => diceRollUi.value?.visible === true);
 
@@ -331,8 +334,22 @@ export const useGameStore = defineStore('game', () => {
     return loadDiceRollArchive();
   }
 
-  function bumpRevision(): void {
-    revision.value += 1;
+  function logGameEvent(
+    entry: Omit<Parameters<typeof appendGameEvent>[0], 'day' | 'phase'> & {
+      day?: number;
+      phase?: string;
+    },
+  ): void {
+    appendGameEvent({
+      day: session.value?.getCurrentDay(),
+      phase: session.value?.getPhase(),
+      ...entry,
+    });
+    systemLogSize.value = gameEventLogCount();
+  }
+
+  function exportSystemLog(): void {
+    downloadGameEventLog();
   }
 
   const hasSavedGame = ref(false);
@@ -381,6 +398,7 @@ export const useGameStore = defineStore('game', () => {
     clearSavedGame();
     replaySessionId.value = resetReplaySessionId();
     refreshSavedFlag();
+    logGameEvent({ level: 'info', category: 'system', message: '新游戏开始' });
     bumpRevision();
   }
 
@@ -391,30 +409,89 @@ export const useGameStore = defineStore('game', () => {
   function dispatch(action: PlayerAction): DispatchResult | undefined {
     if (!session.value) {
       lastError.value = '尚未开始游戏';
+      logGameEvent({
+        level: 'warn',
+        category: 'dispatch',
+        message: '尚未开始游戏',
+        action: action.type,
+      });
       return { ok: false, error: '尚未开始游戏' };
     }
     const prevPhase = session.value.getPhase();
+    const currentDay = session.value.getCurrentDay();
+    logGameEvent({
+      level: 'info',
+      category: 'dispatch',
+      message: `dispatch ${action.type}`,
+      action: action.type,
+      day: currentDay,
+      phase: prevPhase,
+    });
     const result = session.value.dispatch(action);
     boardEpoch.value += 1;
     if (!result.ok) {
       lastError.value = result.error;
+      logGameEvent({
+        level: 'error',
+        category: 'dispatch',
+        message: result.error ?? 'dispatch failed',
+        action: action.type,
+        detail: { prevPhase, ok: false },
+      });
     } else {
       lastError.value = null;
-      if (result.effects?.length) {
-        releaseEffectEvents.value = mergeEffectEvents(
-          [...releaseEffectEvents.value],
-          [...result.effects],
-        );
-      }
-      if (result.phase === GamePhase.REPLENISH && prevPhase === GamePhase.RELEASE) {
+      if (result.phase === GamePhase.RELEASE && prevPhase !== GamePhase.RELEASE) {
+        releaseEffectEvents.value = consolidateReleaseEffectEvents(result.effects ?? []);
+        logGameEvent({
+          level: 'info',
+          category: 'phase',
+          message: `进入发布阶段 Day ${currentDay}`,
+          detail: { effects: releaseEffectEvents.value.map((e) => e.message) },
+        });
+      } else if (result.phase === GamePhase.REPLENISH) {
         releaseEffectEvents.value = [];
+        if (prevPhase !== GamePhase.REPLENISH) {
+          logGameEvent({
+            level: 'info',
+            category: 'phase',
+            message: `进入准备阶段 Day ${result.phase === GamePhase.REPLENISH ? session.value.getCurrentDay() : currentDay}`,
+          });
+        }
+      } else if (result.effects?.length) {
+        releaseEffectEvents.value = consolidateReleaseEffectEvents(
+          mergeEffectEvents([...releaseEffectEvents.value], [...result.effects]),
+        );
+        logGameEvent({
+          level: 'info',
+          category: 'effect',
+          message: `效果事件 x${result.effects.length}`,
+          detail: result.effects,
+        });
+      }
+      if (result.phase !== prevPhase && result.phase !== GamePhase.RELEASE && result.phase !== GamePhase.REPLENISH) {
+        logGameEvent({
+          level: 'info',
+          category: 'phase',
+          message: `阶段 ${prevPhase} → ${result.phase}`,
+          day: session.value.getCurrentDay(),
+        });
       }
       if (result.diceRollLogged) {
+        logGameEvent({
+          level: 'info',
+          category: 'dice',
+          message: `Day ${result.diceRollLogged.day} 掷骰完成`,
+          detail: result.diceRollLogged,
+        });
         persistDiceRollLogEntry(result.diceRollLogged);
       }
       bumpRevision();
     }
     return result;
+  }
+
+  function bumpRevision(): void {
+    revision.value += 1;
   }
 
   function dispatchAndSave(action: PlayerAction, activeTab: AppTab = 'board'): DispatchResult | undefined {
@@ -575,6 +652,7 @@ export const useGameStore = defineStore('game', () => {
     diceRollArchiveSize,
     replayServerStatus,
     replaySessionId,
+    systemLogSize,
     effortHighlights,
     diceRollUi,
     releaseEffectEvents,
@@ -588,6 +666,7 @@ export const useGameStore = defineStore('game', () => {
     resetGame,
     exportDiceRollLog,
     exportServerReplay,
+    exportSystemLog,
     refreshReplayServerStatus,
     syncReplayToServer,
     getDiceRollArchivePreview,

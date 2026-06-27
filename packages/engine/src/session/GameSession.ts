@@ -14,7 +14,7 @@ import {
   type DiceRollLogEntry,
 } from '../history/DiceRollLogEntry.js';
 import { FinancialSummary } from '../finance/FinancialSummary.js';
-import { isBillingDay } from '../finance/billingDays.js';
+import { shouldEnterReleasePhase } from '../finance/releaseDays.js';
 import type { Dice } from '../dice/Dice.js';
 import { RandomDice } from '../dice/RandomDice.js';
 import type { DiceRollApplyStep } from '../dice/DiceRollApplyStep.js';
@@ -450,7 +450,7 @@ export class GameSession {
     this.pendingRollSteps = null;
     this.appliedRollCount = 0;
 
-    if (isBillingDay(this.currentDay)) {
+    if (shouldEnterReleasePhase(this.currentDay, this.board.getReadyToDeploy().getDeploymentFrequency())) {
       const effects = this.runBillingDayRelease();
       this.phase = GamePhase.RELEASE;
       return this.success(effects, diceRollLogged);

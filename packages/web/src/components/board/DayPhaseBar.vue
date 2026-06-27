@@ -19,7 +19,9 @@ defineProps<{
 const game = useGameStore();
 const ui = useUiStore();
 
-const steps = computed(() => stepsForPhase(game.phase, game.currentDay));
+const steps = computed(() =>
+  stepsForPhase(game.phase, game.currentDay, game.boardView?.columns.find((c) => c.id === 'ready')?.i1DailyDeployActive),
+);
 
 const confirmAction = computed(() =>
   game.pendingActions.find((action) => action.kind === 'confirm'),

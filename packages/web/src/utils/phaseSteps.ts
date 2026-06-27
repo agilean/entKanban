@@ -53,11 +53,15 @@ export function isPhaseActive(current: GamePhase, step: GamePhase): boolean {
   return current === step;
 }
 
-export function stepsForPhase(current: GamePhase, currentDay: number): PhaseStep[] {
+export function stepsForPhase(
+  current: GamePhase,
+  currentDay: number,
+  dailyReleaseActive = false,
+): PhaseStep[] {
   if (current === GamePhase.GAME_OVER) {
     return [{ id: GamePhase.GAME_OVER, label: '结束' }];
   }
-  if (isBillingDay(currentDay)) {
+  if (isBillingDay(currentDay) || dailyReleaseActive) {
     return BILLING_DAY_STEPS;
   }
   return DAY_STEPS;

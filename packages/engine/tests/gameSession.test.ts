@@ -333,6 +333,16 @@ describe('GameSession', () => {
     expect(log[0]!.recordedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
+  it('enters release phase on non-billing days when I1 daily deploy is active', () => {
+    const session = GameSession.createNew();
+    session.getBoard().getReadyToDeploy().setDeploymentFrequency(1);
+    assignAllDice(session);
+    expect(session.dispatch({ type: 'roll-dice' }).ok).toBe(true);
+    applyAllRolls(session);
+    expect(session.getCurrentDay()).toBe(9);
+    expect(session.getPhase()).toBe(GamePhase.RELEASE);
+  });
+
   it('rejects roll without manual dice assignment', () => {
     const session = GameSession.createNew();
     const result = session.dispatch({ type: 'roll-dice' });

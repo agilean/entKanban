@@ -15,6 +15,7 @@ export { runDay, runDays } from './day/runDay.js';
 export { FinancialSummary } from './finance/FinancialSummary.js';
 export { BILLING_DAYS, isBillingDay } from './finance/billingDays.js';
 export type { BillingDay } from './finance/billingDays.js';
+export { isDailyReleaseActive, shouldEnterReleasePhase } from './finance/releaseDays.js';
 export { RunConfiguration } from './simulation/RunConfiguration.js';
 export { runAutoGame, defaultRunConfiguration } from './simulation/runAutoGame.js';
 
@@ -26,7 +27,7 @@ export type { GameSessionState, WipAdjustmentState } from './session/GameSession
 export type { BoardSnapshot, CardWorkSnapshot, StateColumnSlot } from './session/boardSnapshot.js';
 export { captureBoardSnapshot, applyBoardSnapshot } from './session/boardSnapshot.js';
 export type { CardEffectEvent, CardEffectKind } from './session/CardEffectEvent.js';
-export { replaySpecialCardEffects, mergeEffectEvents } from './session/cardEffectEvents.js';
+export { replaySpecialCardEffects, mergeEffectEvents, consolidateReleaseEffectEvents } from './session/cardEffectEvents.js';
 export { GameSession } from './session/GameSession.js';
 export type { GameSessionOptions } from './session/GameSession.js';
 

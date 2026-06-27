@@ -6,6 +6,7 @@ import { Day } from '../src/Day.js';
 import { State } from '../src/State.js';
 import { getCard } from '../src/card/Cards.js';
 import { applyBoardSnapshot, captureBoardSnapshot } from '../src/session/boardSnapshot.js';
+import { consolidateReleaseEffectEvents } from '../src/session/cardEffectEvents.js';
 
 describe('card effect events', () => {
   it('records I1 continuous delivery when entering ready', () => {
@@ -163,5 +164,36 @@ describe('card effect events', () => {
     expect(board.getReadyToDeploy().getCards().some((card) => card.getName() === 'I2')).toBe(true);
     expect(board.getStateColumn(State.TEST).isI2TestBoostEnabled()).toBe(true);
     expect(s3.getRemainingWork(State.TEST)).toBe(4);
+  });
+
+  it('consolidates duplicate I1/I2 effect lines for release panel', () => {
+    const consolidated = consolidateReleaseEffectEvents([
+      {
+        cardName: 'I1',
+        kind: 'i1-continuous-delivery',
+        day: 12,
+        message: 'I1 已生效：就绪列改为每日发布',
+      },
+      {
+        cardName: 'I1',
+        kind: 'i1-deployed',
+        day: 12,
+        message: 'I1 已部署：就绪列改为每日均可发布（持续生效）',
+      },
+      {
+        cardName: 'I2',
+        kind: 'i2-test-boost',
+        day: 12,
+        message: 'I2 已生效：测试列卡片测试工作量 -2（含新进卡）',
+      },
+      {
+        cardName: 'I2',
+        kind: 'i2-deployed',
+        day: 15,
+        message: 'I2 已部署：测试列所有卡测试工作量 -2（持续生效）',
+      },
+    ]);
+
+    expect(consolidated.map((event) => event.kind)).toEqual(['i1-deployed', 'i2-deployed']);
   });
 });
