@@ -43,7 +43,7 @@ describe('rollDicePreview', () => {
     expect(card.getRemainingWork(State.TEST)).toBe(0);
   });
 
-  it('zeros roll when more than two dice are assigned to one card', () => {
+  it('sums roll values when three dice are assigned to one card', () => {
     const board = new Board();
     board.clear();
     const card = getCard('S3');
@@ -56,7 +56,23 @@ describe('rollDicePreview', () => {
       { state: State.TEST, cardName: 'S3', diceIndices: [0, 1, 2] },
     ]);
     const steps = buildDiceRollPreview(board, resolved, new LoadedDice(6));
-    expect(steps[0]!.totalRoll).toBe(0);
-    expect(steps[0]!.delta).toBe(0);
+    expect(steps[0]!.totalRoll).toBe(18);
+    expect(steps[0]!.delta).toBe(6);
+  });
+
+  it('does not auto-assign remaining dice when manual assignments exist', () => {
+    const board = new Board();
+    board.clear();
+    board.getStateColumn(State.TEST).addCard(getCard('S3'), ClassOfService.STANDARD);
+    board.getStateColumn(State.TEST).addCard(getCard('S10'), ClassOfService.STANDARD);
+    board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
+    board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
+
+    const resolved = resolveDiceAssignments(board, [
+      { state: State.TEST, cardName: 'S3', diceIndices: [0] },
+    ]);
+    expect(resolved).toEqual([
+      { state: State.TEST, cardName: 'S3', diceIndices: [0] },
+    ]);
   });
 });

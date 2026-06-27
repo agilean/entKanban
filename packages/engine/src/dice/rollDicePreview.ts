@@ -31,6 +31,10 @@ export function resolveDiceAssignments(
     }
   }
 
+  if (manual !== null) {
+    return result;
+  }
+
   const allDice = board.getDice();
   for (const state of STATE_ORDER) {
     const unassigned = allDice
@@ -61,9 +65,8 @@ export function resolveDiceAssignments(
   return result;
 }
 
-function rollGroupTotal(rollValues: number[], diceCount: number): number {
-  const total = rollValues.reduce((sum, value) => sum + value, 0);
-  return diceCount > 2 ? 0 : total;
+function rollGroupTotal(rollValues: number[]): number {
+  return rollValues.reduce((sum, value) => sum + value, 0);
 }
 
 export function buildDiceRollPreview(
@@ -93,7 +96,7 @@ export function buildDiceRollPreview(
       }
       return Math.round(roller.roll() / 2);
     });
-    const totalRoll = rollGroupTotal(rollValues, dice.length);
+    const totalRoll = rollGroupTotal(rollValues);
     const effortBefore = card.getRemainingWork(assignment.state);
     const delta = Math.min(totalRoll, effortBefore);
     const effortAfter = effortBefore - delta;
