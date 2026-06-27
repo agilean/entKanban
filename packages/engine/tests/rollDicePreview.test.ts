@@ -31,7 +31,7 @@ describe('rollDicePreview', () => {
     board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
     board.getStateColumn(State.TEST).addCard(getCard('S3'), ClassOfService.STANDARD);
 
-    expect(resolveDiceAssignments(board, null)).toEqual([]);
+    expect(resolveDiceAssignments(null)).toEqual([]);
   });
 
   it('applies rolled points to card effort', () => {
@@ -42,7 +42,7 @@ describe('rollDicePreview', () => {
     board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
     board.addDice(new StateDice(State.TEST, new LoadedDice(3)));
 
-    const resolved = resolveDiceAssignments(board, [
+    const resolved = resolveDiceAssignments([
       { state: State.TEST, cardName: 'S3', diceIndices: [0, 1] },
     ]);
     const steps = buildDiceRollPreview(board, resolved, new LoadedDice(4));
@@ -62,7 +62,7 @@ describe('rollDicePreview', () => {
     board.addDice(new StateDice(State.TEST, new LoadedDice(6)));
     board.addDice(new StateDice(State.TEST, new LoadedDice(6)));
 
-    const resolved = resolveDiceAssignments(board, [
+    const resolved = resolveDiceAssignments([
       { state: State.TEST, cardName: 'S3', diceIndices: [0, 1, 2] },
     ]);
     const steps = buildDiceRollPreview(board, resolved, new LoadedDice(6));
@@ -78,7 +78,7 @@ describe('rollDicePreview', () => {
     board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
     board.addDice(new StateDice(State.TEST, new LoadedDice(4)));
 
-    const resolved = resolveDiceAssignments(board, [
+    const resolved = resolveDiceAssignments([
       { state: State.TEST, cardName: 'S3', diceIndices: [0] },
     ]);
     expect(resolved).toEqual([

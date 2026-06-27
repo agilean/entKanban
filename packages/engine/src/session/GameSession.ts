@@ -411,7 +411,7 @@ export class GameSession {
     if (this.manualDiceAssignments === null) {
       return { ok: false, error: '请先将骰子分配到卡片上' };
     }
-    const resolved = resolveDiceAssignments(this.board, this.manualDiceAssignments);
+    const resolved = resolveDiceAssignments(this.manualDiceAssignments);
     if (resolved.length === 0) {
       return { ok: false, error: '请先将骰子分配到卡片上' };
     }
@@ -470,7 +470,7 @@ export class GameSession {
     const context = new Context(this.board, this.getCurrentDayObject());
     this.autoDeployReadyCards(context);
     const effects = context.takeEffectEvents();
-    const phaseAfterEnd = this.finishEndOfDay();
+    this.finishEndOfDay();
     return this.success(effects);
   }
 

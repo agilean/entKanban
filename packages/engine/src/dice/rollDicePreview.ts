@@ -12,7 +12,6 @@ function stateLabel(state: State): string {
 }
 
 export function resolveDiceAssignments(
-  board: Board,
   manual: readonly DiceAssignmentInput[] | null,
 ): DiceAssignmentInput[] {
   if (manual === null) {
