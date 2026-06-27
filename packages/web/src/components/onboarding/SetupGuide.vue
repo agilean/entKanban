@@ -54,9 +54,24 @@ onUnmounted(() => {
           </p>
           <ul class="basics">
             <li>浏览各列 WIP 与卡片位置，点击卡片右上角 ⓘ 查看详情。</li>
-            <li>准备阶段可填充优先列、拖入 Expedite 加速、将列底骰子拖到卡片上分配。</li>
-            <li>分配完成后点击「掷骰子」：动画结束后自动结算并进入下一天。</li>
+            <li>准备阶段可填充优先列、将列底骰子拖到卡片上分配。</li>
+            <li>分配完成后点击「掷骰子」：动画结束后显示剩余工作量并自动结算。</li>
           </ul>
+
+          <section class="flow-rules">
+            <h3>流程与掷骰规则</h3>
+            <ul>
+              <li>
+                <strong>跨岗掷骰：</strong>A / D / T 骰子可拖到任意有剩余工作的列；若骰子类型与列不匹配，掷骰点数按 <strong>÷ 2</strong> 计算（产能减半）。
+              </li>
+              <li>
+                <strong>进入分析：</strong>只有<strong>优先列</strong>的卡片可以拖入分析列，不能从存量直接进分析。
+              </li>
+              <li>
+                <strong>当日拉卡：</strong>当天刚从存量拉入优先列的卡片，需<strong>次日</strong>才能进入分析。
+              </li>
+            </ul>
+          </section>
 
           <section class="special-cards">
             <h3>特殊卡片说明</h3>
@@ -170,6 +185,33 @@ onUnmounted(() => {
   padding-left: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.6;
+}
+
+.flow-rules {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.5rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.flow-rules h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #166534;
+}
+
+.flow-rules ul {
+  margin: 0;
+  padding-left: 1.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.flow-rules li + li {
+  margin-top: 0.375rem;
 }
 
 .special-cards {
