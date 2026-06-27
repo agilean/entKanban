@@ -580,10 +580,6 @@ export const useGameStore = defineStore('game', () => {
       lastError.value = '找不到该骰子';
       return { ok: false, error: '找不到该骰子' };
     }
-    if (die.state !== state) {
-      lastError.value = '骰子类型与列不匹配';
-      return { ok: false, error: '骰子类型与列不匹配' };
-    }
     const updated = appendDiceToCard(
       [...pendingDiceAssignments.value],
       state,
@@ -597,9 +593,7 @@ export const useGameStore = defineStore('game', () => {
     if (!session.value) {
       return { ok: false as const, reason: '尚未开始游戏' };
     }
-    return session.value
-      .getBoard()
-      .canAdvanceCard(fromColumn, toColumn, cardName, session.value.getCurrentDay());
+    return session.value.canAdvanceCard(fromColumn, toColumn, cardName);
   }
 
   function checkPullToSelected(cardName: string) {

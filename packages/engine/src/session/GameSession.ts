@@ -29,6 +29,7 @@ import type { DispatchResult } from './DispatchResult.js';
 import { GamePhase } from './GamePhase.js';
 import { applyBoardSnapshot, captureBoardSnapshot } from './boardSnapshot.js';
 import type { CardEffectEvent } from './CardEffectEvent.js';
+import type { AdvanceCheckResult } from '../board/advanceCheck.js';
 import type { GameSessionState } from './GameSessionState.js';
 import type { PendingAction } from './PendingAction.js';
 import type { DiceAssignmentInput, PlayerAction } from './PlayerAction.js';
@@ -46,6 +47,7 @@ export class GameSession {
   private pendingRollSteps: DiceRollApplyStep[] | null = null;
   private appliedRollCount = 0;
   private diceRollLog: DiceRollLogEntry[] = [];
+  private pulledToSelectedToday = new Set<string>();
 
   private constructor(
     private readonly board: Board,
@@ -129,6 +131,9 @@ export class GameSession {
     if (state.diceRollLog !== undefined) {
       session.diceRollLog = state.diceRollLog.map(cloneDiceRollLogEntry);
     }
+    if (state.pulledToSelectedToday !== undefined) {
+      session.pulledToSelectedToday = new Set(state.pulledToSelectedToday);
+    }
     if (session.phase === GamePhase.ADJUST_WIP) {
       session.beginReplenishPhase();
     } else {
@@ -140,6 +145,29 @@ export class GameSession {
 
   getBoard(): Board {
     return this.board;
+  }
+
+  canAdvanceCard(
+    fromColumn: string,
+    toColumn: string,
+    cardName: string,
+  ): AdvanceCheckResult {
+    if (toColumn === 'analysis' && fromColumn !== 'selected') {
+      return { ok: false, reason: '只有优先列的卡片可以进入分析' };
+    }
+    if (
+      fromColumn === 'selected' &&
+      toColumn === 'analysis' &&
+      this.pulledToSelectedToday.has(cardName)
+    ) {
+      return { ok: false, reason: '今日刚从存量拉入优先列，明日才可进入分析' };
+    }
+    return this.board.canAdvanceCard(
+      fromColumn,
+      toColumn,
+      cardName,
+      this.currentDay,
+    );
   }
 
   getCurrentDay(): number {
@@ -208,6 +236,7 @@ export class GameSession {
       pendingRollSteps: this.pendingRollSteps,
       appliedRollCount: this.appliedRollCount,
       diceRollLog: this.diceRollLog.map(cloneDiceRollLogEntry),
+      pulledToSelectedToday: [...this.pulledToSelectedToday],
     };
   }
 
@@ -339,6 +368,10 @@ export class GameSession {
     } else if (this.phase !== GamePhase.SETUP && this.phase !== GamePhase.REPLENISH) {
       return { ok: false, error: 'Card advance not allowed in current phase' };
     }
+    const check = this.canAdvanceCard(fromColumn, toColumn, cardName);
+    if (!check.ok) {
+      return { ok: false, error: check.reason };
+    }
     const context = new Context(this.board, this.getCurrentDayObject());
     this.board.advanceCard(fromColumn, toColumn, cardName, context);
     return this.success(context.takeEffectEvents());
@@ -366,6 +399,7 @@ export class GameSession {
     }
     pulled.onSelected(context);
     selected.addCard(pulled, ClassOfService.STANDARD);
+    this.pulledToSelectedToday.add(cardName);
     return this.success();
   }
 
@@ -534,6 +568,7 @@ export class GameSession {
     this.manualDiceAssignments = null;
     this.pendingRollSteps = null;
     this.appliedRollCount = 0;
+    this.pulledToSelectedToday.clear();
     this.currentDay += 1;
     if (this.currentDay > 21) {
       this.phase = GamePhase.GAME_OVER;

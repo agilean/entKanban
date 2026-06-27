@@ -91,8 +91,7 @@ export function useDragPolicy() {
     if (diceIndex === undefined) {
       return true;
     }
-    const die = game.boardView?.unassignedDice.find((item) => item.index === diceIndex);
-    return die?.state === state;
+    return game.boardView?.unassignedDice.some((item) => item.index === diceIndex) ?? false;
   }
 
   return {

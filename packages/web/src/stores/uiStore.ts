@@ -8,6 +8,7 @@ export const useUiStore = defineStore('ui', () => {
   const dragToast = ref<string | null>(null);
   const setupGuideOpen = ref(false);
   const setupGuideDismissed = ref(false);
+  const gameOverDismissed = ref(false);
   let dragToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setTab(tab: AppTab): void {
@@ -23,9 +24,18 @@ export const useUiStore = defineStore('ui', () => {
     setupGuideDismissed.value = true;
   }
 
+  function dismissGameOver(): void {
+    gameOverDismissed.value = true;
+  }
+
+  function resetGameOverDismissed(): void {
+    gameOverDismissed.value = false;
+  }
+
   function resetSetupGuideForNewGame(): void {
     setupGuideDismissed.value = false;
     setupGuideOpen.value = true;
+    gameOverDismissed.value = false;
   }
 
   function showDragToast(message: string): void {
@@ -44,9 +54,12 @@ export const useUiStore = defineStore('ui', () => {
     dragToast,
     setupGuideOpen,
     setupGuideDismissed,
+    gameOverDismissed,
     setTab,
     openSetupGuide,
     closeSetupGuide,
+    dismissGameOver,
+    resetGameOverDismissed,
     resetSetupGuideForNewGame,
     showDragToast,
   };

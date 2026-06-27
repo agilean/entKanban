@@ -13,6 +13,8 @@ const EFFECT_KIND_PRIORITY: Record<CardEffectKind, number> = {
   'i3-backlog-cards': 20,
   'f1-on-time': 20,
   'f1-late-fine': 20,
+  'f2-on-time': 20,
+  'f2-late-no-reward': 20,
 };
 
 /** One display line per card — prefer deploy/最终状态 over 生效提示. */
@@ -66,6 +68,25 @@ export function recordDeployEffects(context: Context, card: Card): void {
         kind: 'f1-on-time',
         day,
         message: 'F1 已按期交付，免 $1,500 罚金',
+      });
+    }
+  }
+
+  if (card instanceof FixedDateCard && card.getName() === 'F2') {
+    const fineOrPayment = card.getFineOrPayment();
+    if (fineOrPayment > 0) {
+      context.recordEffect({
+        cardName: 'F2',
+        kind: 'f2-on-time',
+        day,
+        message: 'F2 已按期交付（Day 21 前），奖励 +$500',
+      });
+    } else {
+      context.recordEffect({
+        cardName: 'F2',
+        kind: 'f2-late-no-reward',
+        day,
+        message: 'F2 逾期交付，无 $500 奖励',
       });
     }
   }

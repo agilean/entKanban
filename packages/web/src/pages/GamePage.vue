@@ -56,7 +56,7 @@ onMounted(() => {
     <template v-else>
       <p v-if="game.lastError" class="error">{{ game.lastError }}</p>
 
-      <GameOverSummary v-if="game.isGameOver" />
+      <GameOverSummary v-if="game.isGameOver && !ui.gameOverDismissed" />
 
       <AnalyticsView v-if="ui.activeTab !== 'board'" />
 

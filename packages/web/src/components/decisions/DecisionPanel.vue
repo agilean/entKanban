@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { isBillingDay } from '@kanban-game/engine';
 import { useGameStore } from '../../stores/gameStore';
 import BillingReleasePanel from './BillingReleasePanel.vue';
 
@@ -10,12 +11,26 @@ const billingSummary = computed(() =>
 );
 
 const hasContent = computed(() => Boolean(billingSummary.value));
+
+const isDailyRelease = computed(
+  () => game.boardView?.columns.find((column) => column.id === 'ready')?.i1DailyDeployActive,
+);
+
+const panelTitle = computed(() => {
+  if (isDailyRelease.value) {
+    return '每日发布';
+  }
+  if (billingSummary.value?.kind === 'billing-summary' && isBillingDay(billingSummary.value.billingDay)) {
+    return '发布与收益';
+  }
+  return '发布日';
+});
 </script>
 
 <template>
   <aside v-if="hasContent" class="decision-panel">
     <header class="panel-header">
-      <h2>发布日</h2>
+      <h2>{{ panelTitle }}</h2>
     </header>
 
     <div class="sections">

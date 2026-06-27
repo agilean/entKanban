@@ -47,7 +47,7 @@ export function getCard(name: string): Card {
     case 'I2': return new IntangibleCard('I2', CardSize.NONE, 2, 2, 5);
     case 'I3': return new IntangibleCard('I3', CardSize.NONE, 1, 3, 3);
     case 'F1': return new FixedDateCard('F1', CardSize.NONE, 4, 3, 6, 0, 15, -1500, 0);
-    case 'F2': return new FixedDateCard('F2', CardSize.NONE, 5, 6, 4, 30, 21, 0, 0);
+    case 'F2': return new FixedDateCard('F2', CardSize.NONE, 5, 6, 4, 30, 21, 0, 500);
     default:
       throw new Error(`Unknown card: ${name}`);
   }

@@ -80,6 +80,32 @@ describe('card effect events', () => {
     );
   });
 
+  it('records F2 on-time and late deploy outcomes', () => {
+    const onTimeBoard = new Board();
+    onTimeBoard.clear();
+    const f2OnTime = getCard('F2');
+    f2OnTime.onSelected(new Context(onTimeBoard, new Day(10)));
+    onTimeBoard.getReadyToDeploy().addCard(f2OnTime, ClassOfService.STANDARD);
+    const onTimeContext = new Context(onTimeBoard, new Day(21));
+    onTimeBoard.advanceCard('ready', 'deployed', 'F2', onTimeContext);
+    expect(onTimeContext.takeEffectEvents()).toEqual([
+      expect.objectContaining({ kind: 'f2-on-time' }),
+    ]);
+    expect(f2OnTime.getFineOrPayment()).toBe(500);
+
+    const lateBoard = new Board();
+    lateBoard.clear();
+    const f2Late = getCard('F2');
+    f2Late.onSelected(new Context(lateBoard, new Day(10)));
+    lateBoard.getReadyToDeploy().addCard(f2Late, ClassOfService.STANDARD);
+    lateBoard.getReadyToDeploy().setDeploymentFrequency(1);
+    const lateContext = new Context(lateBoard, new Day(22));
+    lateBoard.advanceCard('ready', 'deployed', 'F2', lateContext);
+    expect(lateContext.takeEffectEvents()).toEqual([
+      expect.objectContaining({ kind: 'f2-late-no-reward' }),
+    ]);
+  });
+
   it('records F1 on-time and late deploy outcomes', () => {
     const onTimeBoard = new Board();
     onTimeBoard.clear();

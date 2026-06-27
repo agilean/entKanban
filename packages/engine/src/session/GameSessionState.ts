@@ -28,4 +28,5 @@ export type GameSessionState = {
   pendingRollSteps?: DiceRollApplyStep[] | null;
   appliedRollCount?: number;
   diceRollLog?: DiceRollLogEntry[];
+  pulledToSelectedToday?: string[];
 };

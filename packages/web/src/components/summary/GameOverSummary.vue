@@ -17,7 +17,12 @@ const totalProfit = computed(() => {
 });
 
 function viewFinance(): void {
+  ui.dismissGameOver();
   ui.setTab('finance');
+}
+
+function dismiss(): void {
+  ui.dismissGameOver();
 }
 </script>
 
@@ -45,6 +50,7 @@ function viewFinance(): void {
       </dl>
 
       <div class="actions">
+        <button type="button" class="btn" @click="dismiss">关闭，查看数据</button>
         <button type="button" class="btn primary" @click="viewFinance">查看财务详情</button>
       </div>
     </div>
@@ -119,6 +125,8 @@ dd.negative {
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .btn {

@@ -298,7 +298,8 @@ function closeDetail(): void {
       <p v-if="rollUi.mode === 'rolling'" class="card-roll-label">掷骰中…</p>
       <p v-else class="card-roll-result">
         <span class="total">合计 {{ rollUi.step.totalRoll }}</span>
-        <span v-if="rollUi.step.delta > 0" class="delta">−{{ rollUi.step.delta }}</span>
+        <span v-if="rollUi.step.effortAfter === 0" class="remaining done">完成</span>
+        <span v-else class="remaining">剩余 {{ rollUi.step.effortAfter }}</span>
       </p>
     </div>
 
@@ -621,12 +622,17 @@ function closeDetail(): void {
   color: #475569;
 }
 
-.card-roll-result .delta {
-  color: #16a34a;
+.card-roll-result .remaining {
+  color: #1d4ed8;
   padding: 0.0625rem 0.375rem;
   border-radius: 0.25rem;
-  background: #dcfce7;
+  background: #dbeafe;
   animation: delta-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-roll-result .remaining.done {
+  color: #15803d;
+  background: #dcfce7;
 }
 
 @keyframes overlay-in {

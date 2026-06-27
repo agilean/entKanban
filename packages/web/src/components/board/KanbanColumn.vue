@@ -351,7 +351,12 @@ const interactive = () => isColumnInteractive(props.column.id);
     <header class="column-header">
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
-      <span v-if="column.id === 'ready' && isRelease" class="release-badge">发布日</span>
+      <span
+        v-if="column.id === 'ready' && isRelease && !column.i1DailyDeployActive"
+        class="release-badge"
+      >
+        发布日
+      </span>
       <span
         v-if="column.i1DailyDeployActive"
         class="i1-badge"
@@ -477,7 +482,10 @@ const interactive = () => isColumnInteractive(props.column.id);
         <span v-if="availableColumnDice.length === 0" class="dice-row-empty">拖回此处取消分配</span>
       </footer>
       <p v-if="canAssignDice && column.state" class="column-hint">
-        从列底拖骰子到卡片；从卡片拖回列底可取消分配
+        从列底拖骰子到卡片（跨岗产能减半）；拖回列底可取消分配
+      </p>
+      <p v-else-if="canAdvanceFlow && !isRelease && column.id === 'analysis'" class="column-hint">
+        仅优先列卡片可进入分析；今日刚从存量拉入的卡片需明日再进
       </p>
       <p v-else-if="canAdvanceFlow && !isRelease" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
       <p
@@ -506,8 +514,8 @@ const interactive = () => isColumnInteractive(props.column.id);
           aria-hidden="true"
         />
       </div>
-      <p v-if="isRelease && column.id === 'ready'" class="column-hint">
-        发布日：测试完成与就绪卡片已自动发布，确认后点击「完成发布日」
+      <p v-if="isRelease && column.id === 'ready' && !column.i1DailyDeployActive" class="column-hint">
+        测试完成与就绪卡片已自动发布，确认后点击「完成发布日」
       </p>
       <p
         v-if="advanceDropState === 'invalid' && advanceDropReason"

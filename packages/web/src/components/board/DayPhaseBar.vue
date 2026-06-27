@@ -19,8 +19,12 @@ defineProps<{
 const game = useGameStore();
 const ui = useUiStore();
 
+const i1DailyDeployActive = computed(
+  () => game.boardView?.columns.find((c) => c.id === 'ready')?.i1DailyDeployActive,
+);
+
 const steps = computed(() =>
-  stepsForPhase(game.phase, game.currentDay, game.boardView?.columns.find((c) => c.id === 'ready')?.i1DailyDeployActive),
+  stepsForPhase(game.phase, game.currentDay, i1DailyDeployActive.value),
 );
 
 const confirmAction = computed(() =>
@@ -52,7 +56,9 @@ async function handleConfirm(): Promise<void> {
     <div class="day-label">
       <span class="day-number">Day {{ game.currentDay }}</span>
       <span v-if="game.phase === GamePhase.DO_WORK" class="day-sub">工作中</span>
-      <span v-else-if="game.phase === GamePhase.RELEASE" class="day-sub release">发布日</span>
+      <span v-else-if="game.phase === GamePhase.RELEASE" class="day-sub release">
+        {{ i1DailyDeployActive ? '每日发布' : '发布日' }}
+      </span>
     </div>
 
     <ol class="steps">

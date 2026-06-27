@@ -120,6 +120,26 @@ describe('GameSession', () => {
     }
   });
 
+  it('blocks same-day advance from selected to analysis after pull from backlog', () => {
+    const session = GameSession.createNew();
+    const topCard = session.getBoard().getOptions().getCards()[0]!.getName();
+    const pull = session.dispatch({ type: 'pull-to-selected', cardName: topCard });
+    expect(pull.ok).toBe(true);
+
+    const blocked = session.dispatch({
+      type: 'advance-card',
+      fromColumn: 'selected',
+      toColumn: 'analysis',
+      cardName: topCard,
+    });
+    expect(blocked.ok).toBe(false);
+    expect(blocked.error).toContain('明日');
+
+    expect(
+      session.canAdvanceCard('selected', 'analysis', topCard).ok,
+    ).toBe(false);
+  });
+
   it('advances a done development card to test during replenish', () => {
     const session = GameSession.createNew();
     expect(session.getPhase()).toBe(GamePhase.REPLENISH);
