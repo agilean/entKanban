@@ -57,12 +57,12 @@ describe('computeCfdFromWipCounts', () => {
 });
 
 describe('buildCfdOption', () => {
-  it('stacks stages from Deployed (bottom) to Backlog (top)', () => {
+  it('plots cumulative boundary values (not raw WIP) for each stage', () => {
     const board = new Board();
     const wip = captureWipCounts(board);
     const option = buildCfdOption([
       {
-        day: 1,
+        day: 9,
         wipCounts: wip,
         deployedToday: [],
         totalGrossProfit: 0,
@@ -70,16 +70,14 @@ describe('buildCfdOption', () => {
     ]);
 
     const series = option.series as Array<{ name: string; data: number[] }>;
-    expect(series.map((item) => item.name)).toEqual([
-      'Deployed',
-      'Ready',
-      'Test',
-      'Development',
-      'Analysis',
-      'Selected',
-      'Backlog',
-    ]);
-    expect(option.yAxis).toMatchObject({ name: '累计卡片数' });
+    const cfd = computeCfdFromWipCounts(wip);
+    const testIndex = CFD_STAGE_ORDER.indexOf('test');
+
+    expect(series.find((item) => item.name === 'Test')!.data[0]).toBe(cfd.boundaries[testIndex]);
+    expect(series.find((item) => item.name === 'Deployed')!.data[0]).toBe(cfd.boundaries[0]);
+    expect(cfd.boundaries[testIndex]).toBe(
+      wip.deployed + wip.readyToDeploy + wip.test,
+    );
   });
 });
 

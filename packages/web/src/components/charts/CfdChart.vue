@@ -9,7 +9,10 @@ const { cfdOption, hasData } = useAnalytics();
 <template>
   <section class="chart-panel">
     <h2>累积流图 (CFD)</h2>
-    <p class="desc">每日累计穿过各状态的卡片数；色带厚度为当前 WIP</p>
+    <p class="desc">
+      每条线为累计穿过该阶段及下游的卡片数（如 Test = Deployed + Ready + Test）；
+      相邻线条之间的垂直距离为当前 WIP
+    </p>
     <ChartEmpty v-if="!hasData" />
     <BaseChart v-else :option="cfdOption" />
   </section>

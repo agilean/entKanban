@@ -79,22 +79,60 @@ export function percentile(values: number[], p: number): number {
 
 export function buildCfdOption(timeline: TimelinePoint[]) {
   const days = timeline.map((point) => `D${point.day}`);
+  const computed = timeline.map((point) => computeCfdFromWipCounts(point.wipCounts));
+
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: unknown) => formatCfdTooltip(timeline, computed, params),
+    },
     legend: { top: 0 },
-    grid: { left: 40, right: 16, top: 40, bottom: 28 },
-    xAxis: { type: 'category', data: days },
-    yAxis: { type: 'value', name: '累计卡片数' },
+    grid: { left: 48, right: 16, top: 40, bottom: 28 },
+    xAxis: { type: 'category', data: days, boundaryGap: false },
+    yAxis: { type: 'value', name: '累计卡片数', min: 0 },
     series: CFD_COLUMNS.map((column, stageIndex) => ({
       name: column.label,
       type: 'line',
-      stack: 'cfd',
-      areaStyle: { opacity: 0.85 },
-      emphasis: { focus: 'series' },
+      smooth: false,
+      symbol: timeline.length <= 14 ? 'circle' : 'none',
+      symbolSize: 6,
+      showSymbol: timeline.length <= 14,
       itemStyle: { color: column.color },
-      data: timeline.map((point) => computeCfdFromWipCounts(point.wipCounts).bands[stageIndex]!),
+      lineStyle: { width: 2, color: column.color },
+      emphasis: { focus: 'series' },
+      data: computed.map((cfd) => cfd.boundaries[stageIndex]!),
     })),
   };
+}
+
+type CfdTooltipParam = {
+  seriesName: string;
+  dataIndex: number;
+  color: string;
+};
+
+/** Tooltip: cumulative boundary per stage; band thickness = current WIP. */
+function formatCfdTooltip(
+  timeline: TimelinePoint[],
+  computed: CfdComputed[],
+  params: unknown,
+): string {
+  const items = params as CfdTooltipParam[];
+  if (!items.length) {
+    return '';
+  }
+  const index = items[0]!.dataIndex;
+  const point = timeline[index];
+  const cfd = computed[index];
+  if (!point || !cfd) {
+    return '';
+  }
+  const lines = CFD_COLUMNS.map((column, stageIndex) => {
+    const boundary = cfd.boundaries[stageIndex]!;
+    const wip = cfd.bands[stageIndex]!;
+    return `${column.label}：累计 <strong>${boundary}</strong>（WIP ${wip}）`;
+  });
+  return [`Day ${point.day}`, ...lines].join('<br/>');
 }
 
 /** Card-type colors matching getKanban physical chart markers. */
