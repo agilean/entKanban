@@ -73,6 +73,19 @@ describe('StateColumn', () => {
     expect(development.getIncompleteCards().map((c) => c.getName())).toContain('S8');
   });
 
+  it('promoteCompletedWork moves interactive dice-completed cards to done zone', () => {
+    const context = new Context(new Board(), new Day(9));
+    const column = new StateColumn(State.TEST, Number.MAX_SAFE_INTEGER, new NullColumn(), new NullColumn());
+    const card = getCard('S3');
+    column.addCard(card, ClassOfService.STANDARD);
+
+    card.doWork(State.TEST, card.getRemainingWork(State.TEST));
+    expect(column.pull(context, ClassOfService.STANDARD)).toBeUndefined();
+
+    column.promoteCompletedWork();
+    expect(column.pull(context, ClassOfService.STANDARD)?.getName()).toBe('S3');
+  });
+
   it('returns wip limit', () => {
     const column = new StateColumn(State.ANALYSIS, 4, new NullColumn(), new NullColumn());
     expect(column.getLimit()).toBe(4);

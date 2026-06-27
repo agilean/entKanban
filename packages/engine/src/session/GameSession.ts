@@ -11,6 +11,8 @@ import { createDaySnapshot } from '../history/createDaySnapshot.js';
 import { DaySnapshotStore } from '../history/DaySnapshotStore.js';
 import { FinancialSummary } from '../finance/FinancialSummary.js';
 import { isBillingDay } from '../finance/billingDays.js';
+import type { Dice } from '../dice/Dice.js';
+import { RandomDice } from '../dice/RandomDice.js';
 import type { DiceRollApplyStep } from '../dice/DiceRollApplyStep.js';
 import {
   applyDiceRollStep,
@@ -28,6 +30,7 @@ import type { DiceAssignmentInput, PlayerAction } from './PlayerAction.js';
 
 export type GameSessionOptions = {
   diceAssignmentStrategy?: DiceAssignmentStrategy;
+  diceRoller?: Dice;
   backlogComparator?: (a: Card, b: Card) => number;
   activityComparator?: (a: Card, b: Card) => number;
 };
@@ -41,6 +44,7 @@ export class GameSession {
   private constructor(
     private readonly board: Board,
     private readonly diceStrategy: DiceAssignmentStrategy,
+    private readonly diceRoller: Dice,
     private training: boolean,
     trainingDecided: boolean,
     private currentDay: number,
@@ -68,6 +72,7 @@ export class GameSession {
     const session = new GameSession(
       board,
       diceStrategy,
+      options.diceRoller ?? new RandomDice(),
       false,
       false,
       9,
@@ -85,6 +90,7 @@ export class GameSession {
     const session = new GameSession(
       board,
       diceStrategy,
+      new RandomDice(),
       state.training,
       state.trainingDecided,
       state.currentDay,
@@ -363,7 +369,7 @@ export class GameSession {
     if (resolved.length === 0) {
       return { ok: false, error: '请先将骰子分配到卡片上' };
     }
-    this.pendingRollSteps = buildDiceRollPreview(this.board, resolved);
+    this.pendingRollSteps = buildDiceRollPreview(this.board, resolved, this.diceRoller);
     this.appliedRollCount = 0;
     this.phase = GamePhase.DO_WORK;
     return this.success();
@@ -397,6 +403,7 @@ export class GameSession {
     this.appliedRollCount = 0;
 
     if (isBillingDay(this.currentDay)) {
+      this.runBillingDayRelease();
       this.phase = GamePhase.RELEASE;
       return this.success();
     }
@@ -418,6 +425,17 @@ export class GameSession {
       return this.success();
     }
     return this.startNextDay();
+  }
+
+  private runBillingDayRelease(): void {
+    const context = new Context(this.board, this.getCurrentDayObject());
+
+    for (const state of [State.ANALYSIS, State.DEVELOPMENT, State.TEST]) {
+      this.board.getStateColumn(state).promoteCompletedWork();
+    }
+
+    this.board.getReadyToDeploy().doTheWork(context);
+    this.autoDeployReadyCards();
   }
 
   private autoDeployReadyCards(): void {

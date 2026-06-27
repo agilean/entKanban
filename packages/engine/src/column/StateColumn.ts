@@ -78,6 +78,17 @@ export class StateColumn extends LimitedColumn {
     this.spendLeftoverPoints(context, ClassOfService.STANDARD);
   }
 
+  promoteCompletedWork(): void {
+    for (const cos of [ClassOfService.STANDARD, ClassOfService.EXPEDITE]) {
+      for (const card of this.todo(cos).stream()) {
+        if (card.getRemainingWork(this.state) === 0) {
+          this.todo(cos).remove(card);
+          this.done(cos).add(card);
+        }
+      }
+    }
+  }
+
   private todo(cos: ClassOfService): MutablePriorityQueue<Card> {
     return cos === ClassOfService.STANDARD ? this.stdTodo : this.expTodo;
   }

@@ -37,7 +37,7 @@ const rows = computed(() => {
   <section class="billing-panel">
     <header>
       <h3>Day {{ billingDay }} 发布与收益</h3>
-      <p class="hint">将就绪卡片拖入「已部署」，完成后点击下方按钮进入下一天</p>
+      <p class="hint">测试完成与就绪卡片已在掷骰后自动发布，确认收益后点击下方按钮进入下一天</p>
     </header>
 
     <dl v-if="summary" class="metrics">

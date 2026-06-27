@@ -3,6 +3,7 @@ import { GamePhase } from '../src/session/GamePhase.js';
 import { GameSession } from '../src/session/GameSession.js';
 import { State } from '../src/State.js';
 import { WipLimitAdjustment } from '../src/WipLimitAdjustment.js';
+import { LoadedDice } from './helpers/LoadedDice.js';
 
 function rollDice(session: GameSession): void {
   const result = session.dispatch({ type: 'roll-dice' });
@@ -186,25 +187,27 @@ describe('GameSession', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('auto-deploys ready cards when finishing release phase', () => {
-    const session = GameSession.createNew();
+  it('auto-deploys ready and test-complete cards after dice on billing day', () => {
+    const session = GameSession.createNew({ diceRoller: new LoadedDice(6) });
+    session.dispatch({
+      type: 'assign-dice',
+      assignments: [{ state: State.TEST, cardName: 'S3', diceIndices: [5, 6] }],
+    });
     rollDice(session);
     applyAllRolls(session);
     expect(session.getPhase()).toBe(GamePhase.RELEASE);
-    expect(session.getBoard().getReadyToDeploy().getCards().map((c) => c.getName())).toEqual([
-      'S1',
-      'S2',
-      'S4',
-    ]);
-
-    const confirm = session.dispatch({ type: 'confirm-phase' });
-    expect(confirm.ok).toBe(true);
     expect(session.getBoard().getDeployed().getCards().map((c) => c.getName())).toEqual([
       'S1',
       'S2',
+      'S3',
       'S4',
     ]);
     expect(session.getBoard().getReadyToDeploy().getCards()).toEqual([]);
+    expect(session.getBoard().getStateColumn(State.TEST).getCards().map((c) => c.getName())).not.toContain(
+      'S3',
+    );
+    expect(session.getFinancialSummary().getNewSubscribers(9)).toBeGreaterThan(20);
+    expect(session.getFinancialSummary().getBillingCycleRevenue(9)).toBeGreaterThan(200);
   });
 
   it('rolls dice using column dice and auto-advances to next day replenish', () => {

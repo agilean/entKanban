@@ -484,7 +484,7 @@ const interactive = () => isColumnInteractive(props.column.id);
         />
       </div>
       <p v-if="isRelease && column.id === 'ready'" class="column-hint">
-        发布日：将就绪卡片拖入已部署，完成后点击「完成发布日」
+        发布日：测试完成与就绪卡片已自动发布，确认后点击「完成发布日」
       </p>
       <p
         v-if="advanceDropState === 'invalid' && advanceDropReason"
