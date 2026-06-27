@@ -16,18 +16,6 @@ export function recordReadyEffects(context: Context, card: Card): void {
       message: 'I1 已生效：就绪列改为每日发布',
     });
   }
-
-  if (card.getName() === 'I2') {
-    const activated = context.getBoard().getStateColumn(State.TEST).enableI2TestBoost();
-    if (activated) {
-      context.recordEffect({
-        cardName: 'I2',
-        kind: 'i2-test-boost',
-        day,
-        message: 'I2 已生效：测试列卡片测试工作量 -2（含新进卡）',
-      });
-    }
-  }
 }
 
 export function recordDeployEffects(context: Context, card: Card): void {
@@ -72,7 +60,7 @@ export function replaySpecialCardEffects(board: Board): void {
   }
 
   if (isActive('I2')) {
-    board.getStateColumn(State.TEST).enableI2TestBoost();
+    board.getStateColumn(State.TEST).restoreI2TestBoost();
   }
 }
 

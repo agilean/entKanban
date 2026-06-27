@@ -344,6 +344,9 @@ const interactive = () => isColumnInteractive(props.column.id);
       <h3>{{ column.title }}</h3>
       <span class="wip">{{ column.count }}/{{ column.limitLabel }}</span>
       <span v-if="column.id === 'ready' && isRelease" class="release-badge">发布日</span>
+      <span v-if="column.i2TestBoostActive" class="i2-badge" title="I2 已生效：测试工作量 -2">
+        I2 · 测试 −2
+      </span>
     </header>
 
     <!-- Backlog: sort + drag to Selected -->
@@ -597,6 +600,17 @@ const interactive = () => isColumnInteractive(props.column.id);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   white-space: nowrap;
+}
+
+.i2-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #6d28d9;
+  background: #ede9fe;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  border: 1px solid #c4b5fd;
 }
 
 .wip {

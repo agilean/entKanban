@@ -71,15 +71,18 @@ describe('card effect events', () => {
     ]);
   });
 
-  it('restores I2 test boost after snapshot reload', () => {
+  it('restores I2 test boost after snapshot reload without double reduction', () => {
     const board = new Board();
     board.clear();
     const i2 = getCard('I2');
+    const s3 = getCard('S3');
     i2.onSelected(new Context(board, new Day(10)));
     board.getStateColumn(State.TEST).addCard(i2, ClassOfService.STANDARD);
+    board.getStateColumn(State.TEST).addCard(s3, ClassOfService.STANDARD);
     i2.doWork(State.TEST, i2.getRemainingWork(State.TEST));
     const context = new Context(board, new Day(12));
     board.advanceCard('test', 'ready', 'I2', context);
+    expect(s3.getRemainingWork(State.TEST)).toBe(4);
 
     const snapshot = captureBoardSnapshot(board);
     const restored = new Board();
@@ -87,8 +90,46 @@ describe('card effect events', () => {
     applyBoardSnapshot(restored, snapshot);
 
     expect(restored.getStateColumn(State.TEST).isI2TestBoostEnabled()).toBe(true);
+    const s7 = getCard('S7');
+    restored.getStateColumn(State.TEST).addCard(s7, ClassOfService.STANDARD);
+    expect(s7.getRemainingWork(State.TEST)).toBe(6);
+    expect(restored.findCardByName('S3')!.getRemainingWork(State.TEST)).toBe(4);
+  });
+
+  it('reduces test work when new cards enter test after I2 is active', () => {
+    const board = new Board();
+    board.clear();
+    const i2 = getCard('I2');
+    const s6 = getCard('S6');
+    i2.onSelected(new Context(board, new Day(10)));
+    s6.onSelected(new Context(board, new Day(10)));
+    board.getStateColumn(State.TEST).addCard(i2, ClassOfService.STANDARD);
+    i2.doWork(State.TEST, i2.getRemainingWork(State.TEST));
+    board.advanceCard('test', 'ready', 'I2', new Context(board, new Day(12)));
+
+    board.getStateColumn(State.DEVELOPMENT).addCard(s6, ClassOfService.STANDARD);
+    s6.doWork(State.DEVELOPMENT, s6.getRemainingWork(State.DEVELOPMENT));
+    expect(s6.getRemainingWork(State.TEST)).toBe(8);
+    board.advanceCard('development', 'test', 'S6', new Context(board, new Day(13)));
+    expect(s6.getRemainingWork(State.TEST)).toBe(6);
+  });
+
+  it('activates I2 when pulled into ready via ready column doTheWork', () => {
+    const board = new Board();
+    board.clear();
+    const i2 = getCard('I2');
     const s3 = getCard('S3');
-    restored.getStateColumn(State.TEST).addCard(s3, ClassOfService.STANDARD);
+    i2.onSelected(new Context(board, new Day(10)));
+    board.getStateColumn(State.TEST).addCard(i2, ClassOfService.STANDARD);
+    board.getStateColumn(State.TEST).addCard(s3, ClassOfService.STANDARD);
+    i2.doWork(State.TEST, i2.getRemainingWork(State.TEST));
+    board.getStateColumn(State.TEST).promoteCompletedWork();
+
+    const context = new Context(board, new Day(12));
+    board.getReadyToDeploy().doTheWork(context);
+
+    expect(board.getReadyToDeploy().getCards().some((card) => card.getName() === 'I2')).toBe(true);
+    expect(board.getStateColumn(State.TEST).isI2TestBoostEnabled()).toBe(true);
     expect(s3.getRemainingWork(State.TEST)).toBe(4);
   });
 });

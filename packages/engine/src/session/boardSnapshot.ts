@@ -135,7 +135,7 @@ export function applyBoardSnapshot(board: Board, snapshot: BoardSnapshot): void 
   addNamedCards(board.getDeployed(), snapshot.deployed, cardsByName);
 
   if (snapshot.testI2BoostEnabled) {
-    testColumn.enableI2TestBoost();
+    testColumn.restoreI2TestBoost();
   }
   replaySpecialCardEffects(board);
 }

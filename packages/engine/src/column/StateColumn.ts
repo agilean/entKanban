@@ -98,12 +98,24 @@ export class StateColumn extends LimitedColumn {
     for (const card of this.getIncompleteCards()) {
       card.doWork(State.TEST, Math.min(2, card.getRemainingWork(State.TEST)));
     }
+    this.attachI2TestBoostListener();
+    return true;
+  }
+
+  restoreI2TestBoost(): void {
+    if (this.state !== State.TEST || this.i2TestBoostEnabled) {
+      return;
+    }
+    this.i2TestBoostEnabled = true;
+    this.attachI2TestBoostListener();
+  }
+
+  private attachI2TestBoostListener(): void {
     this.addListener({
       cardAdded: (card) => {
         card.doWork(State.TEST, Math.min(2, card.getRemainingWork(State.TEST)));
       },
     });
-    return true;
   }
 
   isI2TestBoostEnabled(): boolean {
@@ -247,6 +259,7 @@ export class StateColumn extends LimitedColumn {
     this.rolled = false;
     this.secondaryWorkers = true;
     this.i2TestBoostEnabled = false;
+    this.listeners.clear();
     this.enableLimits();
   }
 

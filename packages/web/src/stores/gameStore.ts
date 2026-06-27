@@ -29,9 +29,9 @@ export type AssignedDiceView = {
   state: State;
 };
 
-export type DiceRollUiPhase = 'results' | 'applying';
+export type DiceRollUiPhase = 'applying';
 
-export type CardRollUiMode = 'preview' | 'rolling' | 'done';
+export type CardRollUiMode = 'rolling' | 'done';
 
 export type DiceRollUiState = {
   visible: boolean;
@@ -39,6 +39,12 @@ export type DiceRollUiState = {
   steps: DiceRollApplyStep[];
   activeIndex: number;
 };
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function removeDiceFromAssignments(
   assignments: DiceAssignmentInput[],
@@ -151,28 +157,47 @@ export const useGameStore = defineStore('game', () => {
 
   const isDiceRollActive = computed(() => diceRollUi.value?.visible === true);
 
-  function openDiceRollResults(steps: readonly DiceRollApplyStep[]): void {
-    diceRollUi.value = {
-      visible: true,
-      phase: 'results',
-      steps: [...steps],
-      activeIndex: 0,
-    };
-  }
-
   function setDiceRollApplying(index: number): void {
     if (!diceRollUi.value) {
       return;
     }
     diceRollUi.value = {
       ...diceRollUi.value,
-      phase: 'applying',
       activeIndex: index,
     };
   }
 
   function closeDiceRollUi(): void {
     diceRollUi.value = null;
+  }
+
+  async function runDiceRollAnimation(activeTab: AppTab = 'board'): Promise<void> {
+    const steps = session.value?.getPendingRollSteps() ?? [];
+    if (steps.length === 0) {
+      return;
+    }
+
+    diceRollUi.value = {
+      visible: true,
+      phase: 'applying',
+      steps: [...steps],
+      activeIndex: 0,
+    };
+
+    const start = session.value?.getAppliedRollCount() ?? 0;
+    for (let index = start; index < steps.length; index += 1) {
+      setDiceRollApplying(index);
+      await delay(1050);
+      const result = applyRollStep(index, activeTab);
+      if (!result?.ok) {
+        closeDiceRollUi();
+        endDiceDrag();
+        return;
+      }
+      await delay(320);
+    }
+    closeDiceRollUi();
+    endDiceDrag();
   }
 
   function getCardRollUi(cardName: string): {
@@ -188,16 +213,13 @@ export const useGameStore = defineStore('game', () => {
       return null;
     }
     const step = ui.steps[stepIndex]!;
-    if (ui.phase === 'results') {
-      return { mode: 'preview', step };
-    }
     if (stepIndex < ui.activeIndex) {
       return { mode: 'done', step };
     }
     if (stepIndex === ui.activeIndex) {
       return { mode: 'rolling', step };
     }
-    return { mode: 'preview', step };
+    return null;
   }
 
   const canDeployToday = computed(() => {
@@ -475,7 +497,7 @@ export const useGameStore = defineStore('game', () => {
     diceRollUi,
     releaseEffectEvents,
     isDiceRollActive,
-    openDiceRollResults,
+    runDiceRollAnimation,
     setDiceRollApplying,
     closeDiceRollUi,
     getCardRollUi,

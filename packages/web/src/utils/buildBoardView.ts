@@ -52,6 +52,7 @@ export type ColumnView = {
   dice: DiceView[];
   state?: State;
   zones?: ColumnZones;
+  i2TestBoostActive?: boolean;
 };
 
 export type BoardView = {
@@ -191,6 +192,7 @@ function buildStateColumn(
     cards,
     dice: mapDiceForState(allDice, state),
     zones,
+    i2TestBoostActive: state === State.TEST ? column.isI2TestBoostEnabled() : undefined,
   };
 }
 

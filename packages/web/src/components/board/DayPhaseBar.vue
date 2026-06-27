@@ -27,7 +27,7 @@ const confirmAction = computed(() =>
 
 const busy = computed(() => game.isDiceRollActive);
 
-function handleConfirm(): void {
+async function handleConfirm(): Promise<void> {
   if (busy.value) {
     return;
   }
@@ -38,11 +38,7 @@ function handleConfirm(): void {
     if (!result?.ok) {
       return;
     }
-    const preview = game.pendingRollPreview;
-    if (preview.length === 0) {
-      return;
-    }
-    game.openDiceRollResults(preview);
+    await game.runDiceRollAnimation(ui.activeTab);
     return;
   }
   game.confirmPhase(ui.activeTab);

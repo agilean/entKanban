@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DiceRollApplyStep } from '@kanban-game/engine';
 import { State } from '@kanban-game/engine';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AssignedDiceView, CardRollUiMode } from '../../stores/gameStore';
 import type { EffortField } from '../../utils/effortHighlight';
 import type { CardView } from '../../utils/buildBoardView';
@@ -10,6 +10,7 @@ import { CARD_NAME_MIME, FROM_COLUMN_MIME, isDiceDrag } from '../../utils/dragPa
 import { wipAgeSeverity } from '../../utils/wipAge';
 import CardDetailPopover from './CardDetailPopover.vue';
 import DiceChip from './DiceChip.vue';
+import RollingDie from './RollingDie.vue';
 
 const props = defineProps<{
   card: CardView;
@@ -45,6 +46,16 @@ const isDiceDragEnabled = computed(() => props.diceDraggable === true);
 const diceDragActive = ref(false);
 const showDetail = ref(false);
 const anchorRect = ref<DOMRect | null>(null);
+const tileRef = ref<HTMLElement | null>(null);
+
+watch(
+  () => props.rollUi?.mode,
+  (mode) => {
+    if (mode === 'rolling') {
+      tileRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  },
+);
 
 const wipAgeLabel = computed(() => {
   if (props.card.wipDays === undefined || props.card.wipDaysKind === undefined) {
@@ -84,7 +95,7 @@ const businessValueClass = computed(() => {
   return tierMap[props.card.businessValue] ?? null;
 });
 
-const STATE_CLASS: Record<State, string> = {
+const STATE_ACCENT: Record<State, 'analysis' | 'development' | 'test'> = {
   [State.ANALYSIS]: 'analysis',
   [State.DEVELOPMENT]: 'development',
   [State.TEST]: 'test',
@@ -169,6 +180,7 @@ function closeDetail(): void {
 
 <template>
   <article
+    ref="tileRef"
     class="card-tile"
     :class="{
       [`kind-${card.kind}`]: true,
@@ -176,7 +188,6 @@ function closeDetail(): void {
       droppable: isDropEnabled,
       'dice-drop-active': diceDragActive,
       'effort-updated': hasEffortUpdate,
-      'roll-preview': rollUi?.mode === 'preview',
       'roll-active': rollUi?.mode === 'rolling',
       'roll-done': rollUi?.mode === 'done',
     }"
@@ -273,24 +284,20 @@ function closeDetail(): void {
 
     <div v-if="showRollOverlay && rollUi" class="card-roll-overlay">
       <div class="card-roll-dice">
-        <span
+        <RollingDie
           v-for="(value, index) in rollUi.step.rollValues"
           :key="index"
-          class="card-roll-die"
-          :class="[
-            STATE_CLASS[rollUi.step.state],
-            { spin: rollUi.mode === 'rolling' },
-          ]"
-        >
-          <template v-if="rollUi.mode === 'rolling'">?</template>
-          <template v-else>{{ rollUi.step.dieLabels[index] }}{{ value }}</template>
-        </span>
+          :value="value"
+          :rolling="rollUi.mode === 'rolling'"
+          :accent="STATE_ACCENT[rollUi.step.state]"
+          :label="rollUi.step.dieLabels[index]"
+        />
       </div>
-      <p v-if="rollUi.mode === 'rolling'" class="card-roll-label">掷骰中</p>
-      <p v-else-if="rollUi.mode === 'preview'" class="card-roll-label">
-        合计 {{ rollUi.step.totalRoll }} · −{{ rollUi.step.delta }}
+      <p v-if="rollUi.mode === 'rolling'" class="card-roll-label">掷骰中…</p>
+      <p v-else class="card-roll-result">
+        <span class="total">合计 {{ rollUi.step.totalRoll }}</span>
+        <span v-if="rollUi.step.delta > 0" class="delta">−{{ rollUi.step.delta }}</span>
       </p>
-      <p v-else class="card-roll-label done">已核销 −{{ rollUi.step.delta }}</p>
     </div>
 
     <footer v-if="card.dueDate" class="card-footer">
@@ -533,17 +540,16 @@ function closeDetail(): void {
   font-weight: 700;
 }
 
-.card-tile.roll-preview {
-  box-shadow: 0 0 0 2px #dbeafe;
-}
-
 .card-tile.roll-active {
-  box-shadow: 0 0 0 2px #2563eb;
-  z-index: 2;
+  box-shadow:
+    0 0 0 2px #2563eb,
+    0 8px 24px rgb(37 99 235 / 22%);
+  z-index: 3;
+  transform: scale(1.02);
 }
 
 .card-tile.roll-done {
-  opacity: 0.85;
+  opacity: 0.92;
 }
 
 .card-roll-overlay {
@@ -553,44 +559,18 @@ function closeDetail(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   border-radius: 0.5rem;
-  background: rgb(255 255 255 / 92%);
-  backdrop-filter: blur(1px);
+  background: rgb(255 255 255 / 94%);
+  backdrop-filter: blur(2px);
+  animation: overlay-in 0.2s ease-out;
 }
 
 .card-roll-dice {
   display: flex;
-  gap: 0.25rem;
-}
-
-.card-roll-die {
-  display: inline-flex;
-  align-items: center;
+  flex-wrap: wrap;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  padding: 0 0.25rem;
-  border-radius: 0.375rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.card-roll-die.analysis {
-  background: #2563eb;
-}
-
-.card-roll-die.development {
-  background: #16a34a;
-}
-
-.card-roll-die.test {
-  background: #d97706;
-}
-
-.card-roll-die.spin {
-  animation: card-roll-spin 0.45s ease-in-out infinite alternate;
+  gap: 0.375rem;
 }
 
 .card-roll-label {
@@ -598,18 +578,49 @@ function closeDetail(): void {
   font-size: 0.625rem;
   font-weight: 700;
   color: #1e40af;
+  letter-spacing: 0.04em;
 }
 
-.card-roll-label.done {
+.card-roll-result {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.card-roll-result .total {
+  color: #475569;
+}
+
+.card-roll-result .delta {
   color: #16a34a;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  background: #dcfce7;
+  animation: delta-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes card-roll-spin {
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes delta-pop {
   0% {
-    transform: rotate(-10deg);
+    transform: scale(0.6);
+    opacity: 0;
   }
   100% {
-    transform: rotate(10deg);
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

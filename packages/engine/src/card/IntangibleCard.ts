@@ -1,6 +1,7 @@
 import type { Day } from '../Day.js';
 import type { Context } from '../Context.js';
 import { ClassOfService } from '../ClassOfService.js';
+import { State } from '../State.js';
 import { AbstractCard } from './AbstractCard.js';
 import { CardSize } from './Card.js';
 import { getCard } from './Cards.js';
@@ -31,6 +32,18 @@ export class IntangibleCard extends AbstractCard {
 
     if (this.getName() === 'I1') {
       context.getBoard().getReadyToDeploy().setDeploymentFrequency(1);
+    }
+
+    if (this.getName() === 'I2') {
+      const activated = context.getBoard().getStateColumn(State.TEST).enableI2TestBoost();
+      if (activated) {
+        context.recordEffect({
+          cardName: 'I2',
+          kind: 'i2-test-boost',
+          day: context.getDay().getOrdinal(),
+          message: 'I2 已生效：测试列卡片测试工作量 -2（含新进卡）',
+        });
+      }
     }
   }
 

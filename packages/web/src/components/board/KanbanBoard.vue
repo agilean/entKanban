@@ -4,7 +4,6 @@ import type { BoardView } from '../../utils/buildBoardView';
 import { endCardDrag } from '../../utils/cardDragState';
 import { endDiceDrag } from '../../utils/diceDragState';
 import DicePool from './DicePool.vue';
-import DiceRollPanel from './DiceRollPanel.vue';
 import KanbanColumn from './KanbanColumn.vue';
 
 defineProps<{
@@ -36,7 +35,6 @@ onUnmounted(() => {
           :column="column"
         />
       </div>
-      <DiceRollPanel />
     </div>
   </div>
 </template>
@@ -56,6 +54,5 @@ onUnmounted(() => {
   gap: 0.625rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
-  padding-right: min(21rem, 42%);
 }
 </style>
