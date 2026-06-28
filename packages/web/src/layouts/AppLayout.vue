@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { ENGINE_VERSION } from '@kanban-game/engine';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
 import UserMenu from '../components/layout/UserMenu.vue';
-import { phaseLabel } from '../utils/phaseLabel';
 import {
   fetchPlaySession,
   type PlaySession,
@@ -32,17 +30,6 @@ const moreMenuRef = ref<HTMLElement | null>(null);
 const newGameMenuRef = ref<HTMLElement | null>(null);
 
 const inPlaySession = computed(() => Boolean(game.activePlaySessionId));
-const showSoloPracticeBadge = computed(() => !inPlaySession.value && (game.hasSession || auth.isLoggedIn));
-
-const subtitle = computed(() => {
-  if (!game.hasSession) {
-    if (inPlaySession.value && playSessionInfo.value) {
-      return `竞赛房「${playSessionInfo.value.title}」· 点击「本房再开一局」开始`;
-    }
-    return game.hasSavedGame ? '发现本地存档，点击「读档」继续' : '点击「新游戏」从 Day 9 开始单人练习';
-  }
-  return `Day ${game.currentDay} · ${phaseLabel(game.phase)}`;
-});
 
 const playSessionStatusLabel = computed(() => {
   const status = playSessionInfo.value?.status;
@@ -56,19 +43,6 @@ const playSessionStatusLabel = computed(() => {
 });
 
 const isDev = import.meta.env.DEV;
-
-const replayStatusLabel = computed(() => {
-  switch (game.replayServerStatus) {
-    case 'online':
-      return '回放库已连接';
-    case 'offline':
-      return '回放库离线';
-    case 'syncing':
-      return '同步中…';
-    default:
-      return '回放库';
-  }
-});
 
 async function loadPlaySessionInfo(): Promise<void> {
   const id = game.activePlaySessionId;
@@ -210,38 +184,32 @@ function toggleNewGameMenu(): void {
   <div class="layout">
     <header class="header">
       <div class="brand">
-        <h1>getKanban Game</h1>
-        <p class="subtitle">{{ subtitle }}</p>
+        <h1>EntKanban</h1>
+        <p class="context-line">
+          <RouterLink v-if="auth.org" to="/org" class="context-link">{{ auth.org.name }}</RouterLink>
+          <RouterLink v-else-if="auth.isLoggedIn" to="/org" class="context-link muted">未加入组织</RouterLink>
+          <span v-else class="context-muted">访客</span>
+          <span class="context-sep">·</span>
+          <RouterLink
+            v-if="inPlaySession && playSessionInfo"
+            :to="`/sessions/${playSessionInfo.id}`"
+            class="context-link"
+          >
+            竞赛房：{{ playSessionInfo.title }}
+            <span v-if="playSessionStatusLabel" class="context-status">{{ playSessionStatusLabel }}</span>
+          </RouterLink>
+          <span v-else-if="inPlaySession" class="context-muted">竞赛房中…</span>
+          <span v-else class="context-muted">单人练习</span>
+        </p>
       </div>
       <div class="header-actions">
         <UserMenu />
         <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
-        <span class="version">Engine {{ ENGINE_VERSION }}</span>
-        <span
-          v-if="game.hasSession"
-          class="replay-status"
-          :class="game.replayServerStatus"
-          :title="`Session ${game.replaySessionId}`"
-        >
-          {{ replayStatusLabel }}
-        </span>
       </div>
     </header>
 
     <nav class="tabs-bar" aria-label="视图导航">
       <div class="tabs-left">
-        <RouterLink
-          v-if="inPlaySession && playSessionInfo"
-          :to="`/sessions/${playSessionInfo.id}`"
-          class="room-badge session"
-        >
-          <span class="room-badge-label">竞赛房</span>
-          <span class="room-badge-title">{{ playSessionInfo.title }}</span>
-          <span v-if="playSessionStatusLabel" class="room-badge-status">{{ playSessionStatusLabel }}</span>
-        </RouterLink>
-        <span v-else-if="inPlaySession" class="room-badge session muted">竞赛房中…</span>
-        <span v-else-if="showSoloPracticeBadge" class="room-badge solo">单人练习</span>
-
         <div class="tabs">
           <button
             v-for="tab in tabs"
@@ -364,10 +332,44 @@ function toggleNewGameMenu(): void {
   font-weight: 700;
 }
 
-.subtitle {
+.context-line {
   margin: 0.25rem 0 0;
   font-size: 0.875rem;
   color: #64748b;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.context-link {
+  color: #475569;
+  text-decoration: none;
+}
+
+.context-link:hover {
+  color: #2563eb;
+}
+
+.context-link.muted {
+  color: #94a3b8;
+}
+
+.context-muted {
+  color: #94a3b8;
+}
+
+.context-sep {
+  color: #cbd5e1;
+}
+
+.context-status {
+  margin-left: 0.25rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 0.6875rem;
 }
 
 .header-actions {
@@ -375,34 +377,6 @@ function toggleNewGameMenu(): void {
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
-}
-
-.version {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-.replay-status {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.replay-status.online {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.replay-status.offline {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.replay-status.syncing {
-  background: #eff6ff;
-  color: #1d4ed8;
 }
 
 .dev-link {
@@ -431,58 +405,6 @@ function toggleNewGameMenu(): void {
   gap: 0.75rem;
   min-width: 0;
   flex: 1;
-}
-
-.room-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.room-badge.session {
-  background: #eef2ff;
-  color: #3730a3;
-  text-decoration: none;
-  border: 1px solid #c7d2fe;
-}
-
-.room-badge.session:hover {
-  background: #e0e7ff;
-}
-
-.room-badge.session.muted {
-  border-color: #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
-}
-
-.room-badge.solo {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-}
-
-.room-badge-label {
-  font-weight: 600;
-}
-
-.room-badge-title {
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.room-badge-status {
-  padding: 0.0625rem 0.375rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 0.6875rem;
-  color: #4f46e5;
 }
 
 .tabs {
