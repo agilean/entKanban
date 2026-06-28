@@ -2,12 +2,14 @@
 import { ENGINE_VERSION } from '@kanban-game/engine';
 import { computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
 import { phaseLabel } from '../utils/phaseLabel';
 
 const game = useGameStore();
 const ui = useUiStore();
+const auth = useAuthStore();
 
 const tabs: Array<{ id: AppTab; label: string }> = [
   { id: 'board', label: '看板' },
@@ -41,7 +43,14 @@ const replayStatusLabel = computed(() => {
 
 onMounted(() => {
   void game.refreshReplayServerStatus();
+  if (!auth.initialized) {
+    void auth.initialize();
+  }
 });
+
+async function handleLogout(): Promise<void> {
+  await auth.logout();
+}
 
 function handleExportSystemLog(): void {
   game.exportSystemLog();
@@ -97,6 +106,14 @@ function handleOpenGuide(): void {
         <p class="subtitle">{{ subtitle }}</p>
       </div>
       <div class="header-actions">
+        <RouterLink to="/leaderboard" class="nav-link">排行榜</RouterLink>
+        <RouterLink v-if="auth.isLoggedIn" to="/org" class="nav-link">组织</RouterLink>
+        <div v-if="auth.isLoggedIn && auth.user" class="user-chip">
+          <img v-if="auth.user.avatarUrl" :src="auth.user.avatarUrl" alt="" class="user-avatar" />
+          <span class="user-name">{{ auth.user.name }}</span>
+          <button type="button" class="btn subtle" @click="handleLogout">退出</button>
+        </div>
+        <button v-else type="button" class="btn primary" @click="auth.login()">飞书登录</button>
         <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
         <span class="version">Engine {{ ENGINE_VERSION }}</span>
         <span
@@ -222,6 +239,39 @@ function handleOpenGuide(): void {
   font-size: 0.75rem;
   color: #94a3b8;
   text-decoration: none;
+}
+
+.nav-link {
+  font-size: 0.875rem;
+  color: #475569;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: #2563eb;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.user-name {
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.btn.subtle {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
 }
 
 .dev-link:hover {

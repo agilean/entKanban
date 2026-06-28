@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { DiceRollLogEntry } from '@kanban-game/engine';
 import type { GameSessionState } from '@kanban-game/engine';
+import { migrateSocial } from './socialDb.js';
 
 export type ReplayDatabase = DatabaseSync;
 
@@ -78,6 +79,7 @@ function migrate(db: ReplayDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_dice_roll_session ON dice_roll_entries(session_id);
     CREATE INDEX IF NOT EXISTS idx_dice_roll_day ON dice_roll_entries(day);
   `);
+  migrateSocial(db);
 }
 
 export function upsertSession(db: ReplayDatabase, id: string, session: GameSessionState): void {

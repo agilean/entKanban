@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import GamePage from '../pages/GamePage.vue';
+import { useAuthStore } from '../stores/authStore';
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -9,6 +10,24 @@ export const router = createRouter({
       name: 'game',
       component: GamePage,
       meta: { title: '游戏' },
+    },
+    {
+      path: '/leaderboard',
+      name: 'leaderboard',
+      component: () => import('../pages/LeaderboardPage.vue'),
+      meta: { title: '排行榜' },
+    },
+    {
+      path: '/org',
+      name: 'org',
+      component: () => import('../pages/OrgPage.vue'),
+      meta: { title: '组织' },
+    },
+    {
+      path: '/invite/:token',
+      name: 'invite',
+      component: () => import('../pages/InvitePage.vue'),
+      meta: { title: '组织邀请' },
     },
     {
       path: '/evacuation',
@@ -23,8 +42,12 @@ export const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (to.meta.devOnly && !import.meta.env.DEV) {
     return '/';
+  }
+  const auth = useAuthStore();
+  if (!auth.initialized) {
+    await auth.initialize();
   }
 });

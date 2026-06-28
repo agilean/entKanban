@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { DiceRollLogEntry } from '@kanban-game/engine';
 import type { GameSessionState } from '@kanban-game/engine';
+import { optionalAuth, type AuthVariables } from './auth/middleware.js';
+import { getConfig } from './config.js';
 import type { ReplayDatabase } from './db.js';
 import {
   diceRollCount,
@@ -11,16 +13,23 @@ import {
   listSessions,
   upsertSession,
 } from './db.js';
+import { createAuthRoutes } from './routes/auth.js';
+import { createLeaderboardRoutes, createResultRoutes } from './routes/leaderboard.js';
+import { createInvitationRoutes, createOrgRoutes } from './routes/orgs.js';
 
-export function createApp(db: ReplayDatabase): Hono {
-  const app = new Hono();
+export function createApp(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
+  const app = new Hono<{ Variables: AuthVariables }>();
+  const config = getConfig();
 
   app.use(
     '*',
     cors({
-      origin: '*',
+      origin: config.webOrigin,
+      credentials: true,
     }),
   );
+
+  app.use('*', optionalAuth);
 
   app.get('/api/health', (c) =>
     c.json({
@@ -28,6 +37,12 @@ export function createApp(db: ReplayDatabase): Hono {
       diceRollCount: diceRollCount(db),
     }),
   );
+
+  app.route('/api/auth', createAuthRoutes(db));
+  app.route('/api/orgs', createOrgRoutes(db));
+  app.route('/api/invitations', createInvitationRoutes(db));
+  app.route('/api/results', createResultRoutes(db));
+  app.route('/api/leaderboard', createLeaderboardRoutes(db));
 
   app.get('/api/sessions', (c) => {
     const limit = Number(c.req.query('limit') ?? '50');

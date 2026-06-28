@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
+import { submitGameResult } from '../../utils/leaderboardApi';
+import { getReplaySessionId } from '../../utils/replayApi';
 
 const game = useGameStore();
 const ui = useUiStore();
+const auth = useAuthStore();
+
+const submitStatus = ref<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
 const deployedCount = computed(() => game.board?.getDeployed().getCards().length ?? 0);
 
@@ -16,6 +23,33 @@ const totalProfit = computed(() => {
   return summary.getTotalGrossProfitToDate(21);
 });
 
+function submissionKey(): string {
+  return `kanban-result-submitted:${getReplaySessionId()}`;
+}
+
+async function submitResultIfNeeded(): Promise<void> {
+  if (!auth.isLoggedIn || !game.isGameOver) {
+    return;
+  }
+  if (sessionStorage.getItem(submissionKey()) === '1') {
+    submitStatus.value = 'success';
+    return;
+  }
+  submitStatus.value = 'submitting';
+  const ok = await submitGameResult({
+    sessionId: getReplaySessionId(),
+    score: totalProfit.value,
+    deployedCount: deployedCount.value,
+    snapshotCount: game.snapshotCount,
+  });
+  if (ok) {
+    sessionStorage.setItem(submissionKey(), '1');
+    submitStatus.value = 'success';
+    return;
+  }
+  submitStatus.value = 'error';
+}
+
 function viewFinance(): void {
   ui.dismissGameOver();
   ui.setTab('finance');
@@ -24,6 +58,22 @@ function viewFinance(): void {
 function dismiss(): void {
   ui.dismissGameOver();
 }
+
+onMounted(async () => {
+  if (!auth.initialized) {
+    await auth.initialize();
+  }
+  await submitResultIfNeeded();
+});
+
+watch(
+  () => game.isGameOver,
+  (isOver) => {
+    if (isOver) {
+      void submitResultIfNeeded();
+    }
+  },
+);
 </script>
 
 <template>
@@ -49,8 +99,21 @@ function dismiss(): void {
         </div>
       </dl>
 
+      <p v-if="auth.isLoggedIn && submitStatus === 'submitting'" class="status">正在提交排行榜成绩…</p>
+      <p v-else-if="auth.isLoggedIn && submitStatus === 'success'" class="status success">
+        成绩已计入排行榜。
+      </p>
+      <p v-else-if="auth.isLoggedIn && submitStatus === 'error'" class="status error">
+        成绩提交失败，请稍后重试。
+      </p>
+      <p v-else-if="!auth.isLoggedIn" class="status hint">
+        <button type="button" class="inline-btn" @click="auth.login()">飞书登录</button>
+        后可参与排行榜。
+      </p>
+
       <div class="actions">
         <button type="button" class="btn" @click="dismiss">关闭，查看数据</button>
+        <RouterLink to="/leaderboard" class="btn">查看排行榜</RouterLink>
         <button type="button" class="btn primary" @click="viewFinance">查看财务详情</button>
       </div>
     </div>
@@ -122,6 +185,32 @@ dd.negative {
   color: #b91c1c;
 }
 
+.status {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+}
+
+.status.success {
+  color: #15803d;
+}
+
+.status.error {
+  color: #b91c1c;
+}
+
+.status.hint {
+  color: #64748b;
+}
+
+.inline-btn {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -137,6 +226,9 @@ dd.negative {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn.primary {

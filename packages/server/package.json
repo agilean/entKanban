@@ -12,7 +12,8 @@
   "dependencies": {
     "@hono/node-server": "^1.14.4",
     "@kanban-game/engine": "workspace:*",
-    "hono": "^4.8.5"
+    "hono": "^4.8.5",
+    "jose": "^6.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.32",
