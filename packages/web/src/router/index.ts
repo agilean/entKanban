@@ -24,6 +24,30 @@ export const router = createRouter({
       meta: { title: '组织' },
     },
     {
+      path: '/sessions',
+      name: 'sessions',
+      component: () => import('../pages/PlaySessionListPage.vue'),
+      meta: { title: '竞赛房' },
+    },
+    {
+      path: '/sessions/new',
+      name: 'session-new',
+      component: () => import('../pages/CreatePlaySessionPage.vue'),
+      meta: { title: '创建竞赛房' },
+    },
+    {
+      path: '/sessions/invite/:token',
+      name: 'session-invite',
+      component: () => import('../pages/SessionInvitePage.vue'),
+      meta: { title: '竞赛房邀请' },
+    },
+    {
+      path: '/sessions/:id',
+      name: 'session-detail',
+      component: () => import('../pages/PlaySessionDetailPage.vue'),
+      meta: { title: '竞赛房' },
+    },
+    {
       path: '/invite/:token',
       name: 'invite',
       component: () => import('../pages/InvitePage.vue'),

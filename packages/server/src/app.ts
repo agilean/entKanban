@@ -17,6 +17,8 @@ import { createAuthRoutes } from './routes/auth.js';
 import { createLeaderboardRoutes, createResultRoutes } from './routes/leaderboard.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createInvitationRoutes, createOrgRoutes } from './routes/orgs.js';
+import { createPlaySessionRoutes } from './routes/playSessions.js';
+import { canUserWriteGameSession, updateParticipantProgress } from './playSessionDb.js';
 import { mountWebStatic, resolveWebDistPath } from './static.js';
 
 export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }): Hono<{ Variables: AuthVariables }> {
@@ -55,6 +57,8 @@ export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }):
   app.route('/api/results', createResultRoutes(db));
   app.route('/api/leaderboard', createLeaderboardRoutes(db));
 
+  app.route('/api/play-sessions', createPlaySessionRoutes(db));
+
   app.get('/api/sessions', (c) => {
     const limit = Number(c.req.query('limit') ?? '50');
     return c.json({ sessions: listSessions(db, Number.isFinite(limit) ? limit : 50) });
@@ -70,11 +74,21 @@ export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }):
 
   app.put('/api/sessions/:id', async (c) => {
     const id = c.req.param('id');
+    const userId = c.get('userId') as string | undefined;
+    if (!canUserWriteGameSession(db, id, userId ?? null)) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
     const body = (await c.req.json()) as { session?: GameSessionState };
     if (!body.session?.board) {
       return c.json({ error: 'Invalid session payload' }, 400);
     }
     upsertSession(db, id, body.session);
+    if (userId) {
+      updateParticipantProgress(db, id, userId, {
+        currentDay: body.session.currentDay,
+        phase: body.session.phase,
+      });
+    }
     return c.json({ ok: true, sessionId: id });
   });
 
@@ -93,6 +107,10 @@ export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }):
     };
     if (!body.sessionId || !body.entry?.recordedAt) {
       return c.json({ error: 'sessionId and entry are required' }, 400);
+    }
+    const userId = c.get('userId') as string | undefined;
+    if (!canUserWriteGameSession(db, body.sessionId, userId ?? null)) {
+      return c.json({ error: 'Forbidden' }, 403);
     }
     const inserted = insertDiceRollEntry(db, body.sessionId, body.entry);
     return c.json({ ok: true, inserted });

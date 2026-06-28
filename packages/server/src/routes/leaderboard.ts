@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth, type AuthVariables } from '../auth/middleware.js';
 import type { ReplayDatabase } from '../db.js';
 import { getGlobalLeaderboard, getOrgLeaderboard, getUserWithOrg, insertGameResult } from '../socialDb.js';
+import { completeParticipant, getPlaySessionById, getPlaySessionLeaderboard } from '../playSessionDb.js';
 
 export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
   const routes = new Hono<{ Variables: AuthVariables }>();
@@ -10,6 +11,7 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
     const userId = c.get('userId');
     const body = (await c.req.json()) as {
       sessionId?: string;
+      playSessionId?: string;
       score?: number;
       deployedCount?: number;
       snapshotCount?: number;
@@ -31,7 +33,15 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
         score: body.score,
         deployedCount: body.deployedCount,
         snapshotCount: body.snapshotCount,
+        playSessionId: body.playSessionId,
       });
+      if (body.playSessionId) {
+        completeParticipant(db, body.playSessionId, userId, {
+          score: body.score,
+          deployedCount: body.deployedCount,
+          currentDay: 21,
+        });
+      }
       return c.json({ result }, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to submit result';
@@ -62,6 +72,18 @@ export function createLeaderboardRoutes(db: ReplayDatabase): Hono<{ Variables: A
     return c.json({
       org: { id: user.org.id, name: user.org.name },
       entries: getOrgLeaderboard(db, user.org.id, limit, offset),
+    });
+  });
+
+  routes.get('/session/:playSessionId', requireAuth, (c) => {
+    const playSessionId = c.req.param('playSessionId')!;
+    const playSession = getPlaySessionById(db, playSessionId);
+    if (!playSession) {
+      return c.json({ error: 'Play session not found' }, 404);
+    }
+    return c.json({
+      playSession: { id: playSession.id, title: playSession.title },
+      entries: getPlaySessionLeaderboard(db, playSessionId),
     });
   });
 

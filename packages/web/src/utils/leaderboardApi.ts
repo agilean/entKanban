@@ -18,6 +18,7 @@ export type SubmitResultInput = {
   score: number;
   deployedCount: number;
   snapshotCount: number;
+  playSessionId?: string | null;
 };
 
 async function requestJson<T>(
@@ -51,7 +52,6 @@ export async function submitGameResult(input: SubmitResultInput): Promise<boolea
   });
   return result.status === 201;
 }
-
 export async function fetchGlobalLeaderboard(limit = 50, offset = 0): Promise<LeaderboardEntry[]> {
   const result = await requestJson<{ entries: LeaderboardEntry[] }>(
     `/leaderboard/global?limit=${limit}&offset=${offset}`,

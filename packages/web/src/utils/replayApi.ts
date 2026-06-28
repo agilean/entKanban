@@ -1,6 +1,7 @@
 import type { DiceRollLogEntry, GameSessionState } from '@kanban-game/engine';
 
 export const REPLAY_SESSION_ID_KEY = 'kanban-replay-session-id';
+export const ACTIVE_PLAY_SESSION_KEY = 'kanban-active-play-session-id';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
@@ -36,6 +37,7 @@ function getOrCreateReplaySessionId(): string {
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     const response = await fetch(`${API_BASE}${path}`, {
+      credentials: 'include',
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -64,6 +66,22 @@ export function resetReplaySessionId(): string {
   const id = crypto.randomUUID();
   localStorage.setItem(REPLAY_SESSION_ID_KEY, id);
   return id;
+}
+
+export function setReplaySessionId(id: string): void {
+  localStorage.setItem(REPLAY_SESSION_ID_KEY, id);
+}
+
+export function getActivePlaySessionId(): string | null {
+  return localStorage.getItem(ACTIVE_PLAY_SESSION_KEY);
+}
+
+export function setActivePlaySessionId(id: string | null): void {
+  if (id) {
+    localStorage.setItem(ACTIVE_PLAY_SESSION_KEY, id);
+  } else {
+    localStorage.removeItem(ACTIVE_PLAY_SESSION_KEY);
+  }
 }
 
 export async function syncSessionSnapshot(session: GameSessionState): Promise<boolean> {

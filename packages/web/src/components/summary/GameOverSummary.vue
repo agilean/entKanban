@@ -41,6 +41,7 @@ async function submitResultIfNeeded(): Promise<void> {
     score: totalProfit.value,
     deployedCount: deployedCount.value,
     snapshotCount: game.snapshotCount,
+    playSessionId: game.activePlaySessionId,
   });
   if (ok) {
     sessionStorage.setItem(submissionKey(), '1');
@@ -100,6 +101,10 @@ watch(
       </dl>
 
       <p v-if="auth.isLoggedIn && submitStatus === 'submitting'" class="status">正在提交排行榜成绩…</p>
+      <p v-else-if="auth.isLoggedIn && submitStatus === 'success' && game.activePlaySessionId" class="status success">
+        成绩已计入排行榜。
+        <RouterLink :to="`/sessions/${game.activePlaySessionId}`">查看竞赛房</RouterLink>
+      </p>
       <p v-else-if="auth.isLoggedIn && submitStatus === 'success'" class="status success">
         成绩已计入排行榜。
       </p>

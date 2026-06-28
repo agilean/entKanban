@@ -10,6 +10,7 @@ import { getConfig } from '../config.js';
 import { logError, logInfo, logWarn } from '../logging.js';
 import type { ReplayDatabase } from '../db.js';
 import { acceptInvitation, getUserWithOrg, upsertUserByFeishu } from '../socialDb.js';
+import { acceptPlaySessionInvitation } from '../playSessionDb.js';
 
 export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
   const routes = new Hono<{ Variables: AuthVariables }>();
@@ -63,10 +64,27 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         }
       }
 
+      if (state?.startsWith('playsession:')) {
+        const token = state.slice('playsession:'.length);
+        try {
+          acceptPlaySessionInvitation(db, token, user.id);
+        } catch (inviteError) {
+          logWarn('auth.callback', 'Play session invite failed after login', {
+            tokenPrefix: token.slice(0, 8),
+            message: inviteError instanceof Error ? inviteError.message : 'unknown',
+          });
+        }
+      }
+
       const sessionToken = await signSession(user.id);
       c.header('Set-Cookie', buildSetCookieHeader(sessionToken));
       logInfo('auth.callback', 'Login succeeded', { userId: user.id, name: user.name });
-      const redirectPath = state?.startsWith('invite:') ? `/invite/${state.slice('invite:'.length)}` : '/';
+      let redirectPath = '/';
+      if (state?.startsWith('invite:')) {
+        redirectPath = `/invite/${state.slice('invite:'.length)}`;
+      } else if (state?.startsWith('playsession:')) {
+        redirectPath = `/sessions/invite/${state.slice('playsession:'.length)}`;
+      }
       return c.redirect(`${config.webOrigin}${redirectPath}?auth=success`);
     } catch (error) {
       logError('auth.callback', 'Login failed during callback', {

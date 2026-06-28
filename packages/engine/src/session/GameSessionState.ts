@@ -3,6 +3,7 @@ import type { DiceRollLogEntry } from '../history/DiceRollLogEntry.js';
 import type { DaySnapshot } from '../history/DaySnapshot.js';
 import type { BoardSnapshot } from './boardSnapshot.js';
 import type { GamePhase } from './GamePhase.js';
+import type { GameTypeId } from '../registry/gameTypes.js';
 import type { DiceAssignmentInput } from './PlayerAction.js';
 
 export type WipAdjustmentState = {
@@ -16,6 +17,7 @@ export type WipAdjustmentState = {
 
 export type GameSessionState = {
   version: 1;
+  gameType?: GameTypeId;
   currentDay: number;
   phase: GamePhase;
   training: boolean;

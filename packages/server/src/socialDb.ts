@@ -389,6 +389,7 @@ export function insertGameResult(
     score: number;
     deployedCount: number;
     snapshotCount: number;
+    playSessionId?: string | null;
   },
 ): GameResult {
   const user = getUserById(db, input.userId);
@@ -400,13 +401,14 @@ export function insertGameResult(
   const completedAt = new Date().toISOString();
   db.prepare(
     `INSERT INTO game_results
-      (id, user_id, org_id, session_id, score, deployed_count, snapshot_count, completed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, org_id, session_id, play_session_id, score, deployed_count, snapshot_count, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.userId,
     user.orgId,
     input.sessionId,
+    input.playSessionId ?? null,
     input.score,
     input.deployedCount,
     input.snapshotCount,

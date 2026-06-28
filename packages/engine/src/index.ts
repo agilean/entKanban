@@ -30,6 +30,14 @@ export type { CardEffectEvent, CardEffectKind } from './session/CardEffectEvent.
 export { replaySpecialCardEffects, mergeEffectEvents, consolidateReleaseEffectEvents } from './session/cardEffectEvents.js';
 export { GameSession } from './session/GameSession.js';
 export type { GameSessionOptions } from './session/GameSession.js';
+export {
+  GAME_TYPE_REGISTRY,
+  GAME_TYPES,
+  getGameType,
+  isValidGameType,
+  type GameTypeDefinition,
+  type GameTypeId,
+} from './registry/gameTypes.js';
 
 export type { DaySnapshot, ColumnWipCounts, DeployedCardMetrics } from './history/DaySnapshot.js';
 export { DaySnapshotStore } from './history/DaySnapshotStore.js';

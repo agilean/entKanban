@@ -33,12 +33,16 @@ import {
 import {
   checkReplayServerHealth,
   downloadReplayFromServer,
+  getActivePlaySessionId,
   getReplaySessionId,
   pushDiceRollToServer,
   resetReplaySessionId,
+  setActivePlaySessionId,
+  setReplaySessionId,
   syncSessionSnapshot,
   type ReplaySyncStatus,
 } from '../utils/replayApi';
+import { startPlayInSession } from '../utils/playSessionApi';
 import { appendGameEvent, gameEventLogCount, downloadGameEventLog } from '../utils/gameEventLog';
 import type { AppTab } from './uiStore';
 
@@ -180,6 +184,7 @@ export const useGameStore = defineStore('game', () => {
   const diceRollArchiveSize = ref(diceRollArchiveCount());
   const replayServerStatus = ref<ReplaySyncStatus>('idle');
   const replaySessionId = ref(getReplaySessionId());
+  const activePlaySessionId = ref(getActivePlaySessionId());
   const systemLogSize = ref(gameEventLogCount());
 
   const isDiceRollActive = computed(() => diceRollUi.value?.visible === true);
@@ -400,10 +405,35 @@ export const useGameStore = defineStore('game', () => {
     closeDiceRollUi();
     releaseEffectEvents.value = [];
     clearSavedGame();
+    activePlaySessionId.value = null;
+    setActivePlaySessionId(null);
     replaySessionId.value = resetReplaySessionId();
     refreshSavedFlag();
     logGameEvent({ level: 'info', category: 'system', message: '新游戏开始' });
     bumpRevision();
+  }
+
+  async function startNewGameInPlaySession(playSessionId: string): Promise<boolean> {
+    const result = await startPlayInSession(playSessionId);
+    if (!result) {
+      lastError.value = '无法在该竞赛房中开始游戏';
+      return false;
+    }
+    session.value = GameSession.createNew();
+    lastError.value = null;
+    clearEffortHighlights();
+    closeDiceRollUi();
+    releaseEffectEvents.value = [];
+    clearSavedGame();
+    activePlaySessionId.value = playSessionId;
+    setActivePlaySessionId(playSessionId);
+    setReplaySessionId(result.gameSessionId);
+    replaySessionId.value = result.gameSessionId;
+    refreshSavedFlag();
+    logGameEvent({ level: 'info', category: 'system', message: '竞赛房游戏开始', detail: { playSessionId } });
+    bumpRevision();
+    await syncReplayToServer();
+    return true;
   }
 
   function resetGame(): void {
@@ -650,6 +680,7 @@ export const useGameStore = defineStore('game', () => {
     diceRollArchiveSize,
     replayServerStatus,
     replaySessionId,
+    activePlaySessionId,
     systemLogSize,
     effortHighlights,
     diceRollUi,
@@ -661,6 +692,7 @@ export const useGameStore = defineStore('game', () => {
     getCardRollUi,
     canDeployToday,
     startNewGame,
+    startNewGameInPlaySession,
     resetGame,
     exportDiceRollLog,
     exportServerReplay,
