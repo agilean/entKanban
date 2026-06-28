@@ -440,6 +440,11 @@ export const useGameStore = defineStore('game', () => {
     startNewGame();
   }
 
+  function clearActivePlaySession(): void {
+    activePlaySessionId.value = null;
+    setActivePlaySessionId(null);
+  }
+
   function dispatch(action: PlayerAction): DispatchResult | undefined {
     if (!session.value) {
       lastError.value = '尚未开始游戏';
@@ -694,6 +699,7 @@ export const useGameStore = defineStore('game', () => {
     startNewGame,
     startNewGameInPlaySession,
     resetGame,
+    clearActivePlaySession,
     exportDiceRollLog,
     exportServerReplay,
     exportSystemLog,

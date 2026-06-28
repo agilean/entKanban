@@ -6,7 +6,7 @@ import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
 import UserMenu from '../components/layout/UserMenu.vue';
 import {
-  fetchPlaySession,
+  fetchPlaySessionWithStatus,
   type PlaySession,
   type PlaySessionStatus,
 } from '../utils/playSessionApi';
@@ -50,14 +50,30 @@ async function loadPlaySessionInfo(): Promise<void> {
     playSessionInfo.value = null;
     return;
   }
-  const data = await fetchPlaySession(id);
-  playSessionInfo.value = data?.playSession ?? null;
+  const result = await fetchPlaySessionWithStatus(id);
+  if (result.data) {
+    playSessionInfo.value = result.data.playSession;
+    return;
+  }
+  playSessionInfo.value = null;
+  if (result.status === 404 || result.status === 401 || result.status === 403) {
+    game.clearActivePlaySession();
+  }
 }
 
 watch(
   () => game.activePlaySessionId,
   () => {
     void loadPlaySessionInfo();
+  },
+);
+
+watch(
+  () => auth.initialized,
+  (ready) => {
+    if (ready) {
+      void loadPlaySessionInfo();
+    }
   },
 );
 
@@ -187,7 +203,9 @@ function toggleNewGameMenu(): void {
         <h1>EntKanban</h1>
         <p class="context-line">
           <RouterLink v-if="auth.org" to="/org" class="context-link">{{ auth.org.name }}</RouterLink>
-          <RouterLink v-else-if="auth.isLoggedIn" to="/org" class="context-link muted">未加入组织</RouterLink>
+          <RouterLink v-else-if="auth.isLoggedIn" to="/org" class="context-link muted">
+            创建组织
+          </RouterLink>
           <span v-else class="context-muted">访客</span>
           <span class="context-sep">·</span>
           <RouterLink

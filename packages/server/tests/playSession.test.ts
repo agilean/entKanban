@@ -12,7 +12,7 @@ import {
   startPlaySession,
   completeParticipant,
 } from '../src/playSessionDb.js';
-import { upsertUserByFeishu } from '../src/socialDb.js';
+import { upsertUserByFeishu, createOrganization } from '../src/socialDb.js';
 
 describe('play sessions', () => {
   let dbPath: string;
@@ -34,6 +34,7 @@ describe('play sessions', () => {
     const app = createApp(db);
     const host = upsertUserByFeishu(db, { feishuOpenId: 'host-1', name: 'Host' });
     const player = upsertUserByFeishu(db, { feishuOpenId: 'player-1', name: 'Player' });
+    createOrganization(db, host.id, 'Test Org');
 
     const playSession = createPlaySession(db, host.id, { gameType: 'kanban', title: 'Friday Game' });
     startPlaySession(db, playSession.id, host.id);
@@ -51,6 +52,7 @@ describe('play sessions', () => {
     const db = openTestDb();
     const app = createApp(db);
     const host = upsertUserByFeishu(db, { feishuOpenId: 'host-http', name: 'Host' });
+    createOrganization(db, host.id, 'HTTP Org');
     const playSession = createPlaySession(db, host.id, { gameType: 'kanban', title: 'HTTP Room' });
     startPlaySession(db, playSession.id, host.id);
 
@@ -65,5 +67,13 @@ describe('play sessions', () => {
     expect(playResponse.status).toBe(201);
     const payload = (await playResponse.json()) as { gameSessionId: string };
     expect(payload.gameSessionId).toBeTruthy();
+  });
+
+  it('rejects play session creation without organization', () => {
+    const db = openTestDb();
+    const host = upsertUserByFeishu(db, { feishuOpenId: 'solo-host', name: 'Host' });
+    expect(() =>
+      createPlaySession(db, host.id, { gameType: 'kanban', title: 'No Org Room' }),
+    ).toThrow('请先创建或加入组织后再开竞赛房');
   });
 });

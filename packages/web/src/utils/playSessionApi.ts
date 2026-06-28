@@ -76,12 +76,12 @@ export async function createPlaySession(input: {
   title: string;
   gameType?: string;
   orgId?: string | null;
-}): Promise<PlaySession | null> {
+}): Promise<{ playSession: PlaySession | null; error?: string }> {
   const result = await requestJson<{ playSession: PlaySession }>('/play-sessions', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-  return result.data?.playSession ?? null;
+  return { playSession: result.data?.playSession ?? null, error: result.error };
 }
 
 export async function fetchPlaySession(id: string): Promise<{
@@ -93,6 +93,17 @@ export async function fetchPlaySession(id: string): Promise<{
     participants: PlaySessionParticipant[];
   }>(`/play-sessions/${id}`);
   return result.data ?? null;
+}
+
+export async function fetchPlaySessionWithStatus(id: string): Promise<{
+  data: { playSession: PlaySession; participants: PlaySessionParticipant[] } | null;
+  status: number;
+}> {
+  const result = await requestJson<{
+    playSession: PlaySession;
+    participants: PlaySessionParticipant[];
+  }>(`/play-sessions/${id}`);
+  return { data: result.data ?? null, status: result.status };
 }
 
 export async function joinPlaySession(id: string): Promise<boolean> {

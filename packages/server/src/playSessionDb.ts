@@ -153,6 +153,9 @@ export function createPlaySession(
   if (!host) {
     throw new Error('User not found');
   }
+  if (!host.orgId) {
+    throw new Error('请先创建或加入组织后再开竞赛房');
+  }
   if (input.orgId && host.orgId !== input.orgId) {
     throw new Error('User is not in the specified organization');
   }
@@ -163,7 +166,7 @@ export function createPlaySession(
     `INSERT INTO play_sessions
       (id, host_user_id, org_id, game_type, title, status, created_at, started_at, closed_at)
      VALUES (?, ?, ?, ?, ?, 'lobby', ?, NULL, NULL)`,
-  ).run(id, hostUserId, input.orgId ?? host.orgId ?? null, input.gameType, input.title.trim(), now);
+  ).run(id, hostUserId, host.orgId, input.gameType, input.title.trim(), now);
 
   db.prepare(
     `INSERT INTO play_session_participants

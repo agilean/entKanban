@@ -13,7 +13,7 @@ export const GAME_TYPE_REGISTRY: Record<GameTypeId, GameTypeDefinition> = {
   kanban: {
     id: 'kanban',
     name: 'EntKanban',
-    description: '21 天 Kanban 挑战',
+    description: '21 天 EntKanban 挑战',
     route: '/',
     maxDay: 21,
   },

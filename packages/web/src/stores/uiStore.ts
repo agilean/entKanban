@@ -9,6 +9,7 @@ export const useUiStore = defineStore('ui', () => {
   const setupGuideOpen = ref(false);
   const setupGuideDismissed = ref(false);
   const gameOverDismissed = ref(false);
+  const orgOnboardingDismissed = ref(false);
   let dragToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setTab(tab: AppTab): void {
@@ -49,18 +50,29 @@ export const useUiStore = defineStore('ui', () => {
     }, 3200);
   }
 
+  function dismissOrgOnboarding(): void {
+    orgOnboardingDismissed.value = true;
+  }
+
+  function resetOrgOnboardingDismissed(): void {
+    orgOnboardingDismissed.value = false;
+  }
+
   return {
     activeTab,
     dragToast,
     setupGuideOpen,
     setupGuideDismissed,
     gameOverDismissed,
+    orgOnboardingDismissed,
     setTab,
     openSetupGuide,
     closeSetupGuide,
     dismissGameOver,
     resetGameOverDismissed,
     resetSetupGuideForNewGame,
+    dismissOrgOnboarding,
+    resetOrgOnboardingDismissed,
     showDragToast,
   };
 });
