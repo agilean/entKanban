@@ -8,13 +8,18 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import {
   createPlaySessionInvitation,
-  fetchPlaySession,
+  fetchPlaySessionWithStatus,
   fetchPlaySessionLeaderboard,
   startPlaySession,
   type PlaySession,
   type PlaySessionParticipant,
   type SessionLeaderboardEntry,
 } from '../utils/playSessionApi';
+
+type DetailRouteState = {
+  playSession?: PlaySession;
+  participants?: PlaySessionParticipant[];
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +30,7 @@ const playSession = ref<PlaySession | null>(null);
 const participants = ref<PlaySessionParticipant[]>([]);
 const leaderboard = ref<SessionLeaderboardEntry[]>([]);
 const loading = ref(true);
+const loadError = ref<string | null>(null);
 const inviting = ref(false);
 const starting = ref(false);
 const playing = ref(false);
@@ -43,16 +49,55 @@ const canStartPlay = computed(
   () => playSession.value?.status === 'active' && myParticipant.value?.status !== 'completed',
 );
 
-async function load(): Promise<void> {
-  const data = await fetchPlaySession(sessionId.value);
-  if (!data) {
-    loading.value = false;
-    return;
+function applyRouteState(state: DetailRouteState | null): boolean {
+  if (!state?.playSession || state.playSession.id !== sessionId.value) {
+    return false;
   }
-  playSession.value = data.playSession;
-  participants.value = data.participants;
-  leaderboard.value = await fetchPlaySessionLeaderboard(sessionId.value);
+  playSession.value = state.playSession;
+  if (state.participants) {
+    participants.value = state.participants;
+  }
   loading.value = false;
+  return true;
+}
+
+async function loadLeaderboard(): Promise<void> {
+  leaderboard.value = await fetchPlaySessionLeaderboard(sessionId.value);
+}
+
+async function loadSession(silent = false): Promise<boolean> {
+  const result = await fetchPlaySessionWithStatus(sessionId.value);
+  if (!result.data) {
+    if (!silent) {
+      loadError.value =
+        result.status === 401
+          ? '请先登录后查看竞赛房'
+          : result.error ?? '竞赛房不存在或无法访问';
+      loading.value = false;
+    }
+    return false;
+  }
+  playSession.value = result.data.playSession;
+  participants.value = result.data.participants;
+  loadError.value = null;
+  if (!silent) {
+    loading.value = false;
+  }
+  return true;
+}
+
+async function load(): Promise<void> {
+  const ok = await loadSession();
+  if (ok) {
+    void loadLeaderboard();
+  }
+}
+
+async function refresh(): Promise<void> {
+  const ok = await loadSession(true);
+  if (ok) {
+    void loadLeaderboard();
+  }
 }
 
 async function handleStartSession(): Promise<void> {
@@ -64,7 +109,7 @@ async function handleStartSession(): Promise<void> {
   starting.value = false;
   if (updated) {
     playSession.value = updated;
-    await load();
+    await refresh();
   }
 }
 
@@ -105,9 +150,19 @@ onMounted(async () => {
   if (!auth.initialized) {
     await auth.initialize();
   }
-  await load();
+
+  const routeState = history.state as DetailRouteState | null;
+  const hasInstantData = applyRouteState(routeState);
+
+  if (hasInstantData) {
+    void loadLeaderboard();
+    void refresh();
+  } else {
+    await load();
+  }
+
   pollTimer = window.setInterval(() => {
-    void load();
+    void refresh();
   }, 30000);
 });
 
@@ -122,6 +177,7 @@ onUnmounted(() => {
   <AppLayout>
     <div class="page">
       <p v-if="loading" class="hint">加载中…</p>
+      <p v-else-if="loadError" class="error">{{ loadError }}</p>
       <p v-else-if="!playSession" class="error">竞赛房不存在</p>
 
       <template v-else>

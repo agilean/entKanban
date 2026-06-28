@@ -44,7 +44,13 @@ async function handleCreate(): Promise<void> {
     error.value = result.error ?? '创建失败';
     return;
   }
-  router.push(`/sessions/${result.playSession.id}`);
+  router.push({
+    path: `/sessions/${result.playSession.id}`,
+    state: {
+      playSession: result.playSession,
+      participants: result.participants,
+    },
+  });
 }
 </script>
 

@@ -1,3 +1,5 @@
+import { requestJson as requestJsonBase } from './apiClient.js';
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
 export type PlaySessionStatus = 'lobby' | 'active' | 'closed';
@@ -45,26 +47,9 @@ export type SessionLeaderboardEntry = {
 
 async function requestJson<T>(
   path: string,
-  init?: RequestInit,
+  init?: RequestInit & { timeoutMs?: number },
 ): Promise<{ data: T | null; status: number; error?: string }> {
-  try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      credentials: 'include',
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init?.headers ?? {}),
-      },
-    });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      return { data: null, status: response.status, error: payload?.error };
-    }
-    const data = (await response.json()) as T;
-    return { data, status: response.status };
-  } catch {
-    return { data: null, status: 0, error: 'Network error' };
-  }
+  return requestJsonBase<T>(API_BASE, path, init);
 }
 
 export async function fetchMyPlaySessions(): Promise<PlaySession[]> {
@@ -76,12 +61,23 @@ export async function createPlaySession(input: {
   title: string;
   gameType?: string;
   orgId?: string | null;
-}): Promise<{ playSession: PlaySession | null; error?: string }> {
-  const result = await requestJson<{ playSession: PlaySession }>('/play-sessions', {
+}): Promise<{
+  playSession: PlaySession | null;
+  participants?: PlaySessionParticipant[];
+  error?: string;
+}> {
+  const result = await requestJson<{
+    playSession: PlaySession;
+    participants?: PlaySessionParticipant[];
+  }>('/play-sessions', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-  return { playSession: result.data?.playSession ?? null, error: result.error };
+  return {
+    playSession: result.data?.playSession ?? null,
+    participants: result.data?.participants,
+    error: result.error,
+  };
 }
 
 export async function fetchPlaySession(id: string): Promise<{
@@ -98,12 +94,13 @@ export async function fetchPlaySession(id: string): Promise<{
 export async function fetchPlaySessionWithStatus(id: string): Promise<{
   data: { playSession: PlaySession; participants: PlaySessionParticipant[] } | null;
   status: number;
+  error?: string;
 }> {
   const result = await requestJson<{
     playSession: PlaySession;
     participants: PlaySessionParticipant[];
   }>(`/play-sessions/${id}`);
-  return { data: result.data ?? null, status: result.status };
+  return { data: result.data ?? null, status: result.status, error: result.error };
 }
 
 export async function joinPlaySession(id: string): Promise<boolean> {

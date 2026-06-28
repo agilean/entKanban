@@ -43,7 +43,8 @@ export function createPlaySessionRoutes(db: ReplayDatabase): Hono<{ Variables: A
         title: body.title,
         orgId: body.orgId,
       });
-      return c.json({ playSession: session }, 201);
+      const participants = getPlaySessionParticipants(db, session.id);
+      return c.json({ playSession: session, participants }, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create play session';
       return c.json({ error: message }, 400);
