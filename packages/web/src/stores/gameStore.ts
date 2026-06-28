@@ -43,6 +43,7 @@ import {
   type ReplaySyncStatus,
 } from '../utils/replayApi';
 import { startPlayInSession } from '../utils/playSessionApi';
+import { isCrossRoleAssignment } from '../utils/diceCrossRole';
 import { appendGameEvent, gameEventLogCount, downloadGameEventLog } from '../utils/gameEventLog';
 import type { AppTab } from './uiStore';
 
@@ -50,6 +51,7 @@ export type AssignedDiceView = {
   index: number;
   label: string;
   state: State;
+  crossRole: boolean;
 };
 
 export type DiceRollUiPhase = 'applying';
@@ -654,7 +656,12 @@ export const useGameStore = defineStore('game', () => {
       for (const index of assignment.diceIndices) {
         const die = boardView.value.unassignedDice[index];
         if (die) {
-          result.push({ index, label: die.label, state: die.state });
+          result.push({
+            index,
+            label: die.label,
+            state: die.state,
+            crossRole: isCrossRoleAssignment(assignment.state, die.state),
+          });
         }
       }
     }

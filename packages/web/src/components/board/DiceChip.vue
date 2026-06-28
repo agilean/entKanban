@@ -10,6 +10,7 @@ import { DICE_INDEX_MIME } from '../../utils/dragPayload';
 const props = defineProps<{
   dice: DiceView;
   draggable?: boolean;
+  crossRole?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +23,11 @@ const { isMobile } = useIsMobile();
 
 const isDraggable = computed(() => props.draggable === true);
 const isSelected = computed(() => ui.selectedDiceIndex === props.dice.index);
+const isCrossRole = computed(() => props.crossRole === true);
+
+const titleText = computed(() =>
+  isCrossRole.value ? `${props.dice.label} · 跨岗分配，点数减半` : props.dice.state,
+);
 
 function handleDragStart(event: DragEvent): void {
   if (!isDraggable.value) {
@@ -66,19 +72,28 @@ const stateClass: Record<State, string> = {
 <template>
   <span
     class="dice-chip"
-    :class="[stateClass[dice.state], { draggable: isDraggable, selected: isSelected, 'mobile-tap': isMobile && isDraggable }]"
-    :title="dice.state"
+    :class="[
+      stateClass[dice.state],
+      {
+        draggable: isDraggable,
+        selected: isSelected,
+        'mobile-tap': isMobile && isDraggable,
+        'cross-role': isCrossRole,
+      },
+    ]"
+    :title="titleText"
     :draggable="isDraggable && !isMobile"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
     @click="handleTap"
   >
-    {{ dice.label }}
+    <span class="dice-label">{{ dice.label }}</span>
   </span>
 </template>
 
 <style scoped>
 .dice-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -90,6 +105,50 @@ const stateClass: Record<State, string> = {
   color: #fff;
   box-shadow: 0 1px 2px rgb(15 23 42 / 15%);
   touch-action: none;
+  overflow: hidden;
+}
+
+.dice-label {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.dice-chip.cross-role {
+  background: #e2e8f0;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 12%);
+}
+
+.dice-chip.cross-role::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  border-radius: 999px 0 0 999px;
+}
+
+.dice-chip.cross-role.analysis::before {
+  background: #2563eb;
+}
+
+.dice-chip.cross-role.development::before {
+  background: #16a34a;
+}
+
+.dice-chip.cross-role.test::before {
+  background: #d97706;
+}
+
+.dice-chip.cross-role::after {
+  content: '½';
+  position: absolute;
+  right: 0.0625rem;
+  bottom: 0;
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: #64748b;
+  line-height: 1;
+  z-index: 1;
 }
 
 .dice-chip.mobile-tap {
@@ -103,9 +162,14 @@ const stateClass: Record<State, string> = {
   transform: scale(1.08);
 }
 
+.dice-chip.cross-role.selected {
+  box-shadow:
+    0 0 0 3px #dbeafe,
+    inset 0 0 0 1px rgb(15 23 42 / 12%);
+}
+
 .dice-chip.draggable {
   cursor: grab;
-  position: relative;
   z-index: 2;
 }
 
@@ -114,15 +178,15 @@ const stateClass: Record<State, string> = {
   opacity: 0.75;
 }
 
-.dice-chip.analysis {
+.dice-chip.analysis:not(.cross-role) {
   background: #2563eb;
 }
 
-.dice-chip.development {
+.dice-chip.development:not(.cross-role) {
   background: #16a34a;
 }
 
-.dice-chip.test {
+.dice-chip.test:not(.cross-role) {
   background: #d97706;
 }
 </style>

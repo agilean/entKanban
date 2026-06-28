@@ -334,6 +334,7 @@ function handleMobileTap(event: MouseEvent): void {
           state: die.state,
           label: die.label,
         }"
+        :cross-role="die.crossRole"
         :draggable="isDiceDragEnabled"
       />
     </div>
