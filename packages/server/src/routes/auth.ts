@@ -7,6 +7,7 @@ import {
   signSession,
 } from '../auth/session.js';
 import { getConfig } from '../config.js';
+import { logError, logInfo, logWarn } from '../logging.js';
 import type { ReplayDatabase } from '../db.js';
 import { acceptInvitation, getUserWithOrg, upsertUserByFeishu } from '../socialDb.js';
 
@@ -25,11 +26,28 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
   routes.get('/feishu/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state');
+    const oauthError = c.req.query('error');
+    const oauthErrorDescription = c.req.query('error_description');
+
+    if (oauthError) {
+      logError('auth.callback', 'Feishu returned OAuth error', {
+        error: oauthError,
+        errorDescription: oauthErrorDescription,
+        state,
+      });
+      return c.redirect(`${config.webOrigin}/?auth=failed&reason=feishu_error`);
+    }
+
     if (!code) {
-      return c.redirect(`${config.webOrigin}/?auth=failed`);
+      logWarn('auth.callback', 'Missing authorization code in callback', { state });
+      return c.redirect(`${config.webOrigin}/?auth=failed&reason=no_code`);
     }
 
     try {
+      logInfo('auth.callback', 'Processing Feishu callback', {
+        state,
+        redirectUri: config.feishuRedirectUri,
+      });
       const profile = await exchangeCodeForUserProfile(code);
       const user = upsertUserByFeishu(db, profile);
 
@@ -37,17 +55,27 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         const token = state.slice('invite:'.length);
         try {
           acceptInvitation(db, token, user.id);
-        } catch {
-          // Invite acceptance failures are handled on the invite page.
+        } catch (inviteError) {
+          logWarn('auth.callback', 'Invite acceptance failed after login', {
+            tokenPrefix: token.slice(0, 8),
+            message: inviteError instanceof Error ? inviteError.message : 'unknown',
+          });
         }
       }
 
       const sessionToken = await signSession(user.id);
       c.header('Set-Cookie', buildSetCookieHeader(sessionToken));
+      logInfo('auth.callback', 'Login succeeded', { userId: user.id, name: user.name });
       const redirectPath = state?.startsWith('invite:') ? `/invite/${state.slice('invite:'.length)}` : '/';
       return c.redirect(`${config.webOrigin}${redirectPath}?auth=success`);
-    } catch {
-      return c.redirect(`${config.webOrigin}/?auth=failed`);
+    } catch (error) {
+      logError('auth.callback', 'Login failed during callback', {
+        message: error instanceof Error ? error.message : 'unknown',
+        state,
+        redirectUri: config.feishuRedirectUri,
+        webOrigin: config.webOrigin,
+      });
+      return c.redirect(`${config.webOrigin}/?auth=failed&reason=callback_error`);
     }
   });
 

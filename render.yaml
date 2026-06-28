@@ -32,3 +32,5 @@ services:
         sync: false
       - key: FEISHU_REDIRECT_URI
         sync: false
+      - key: LOG_ACCESS_TOKEN
+        generateValue: true

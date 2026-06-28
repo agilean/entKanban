@@ -15,6 +15,7 @@ import {
 } from './db.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createLeaderboardRoutes, createResultRoutes } from './routes/leaderboard.js';
+import { createLogRoutes } from './routes/logs.js';
 import { createInvitationRoutes, createOrgRoutes } from './routes/orgs.js';
 import { mountWebStatic, resolveWebDistPath } from './static.js';
 
@@ -32,12 +33,21 @@ export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }):
 
   app.use('*', optionalAuth);
 
-  app.get('/api/health', (c) =>
-    c.json({
+  app.get('/api/health', (c) => {
+    const authConfig = getConfig();
+    return c.json({
       ok: true,
       diceRollCount: diceRollCount(db),
-    }),
-  );
+      auth: {
+        feishuConfigured: Boolean(authConfig.feishuAppId && authConfig.feishuAppSecret),
+        webOrigin: authConfig.webOrigin,
+        feishuRedirectUri: authConfig.feishuRedirectUri,
+        cookieSecure: authConfig.cookieSecure,
+      },
+    });
+  });
+
+  app.route('/api/logs', createLogRoutes());
 
   app.route('/api/auth', createAuthRoutes(db));
   app.route('/api/orgs', createOrgRoutes(db));

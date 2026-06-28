@@ -1,4 +1,5 @@
 import { getConfig } from '../config.js';
+import { logError, logInfo } from '../logging.js';
 
 export type FeishuUserProfile = {
   feishuOpenId: string;
@@ -37,6 +38,7 @@ export async function exchangeCodeForUserProfile(code: string): Promise<FeishuUs
       body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
+        redirect_uri: config.feishuRedirectUri,
       }),
     },
   );
@@ -47,6 +49,12 @@ export async function exchangeCodeForUserProfile(code: string): Promise<FeishuUs
     data?: { access_token?: string };
   };
   if (!tokenResponse.ok || tokenPayload.code !== 0 || !tokenPayload.data?.access_token) {
+    logError('feishu.oauth', 'Token exchange failed', {
+      status: tokenResponse.status,
+      code: tokenPayload.code,
+      msg: tokenPayload.msg,
+      redirectUri: config.feishuRedirectUri,
+    });
     throw new Error(tokenPayload.msg ?? 'Failed to exchange Feishu authorization code');
   }
 
@@ -68,8 +76,18 @@ export async function exchangeCodeForUserProfile(code: string): Promise<FeishuUs
     };
   };
   if (!userResponse.ok || userPayload.code !== 0 || !userPayload.data?.open_id) {
+    logError('feishu.oauth', 'User info fetch failed', {
+      status: userResponse.status,
+      code: userPayload.code,
+      msg: userPayload.msg,
+    });
     throw new Error(userPayload.msg ?? 'Failed to fetch Feishu user profile');
   }
+
+  logInfo('feishu.oauth', 'User profile fetched', {
+    openIdPrefix: userPayload.data.open_id.slice(0, 8),
+    name: userPayload.data.name ?? userPayload.data.en_name,
+  });
 
   return {
     feishuOpenId: userPayload.data.open_id,

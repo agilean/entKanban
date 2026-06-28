@@ -5,6 +5,7 @@ export type AppConfig = {
   jwtSecret: string;
   webOrigin: string;
   cookieSecure: boolean;
+  logAccessToken: string;
 };
 
 export function getConfig(): AppConfig {
@@ -20,5 +21,6 @@ export function getConfig(): AppConfig {
     jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
     webOrigin,
     cookieSecure: process.env.COOKIE_SECURE === 'true' || Boolean(externalUrl),
+    logAccessToken: process.env.LOG_ACCESS_TOKEN ?? '',
   };
 }
