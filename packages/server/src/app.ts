@@ -16,8 +16,9 @@ import {
 import { createAuthRoutes } from './routes/auth.js';
 import { createLeaderboardRoutes, createResultRoutes } from './routes/leaderboard.js';
 import { createInvitationRoutes, createOrgRoutes } from './routes/orgs.js';
+import { mountWebStatic, resolveWebDistPath } from './static.js';
 
-export function createApp(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
+export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }): Hono<{ Variables: AuthVariables }> {
   const app = new Hono<{ Variables: AuthVariables }>();
   const config = getConfig();
 
@@ -94,6 +95,13 @@ export function createApp(db: ReplayDatabase): Hono<{ Variables: AuthVariables }
     }
     return c.json(replay);
   });
+
+  if (options?.serveWeb) {
+    const webDistPath = resolveWebDistPath();
+    if (webDistPath) {
+      mountWebStatic(app, webDistPath);
+    }
+  }
 
   return app;
 }

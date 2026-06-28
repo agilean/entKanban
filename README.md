@@ -26,14 +26,21 @@ pnpm dev
 
 ## 部署
 
-构建产物位于 `packages/web/dist`，可部署到任意静态托管（Render Static Site、CNB Pages 等）。
+### Render（推荐：单服务同域）
 
-后端 `packages/server` 需单独部署，并配置以下环境变量（见 `packages/server/.env.example`）：
+仓库已包含 [`render.yaml`](render.yaml)。在 Render Dashboard：
 
-- `FEISHU_APP_ID` / `FEISHU_APP_SECRET` — 飞书 OAuth 登录
-- `FEISHU_REDIRECT_URI` — OAuth 回调地址
-- `JWT_SECRET` — 会话签名密钥
-- `WEB_ORIGIN` — 前端地址（CORS 与 OAuth 回跳）
-- `COOKIE_SECURE` — 生产 HTTPS 下设为 `true`
+1. **New → Blueprint** → 连接 `adwu73/entKanban` → **Deploy Blueprint**
+2. 部署完成后记下服务 URL，例如 `https://entkanban.onrender.com`
+3. 在 Render 服务 **Environment** 中填写 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`
+4. 在飞书开放平台 **重定向 URL** 添加：`https://<你的域名>/api/auth/feishu/callback`
 
-生产环境建议 Web 与 API 同域（如 `/api` 反代），以便 HttpOnly Cookie 正常工作。
+单服务同时提供 Vue 前端与 `/api` 后端；`RENDER_EXTERNAL_URL` 会自动用于 OAuth 回调（无需手动填 `WEB_ORIGIN`）。
+
+> SQLite 在 Render 免费实例上为 ephemeral，重新部署后数据会丢失。
+
+### 其他托管
+
+前端构建产物：`packages/web/dist`。若前后端分离部署，需配置 `VITE_API_BASE` 指向 API，并单独部署 `packages/server`。
+
+环境变量见 `packages/server/.env.example`。

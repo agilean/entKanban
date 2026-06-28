@@ -8,13 +8,17 @@ export type AppConfig = {
 };
 
 export function getConfig(): AppConfig {
+  const externalUrl = process.env.RENDER_EXTERNAL_URL?.replace(/\/$/, '');
+  const webOrigin = process.env.WEB_ORIGIN ?? externalUrl ?? 'http://localhost:5173';
+  const feishuRedirectUri =
+    process.env.FEISHU_REDIRECT_URI ?? `${webOrigin}/api/auth/feishu/callback`;
+
   return {
     feishuAppId: process.env.FEISHU_APP_ID ?? '',
     feishuAppSecret: process.env.FEISHU_APP_SECRET ?? '',
-    feishuRedirectUri:
-      process.env.FEISHU_REDIRECT_URI ?? 'http://localhost:5173/api/auth/feishu/callback',
+    feishuRedirectUri,
     jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
-    webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:5173',
-    cookieSecure: process.env.COOKIE_SECURE === 'true',
+    webOrigin,
+    cookieSecure: process.env.COOKIE_SECURE === 'true' || Boolean(externalUrl),
   };
 }

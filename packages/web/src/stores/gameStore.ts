@@ -386,7 +386,11 @@ export const useGameStore = defineStore('game', () => {
     void syncReplayToServer();
     bumpRevision();
     refreshSavedFlag();
-    return payload.activeTab === 'run' ? 'control' : (payload.activeTab ?? 'board');
+    const tab = payload.activeTab;
+    if (tab === 'control' || (tab as string | undefined) === 'run') {
+      return 'control';
+    }
+    return tab ?? 'board';
   }
 
   function startNewGame(): void {
