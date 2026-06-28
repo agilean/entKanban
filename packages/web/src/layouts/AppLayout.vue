@@ -5,6 +5,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
 import UserMenu from '../components/layout/UserMenu.vue';
+import MobileGameBottomBar from '../components/mobile/MobileGameBottomBar.vue';
+import { useIsMobile } from '../composables/useIsMobile';
 import {
   fetchPlaySessionWithStatus,
   type PlaySession,
@@ -14,6 +16,7 @@ import {
 const game = useGameStore();
 const ui = useUiStore();
 const auth = useAuthStore();
+const { isMobile } = useIsMobile();
 
 const tabs: Array<{ id: AppTab; label: string }> = [
   { id: 'board', label: '看板' },
@@ -197,7 +200,7 @@ function toggleNewGameMenu(): void {
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'layout--mobile': isMobile }">
     <header class="header">
       <div class="brand">
         <h1>EntKanban</h1>
@@ -242,7 +245,7 @@ function toggleNewGameMenu(): void {
         </div>
       </div>
 
-      <div class="tabs-actions">
+      <div v-if="!isMobile" class="tabs-actions">
         <template v-if="game.hasSession">
           <button type="button" class="btn btn-sm" @click="handleOpenGuide">游戏说明</button>
 
@@ -322,6 +325,20 @@ function toggleNewGameMenu(): void {
     <main class="content">
       <slot />
     </main>
+
+    <MobileGameBottomBar
+      :in-play-session="inPlaySession"
+      :on-open-guide="handleOpenGuide"
+      :on-save="handleSave"
+      :on-load="handleLoad"
+      :on-solo-new-game="handleSoloNewGame"
+      :on-start-new-game="handleStartNewGame"
+      :on-restart-in-play-session="handleRestartInPlaySession"
+      :on-leave-room-solo-new-game="handleLeaveRoomSoloNewGame"
+      :on-export-system-log="handleExportSystemLog"
+      :on-export-server-replay="handleExportServerReplay"
+      :on-export-dice-log="handleExportDiceLog"
+    />
   </div>
 </template>
 
@@ -523,6 +540,26 @@ function toggleNewGameMenu(): void {
 .content {
   flex: 1;
   padding: 1.5rem;
+}
+
+.layout--mobile .content {
+  padding: 0.75rem 0.75rem calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+.layout--mobile .header {
+  padding: 0.75rem 1rem;
+}
+
+.layout--mobile .brand h1 {
+  font-size: 1.125rem;
+}
+
+.layout--mobile .context-line {
+  font-size: 0.8125rem;
+}
+
+.layout--mobile .tabs-bar {
+  padding: 0.375rem 0.75rem;
 }
 
 @media (max-width: 900px) {

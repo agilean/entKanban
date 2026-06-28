@@ -3,6 +3,7 @@ import { COLUMN_NEXT, type FlowColumnId } from '@kanban-game/engine';
 import { computed, ref, watch } from 'vue';
 import draggable from 'vuedraggable';
 import { useDragPolicy } from '../../composables/useDragPolicy';
+import { useIsMobile } from '../../composables/useIsMobile';
 import { useGameStore } from '../../stores/gameStore';
 import { useUiStore } from '../../stores/uiStore';
 import type { CardView, ColumnView } from '../../utils/buildBoardView';
@@ -24,6 +25,7 @@ const props = defineProps<{
 
 const game = useGameStore();
 const ui = useUiStore();
+const { isMobile } = useIsMobile();
 const {
   canReorderBacklog,
   canPullToSelected,
@@ -51,9 +53,12 @@ watch(
   },
 );
 
+const backlogDraggableEnabled = computed(() => canReorderBacklog.value && !isMobile.value);
+const selectedDraggableEnabled = computed(() => canPullToSelected.value && !isMobile.value);
+
 const replenishGroup = computed(() => ({
   name: 'replenish',
-  pull: canPullToSelected.value,
+  pull: canPullToSelected.value && !isMobile.value,
   put: false,
 }));
 
@@ -380,7 +385,7 @@ const interactive = () => isColumnInteractive(props.column.id);
         item-key="id"
         class="cards cards-draggable"
         :group="replenishGroup"
-        :disabled="!canReorderBacklog"
+        :disabled="!backlogDraggableEnabled"
         :animation="150"
         ghost-class="sortable-ghost"
         drag-class="sortable-drag"
@@ -391,13 +396,17 @@ const interactive = () => isColumnInteractive(props.column.id);
           <div class="sortable-card-wrap" :data-card-name="element.name">
             <CardTile
               :card="element"
+              from-column="backlog"
               :effort-highlight="effortHighlightFor(element.name)"
               :roll-ui="rollUiFor(element.name)"
             />
           </div>
         </template>
       </draggable>
-      <p v-if="canReorderBacklog" class="column-hint">
+      <p v-if="canReorderBacklog && isMobile" class="column-hint">
+        点击卡片操作；<button type="button" class="link-btn" @click="ui.openMobileBacklogReorder()">调整顺序</button>
+      </p>
+      <p v-else-if="canReorderBacklog" class="column-hint">
         {{ canPullToSelected ? '拖拽排序，或拖入优先列填充' : '拖拽调整存量顺序' }}
       </p>
     </template>
@@ -410,8 +419,8 @@ const interactive = () => isColumnInteractive(props.column.id);
         class="cards cards-droppable"
         :class="{ 'drop-active': canPullToSelected, 'cards-draggable': canPullToSelected }"
         :group="selectedGroup"
-        :sort="canPullToSelected"
-        :disabled="!canPullToSelected"
+        :sort="selectedDraggableEnabled"
+        :disabled="!selectedDraggableEnabled"
         :animation="150"
         ghost-class="sortable-ghost"
         drag-class="sortable-drag"
@@ -430,7 +439,10 @@ const interactive = () => isColumnInteractive(props.column.id);
           </div>
         </template>
       </draggable>
-      <p v-if="canPullToSelected || canAdvanceFlow" class="column-hint">
+      <p v-if="isMobile && (canPullToSelected || canAdvanceFlow)" class="column-hint">
+        点击卡片进行拉入、推进等操作
+      </p>
+      <p v-else-if="canPullToSelected || canAdvanceFlow" class="column-hint">
         {{ canPullToSelected ? '拖拽调整优先级，或从存量接收卡片' : '可将卡片拖入分析列' }}
       </p>
     </template>
@@ -481,13 +493,25 @@ const interactive = () => isColumnInteractive(props.column.id);
         />
         <span v-if="availableColumnDice.length === 0" class="dice-row-empty">拖回此处取消分配</span>
       </footer>
-      <p v-if="canAssignDice && column.state" class="column-hint">
+      <p v-if="isMobile && canAssignDice && column.state" class="column-hint">
+        点击骰子后，再点击卡片完成分配
+        <button
+          v-if="ui.selectedDiceIndex !== null"
+          type="button"
+          class="link-btn"
+          @click="ui.clearSelectedDiceIndex()"
+        >
+          取消选骰
+        </button>
+      </p>
+      <p v-else-if="canAssignDice && column.state" class="column-hint">
         从列底拖骰子到卡片（跨岗产能减半）；拖回列底可取消分配
       </p>
-      <p v-else-if="canAdvanceFlow && !isRelease && column.id === 'analysis'" class="column-hint">
+      <p v-else-if="canAdvanceFlow && !isRelease && column.id === 'analysis' && !isMobile" class="column-hint">
         仅优先列卡片可进入分析；今日刚从存量拉入的卡片需明日再进
       </p>
-      <p v-else-if="canAdvanceFlow && !isRelease" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
+      <p v-else-if="canAdvanceFlow && !isRelease && !isMobile" class="column-hint">可将已完成本阶段工作的卡片拖入下一列</p>
+      <p v-else-if="canAdvanceFlow && !isRelease && isMobile" class="column-hint">点击卡片推进到下一列</p>
       <p
         v-if="advanceDropState === 'invalid' && advanceDropReason"
         class="drop-reject-hint"
@@ -683,6 +707,16 @@ const interactive = () => isColumnInteractive(props.column.id);
   padding: 0.25rem;
 }
 
+.link-btn {
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-size: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .column-hint {
   margin: 0;
   font-size: 0.625rem;
@@ -784,5 +818,13 @@ const interactive = () => isColumnInteractive(props.column.id);
   font-size: 0.6875rem;
   color: #94a3b8;
   font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .kanban-column {
+    flex: 0 0 8.75rem;
+    min-width: 8.75rem;
+    max-height: 28rem;
+  }
 }
 </style>

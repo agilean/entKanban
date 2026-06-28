@@ -10,6 +10,10 @@ export const useUiStore = defineStore('ui', () => {
   const setupGuideDismissed = ref(false);
   const gameOverDismissed = ref(false);
   const orgOnboardingDismissed = ref(false);
+  const selectedDiceIndex = ref<number | null>(null);
+  const mobileCardTarget = ref<{ cardName: string; fromColumn: string } | null>(null);
+  const mobileBacklogReorderOpen = ref(false);
+  const mobileReleaseSheetOpen = ref(false);
   let dragToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setTab(tab: AppTab): void {
@@ -58,6 +62,38 @@ export const useUiStore = defineStore('ui', () => {
     orgOnboardingDismissed.value = false;
   }
 
+  function openMobileCardActions(cardName: string, fromColumn: string): void {
+    mobileCardTarget.value = { cardName, fromColumn };
+  }
+
+  function closeMobileCardActions(): void {
+    mobileCardTarget.value = null;
+  }
+
+  function setSelectedDiceIndex(index: number | null): void {
+    selectedDiceIndex.value = index;
+  }
+
+  function clearSelectedDiceIndex(): void {
+    selectedDiceIndex.value = null;
+  }
+
+  function openMobileBacklogReorder(): void {
+    mobileBacklogReorderOpen.value = true;
+  }
+
+  function closeMobileBacklogReorder(): void {
+    mobileBacklogReorderOpen.value = false;
+  }
+
+  function openMobileReleaseSheet(): void {
+    mobileReleaseSheetOpen.value = true;
+  }
+
+  function closeMobileReleaseSheet(): void {
+    mobileReleaseSheetOpen.value = false;
+  }
+
   return {
     activeTab,
     dragToast,
@@ -65,6 +101,10 @@ export const useUiStore = defineStore('ui', () => {
     setupGuideDismissed,
     gameOverDismissed,
     orgOnboardingDismissed,
+    selectedDiceIndex,
+    mobileCardTarget,
+    mobileBacklogReorderOpen,
+    mobileReleaseSheetOpen,
     setTab,
     openSetupGuide,
     closeSetupGuide,
@@ -73,6 +113,14 @@ export const useUiStore = defineStore('ui', () => {
     resetSetupGuideForNewGame,
     dismissOrgOnboarding,
     resetOrgOnboardingDismissed,
+    openMobileCardActions,
+    closeMobileCardActions,
+    setSelectedDiceIndex,
+    clearSelectedDiceIndex,
+    openMobileBacklogReorder,
+    closeMobileBacklogReorder,
+    openMobileReleaseSheet,
+    closeMobileReleaseSheet,
     showDragToast,
   };
 });

@@ -316,4 +316,24 @@ code {
   border-color: #2563eb;
   color: #fff;
 }
+
+@media (max-width: 768px) {
+  .page {
+    gap: 0.75rem;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .invite-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
 </style>

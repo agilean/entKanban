@@ -3,6 +3,10 @@ import type { DiceRollApplyStep } from '@kanban-game/engine';
 import { State } from '@kanban-game/engine';
 import { computed, ref, watch } from 'vue';
 import type { AssignedDiceView, CardRollUiMode } from '../../stores/gameStore';
+import { useGameStore } from '../../stores/gameStore';
+import { useUiStore } from '../../stores/uiStore';
+import { useIsMobile } from '../../composables/useIsMobile';
+import { columnIdToState, useDragPolicy } from '../../composables/useDragPolicy';
 import type { EffortField } from '../../utils/effortHighlight';
 import type { CardView } from '../../utils/buildBoardView';
 import { beginCardDrag, endCardDrag } from '../../utils/cardDragState';
@@ -29,6 +33,11 @@ const emit = defineEmits<{
   diceDrop: [event: DragEvent, cardName: string];
 }>();
 
+const game = useGameStore();
+const ui = useUiStore();
+const { isMobile } = useIsMobile();
+const { canDropDiceOnCard } = useDragPolicy();
+
 const kindLabels: Record<CardView['kind'], string> = {
   standard: 'Std',
   expedite: 'Exp',
@@ -40,7 +49,7 @@ const isDragEnabled = computed(() => props.draggable === true);
 const isForwardDragEnabled = computed(
   () => props.forwardDraggable === true && Boolean(props.fromColumn),
 );
-const isAnyDragEnabled = computed(() => isDragEnabled.value || isForwardDragEnabled.value);
+const isAnyDragEnabled = computed(() => !isMobile.value && (isDragEnabled.value || isForwardDragEnabled.value));
 const isDropEnabled = computed(() => props.droppable === true);
 const isDiceDragEnabled = computed(() => props.diceDraggable === true);
 const diceDragActive = ref(false);
@@ -176,6 +185,48 @@ function closeDetail(): void {
   showDetail.value = false;
   anchorRect.value = null;
 }
+
+const isDiceAssignTarget = computed(() => {
+  if (!isMobile.value || ui.selectedDiceIndex === null || !isDropEnabled.value || !props.fromColumn) {
+    return false;
+  }
+  return game.boardView?.unassignedDice.some((item) => item.index === ui.selectedDiceIndex) ?? false;
+});
+
+function handleMobileTap(event: MouseEvent): void {
+  if (!isMobile.value) {
+    return;
+  }
+  const target = event.target as HTMLElement;
+  if (target.closest('.btn-info')) {
+    return;
+  }
+  event.stopPropagation();
+
+  if (ui.selectedDiceIndex !== null && isDropEnabled.value && props.fromColumn) {
+    if (!canDropDiceOnCard(props.fromColumn, props.card.name, ui.selectedDiceIndex)) {
+      ui.showDragToast('无法分配到该卡片');
+      return;
+    }
+    const state = columnIdToState(props.fromColumn);
+    if (!state) {
+      return;
+    }
+    const column = game.boardView?.columns.find((item) => item.id === props.fromColumn);
+    const card = column?.cards.find((item) => item.name === props.card.name);
+    if (!card || card.effort.analysis + card.effort.development + card.effort.test <= 0) {
+      ui.showDragToast('该卡片当前无法分配骰子');
+      return;
+    }
+    game.addDiceToCard(state, props.card.name, ui.selectedDiceIndex);
+    ui.clearSelectedDiceIndex();
+    return;
+  }
+
+  if (props.fromColumn) {
+    ui.openMobileCardActions(props.card.name, props.fromColumn);
+  }
+}
 </script>
 
 <template>
@@ -185,6 +236,8 @@ function closeDetail(): void {
     :class="{
       [`kind-${card.kind}`]: true,
       draggable: isAnyDragEnabled,
+      'mobile-tappable': isMobile && Boolean(fromColumn),
+      'dice-assign-target': isDiceAssignTarget,
       droppable: isDropEnabled,
       'dice-drop-active': diceDragActive,
       'effort-updated': hasEffortUpdate,
@@ -200,6 +253,7 @@ function closeDetail(): void {
     @dragleave="handleDragLeave"
     @dragover="handleDragOver"
     @drop="handleDrop"
+    @click="handleMobileTap"
   >
     <header class="card-header">
       <div class="card-title-row">
@@ -333,6 +387,15 @@ function closeDetail(): void {
 .card-tile.effort-updated {
   border-color: #16a34a;
   box-shadow: 0 0 0 2px #bbf7d0, 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.card-tile.mobile-tappable {
+  cursor: pointer;
+}
+
+.card-tile.dice-assign-target {
+  outline: 2px solid #2563eb;
+  box-shadow: 0 0 0 3px #dbeafe;
 }
 
 .card-tile.draggable {

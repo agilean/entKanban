@@ -183,6 +183,8 @@ async function handleConfirm(): Promise<void> {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 2.75rem;
+  min-width: 5.5rem;
 }
 
 .btn-next:hover {

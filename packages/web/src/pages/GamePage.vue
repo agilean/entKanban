@@ -6,11 +6,15 @@ import DayPhaseBar from '../components/board/DayPhaseBar.vue';
 import KanbanBoard from '../components/board/KanbanBoard.vue';
 import AnalyticsView from '../components/charts/AnalyticsView.vue';
 import DecisionPanel from '../components/decisions/DecisionPanel.vue';
+import MobileBacklogReorderSheet from '../components/mobile/MobileBacklogReorderSheet.vue';
+import MobileCardActions from '../components/mobile/MobileCardActions.vue';
+import MobileReleaseSheet from '../components/mobile/MobileReleaseSheet.vue';
 import OrgOnboardingPanel from '../components/onboarding/OrgOnboardingPanel.vue';
 import PlayOptionsHint from '../components/onboarding/PlayOptionsHint.vue';
 import SetupGuide from '../components/onboarding/SetupGuide.vue';
 import GameOverSummary from '../components/summary/GameOverSummary.vue';
 import AppLayout from '../layouts/AppLayout.vue';
+import { useIsMobile } from '../composables/useIsMobile';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore } from '../stores/uiStore';
@@ -18,12 +22,14 @@ import { useUiStore } from '../stores/uiStore';
 const game = useGameStore();
 const ui = useUiStore();
 const auth = useAuthStore();
+const { isMobile } = useIsMobile();
 
 const showOrgOnboarding = computed(
   () => auth.isLoggedIn && !auth.hasOrg && !ui.orgOnboardingDismissed,
 );
 
 const showSidePanel = computed(() => game.phase === GamePhase.RELEASE);
+const showReleaseFab = computed(() => isMobile.value && showSidePanel.value);
 
 watch(
   () => [game.hasSession, game.currentDay, game.phase] as const,
@@ -86,12 +92,23 @@ watch(
       <template v-else>
         <DayPhaseBar :phase="game.phase" :current-day="game.currentDay" />
 
-        <div class="game-layout" :class="{ 'with-panel': showSidePanel }">
+        <div class="game-layout" :class="{ 'with-panel': showSidePanel && !isMobile }">
           <div class="board-area">
             <KanbanBoard v-if="game.boardView" :board="game.boardView" />
           </div>
-          <DecisionPanel />
+          <DecisionPanel v-if="!isMobile" />
         </div>
+        <button
+          v-if="showReleaseFab"
+          type="button"
+          class="release-fab"
+          @click="ui.openMobileReleaseSheet()"
+        >
+          发布面板
+        </button>
+        <MobileCardActions />
+        <MobileBacklogReorderSheet />
+        <MobileReleaseSheet />
         <DragToast />
       </template>
     </template>
@@ -127,6 +144,22 @@ watch(
 .empty {
   text-align: center;
   color: #64748b;
+}
+
+.release-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  z-index: 35;
+  border: none;
+  background: #15803d;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgb(21 128 61 / 35%);
+  cursor: pointer;
 }
 
 @media (max-width: 960px) {

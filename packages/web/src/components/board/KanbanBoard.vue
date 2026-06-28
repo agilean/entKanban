@@ -52,5 +52,18 @@ onUnmounted(() => {
   gap: 0.625rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+@media (max-width: 768px) {
+  .kanban-board {
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .kanban-board :deep(.kanban-column) {
+    scroll-snap-align: start;
+  }
 }
 </style>

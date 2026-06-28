@@ -296,4 +296,19 @@ code {
   font-size: 0.75rem;
   color: #64748b;
 }
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .invite-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
 </style>

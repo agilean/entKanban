@@ -10,6 +10,7 @@ import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { computed } from 'vue';
 import VChart from 'vue-echarts';
+import { useIsMobile } from '../../composables/useIsMobile';
 
 const props = defineProps<{
   option: Record<string, unknown>;
@@ -18,8 +19,10 @@ const props = defineProps<{
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent]);
 
+const { isMobile } = useIsMobile();
+
 const style = computed(() => ({
-  height: props.height ?? '320px',
+  height: props.height ?? (isMobile.value ? '260px' : '320px'),
   width: '100%',
 }));
 </script>
