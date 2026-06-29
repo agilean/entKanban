@@ -7,7 +7,7 @@ export const DEFAULT_ROOM: Room = {
   exit: {
     cx: 3.5,
     cy: 0,
-    width: 0.6,
+    width: 0.35,
     wall: 'bottom',
   },
   walls: [],
@@ -25,48 +25,77 @@ export const DEFAULT_CONFIG: SimConfig = {
   pedRepulsionB: 0.08,
   wallRepulsionA: 3000,
   wallRepulsionB: 0.08,
-  agentRadius: 0.3,
+  agentRadius: 0.12,
   agentMass: 80,
   maxSpeed: 2.2,
   fixedDt: 0.05,
   subSteps: 3,
 };
 
-/** Grid placement — always produces exactly `count` agents */
-export function createAgents(count: number, room: Room, config: SimConfig): Agent[] {
-  const margin = config.agentRadius + 0.08;
-  const usableW = room.width - 2 * margin;
-  const usableH = room.height - 2 * margin;
-
+function gridPosition(
+  index: number,
+  count: number,
+  margin: number,
+  usableW: number,
+  usableH: number,
+): { x: number; y: number } {
   const aspect = usableW / usableH;
   const cols = Math.ceil(Math.sqrt(count * aspect));
   const rows = Math.ceil(count / cols);
   const spacingX = usableW / cols;
   const spacingY = usableH / rows;
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return {
+    x: margin + (col + 0.5) * spacingX,
+    y: margin + (row + 0.5) * spacingY,
+  };
+}
 
-  const minSpacing = config.agentRadius * 2;
-  const canJitter =
-    spacingX >= minSpacing * 1.08 && spacingY >= minSpacing * 1.08;
+function isValidPosition(
+  pos: { x: number; y: number },
+  agents: Agent[],
+  minDist: number,
+): boolean {
+  for (const agent of agents) {
+    const dx = pos.x - agent.pos.x;
+    const dy = pos.y - agent.pos.y;
+    if (dx * dx + dy * dy < minDist * minDist) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Random scatter with grid fallback — always produces exactly `count` agents */
+export function createAgents(count: number, room: Room, config: SimConfig): Agent[] {
+  const margin = config.agentRadius + 0.08;
+  const usableW = room.width - 2 * margin;
+  const usableH = room.height - 2 * margin;
+  const minDist = config.agentRadius * 2 + 0.05;
+  const maxAttempts = 80;
 
   const agents: Agent[] = [];
-  let id = 0;
 
-  for (let row = 0; row < rows && id < count; row++) {
-    for (let col = 0; col < cols && id < count; col++) {
-      const jx = canJitter ? (Math.random() - 0.5) * spacingX * 0.08 : 0;
-      const jy = canJitter ? (Math.random() - 0.5) * spacingY * 0.08 : 0;
-      agents.push(
-        makeAgent(
-          id,
-          {
-            x: margin + (col + 0.5) * spacingX + jx,
-            y: margin + (row + 0.5) * spacingY + jy,
-          },
-          config,
-        ),
-      );
-      id++;
+  for (let id = 0; id < count; id++) {
+    let pos: { x: number; y: number } | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const candidate = {
+        x: margin + Math.random() * usableW,
+        y: margin + Math.random() * usableH,
+      };
+      if (isValidPosition(candidate, agents, minDist)) {
+        pos = candidate;
+        break;
+      }
     }
+
+    if (!pos) {
+      pos = gridPosition(id, count, margin, usableW, usableH);
+    }
+
+    agents.push(makeAgent(id, pos, config));
   }
 
   return agents;

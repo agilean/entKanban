@@ -117,7 +117,7 @@ function draw(): void {
     ctx.fillStyle = engine.config.panicMode ? '#ef4444' : '#3b82f6';
 
     ctx.beginPath();
-    ctx.arc(p.sx, p.sy, Math.max(r, 4), 0, Math.PI * 2);
+    ctx.arc(p.sx, p.sy, Math.max(r, 2), 0, Math.PI * 2);
     ctx.fill();
 
     if (agent.vel.x !== 0 || agent.vel.y !== 0) {
