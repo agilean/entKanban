@@ -1,3 +1,17 @@
+$:
+  vscode:
+    - docker:
+        image: node:22
+      services:
+        - vscode
+        - docker
+      env:
+        # 每次打开 IDE 时由 cnb-welcome 插件自动执行，确保 pnpm 可用
+        CNB_WELCOME_CMD: corepack enable
+      stages:
+        - name: setup
+          script: bash scripts/setup.sh
+
 main:
   push:
     - name: ci
