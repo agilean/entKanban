@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { PLAY_MODES } from '../../utils/gameTypes';
 import { useIsMobile } from '../../composables/useIsMobile';
 import { useGameStore } from '../../stores/gameStore';
 import MobileActionSheet from './MobileActionSheet.vue';
@@ -12,6 +13,7 @@ const props = defineProps<{
   onLoad: () => void;
   onSoloNewGame: () => void;
   onStartNewGame: () => void;
+  onStartEvacuation: () => void;
   onRestartInPlaySession: () => void | Promise<void>;
   onLeaveRoomSoloNewGame: () => void;
   onExportSystemLog: () => void;
@@ -23,12 +25,27 @@ const game = useGameStore();
 const router = useRouter();
 const { isMobile } = useIsMobile();
 
+const playModes = PLAY_MODES;
 const moreOpen = ref(false);
 const newGameOpen = ref(false);
+const playModeOpen = ref(false);
 
 async function handleRestart(): Promise<void> {
   newGameOpen.value = false;
   await props.onRestartInPlaySession();
+}
+
+function handlePlayModeSelect(modeId: string): void {
+  playModeOpen.value = false;
+  if (modeId === 'evacuation') {
+    props.onStartEvacuation();
+    return;
+  }
+  if (game.hasSession) {
+    props.onSoloNewGame();
+    return;
+  }
+  props.onStartNewGame();
 }
 </script>
 
@@ -54,7 +71,7 @@ async function handleRestart(): Promise<void> {
       >
         本房再开
       </button>
-      <button v-else type="button" class="bar-btn" @click="props.onSoloNewGame()">新游戏</button>
+      <button v-else type="button" class="bar-btn" @click="playModeOpen = true">新游戏</button>
     </template>
 
     <template v-else>
@@ -74,10 +91,25 @@ async function handleRestart(): Promise<void> {
       >
         开始游戏
       </button>
-      <button v-else type="button" class="bar-btn primary" @click="props.onStartNewGame()">新游戏</button>
+      <button v-else type="button" class="bar-btn primary" @click="playModeOpen = true">新游戏</button>
     </template>
 
     <button type="button" class="bar-btn" @click="moreOpen = true">更多</button>
+
+    <MobileActionSheet :open="playModeOpen" title="选择游戏" @close="playModeOpen = false">
+      <div class="sheet-actions">
+        <button
+          v-for="mode in playModes"
+          :key="mode.id"
+          type="button"
+          class="sheet-btn play-mode-btn"
+          @click="handlePlayModeSelect(mode.id)"
+        >
+          <span class="play-mode-label">{{ mode.label }}</span>
+          <span class="play-mode-desc">{{ mode.description }}</span>
+        </button>
+      </div>
+    </MobileActionSheet>
 
     <MobileActionSheet :open="newGameOpen" title="游戏" @close="newGameOpen = false">
       <div class="sheet-actions">
@@ -179,5 +211,22 @@ async function handleRestart(): Promise<void> {
   background: #2563eb;
   border-color: #2563eb;
   color: #fff;
+}
+
+.play-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.play-mode-label {
+  font-weight: 600;
+}
+
+.play-mode-desc {
+  font-size: 0.8125rem;
+  color: #64748b;
 }
 </style>

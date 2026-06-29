@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
+import { PLAY_MODES } from '../utils/gameTypes';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUiStore, type AppTab } from '../stores/uiStore';
@@ -16,7 +17,10 @@ import {
 const game = useGameStore();
 const ui = useUiStore();
 const auth = useAuthStore();
+const router = useRouter();
 const { isMobile } = useIsMobile();
+
+const playModes = PLAY_MODES;
 
 const tabs: Array<{ id: AppTab; label: string }> = [
   { id: 'board', label: '看板' },
@@ -29,8 +33,10 @@ const tabs: Array<{ id: AppTab; label: string }> = [
 const playSessionInfo = ref<PlaySession | null>(null);
 const moreMenuOpen = ref(false);
 const newGameMenuOpen = ref(false);
+const playModeMenuOpen = ref(false);
 const moreMenuRef = ref<HTMLElement | null>(null);
 const newGameMenuRef = ref<HTMLElement | null>(null);
+const playModeMenuRef = ref<HTMLElement | null>(null);
 
 const inPlaySession = computed(() => Boolean(game.activePlaySessionId));
 
@@ -44,9 +50,6 @@ const playSessionStatusLabel = computed(() => {
   };
   return map[status];
 });
-
-const isDev = import.meta.env.DEV;
-
 async function loadPlaySessionInfo(): Promise<void> {
   const id = game.activePlaySessionId;
   if (!id) {
@@ -101,11 +104,15 @@ function onDocumentClick(event: MouseEvent): void {
   if (!newGameMenuRef.value?.contains(target)) {
     newGameMenuOpen.value = false;
   }
+  if (!playModeMenuRef.value?.contains(target)) {
+    playModeMenuOpen.value = false;
+  }
 }
 
 function closeMenus(): void {
   moreMenuOpen.value = false;
   newGameMenuOpen.value = false;
+  playModeMenuOpen.value = false;
 }
 
 function handleExportSystemLog(): void {
@@ -136,19 +143,44 @@ function handleLoad(): void {
   }
 }
 
-function handleStartNewGame(): void {
-  game.startNewGame();
+function confirmClearProgress(): boolean {
+  if (game.hasSession && !window.confirm('开始新游戏将清除当前进度，确定吗？')) {
+    return false;
+  }
+  return true;
+}
+
+function startKanbanGame(): void {
+  closeMenus();
+  if (game.hasSession) {
+    if (!confirmClearProgress()) {
+      return;
+    }
+    game.resetGame();
+  } else {
+    game.startNewGame();
+  }
   ui.setTab('board');
   ui.resetSetupGuideForNewGame();
 }
 
-function handleSoloNewGame(): void {
-  if (game.hasSession && !window.confirm('开始新游戏将清除当前进度，确定吗？')) {
+function startEvacuationGame(): void {
+  closeMenus();
+  if (!confirmClearProgress()) {
     return;
   }
-  game.resetGame();
-  ui.setTab('board');
-  ui.resetSetupGuideForNewGame();
+  if (game.hasSession) {
+    game.resetGame();
+  }
+  void router.push('/evacuation');
+}
+
+function handleStartNewGame(): void {
+  startKanbanGame();
+}
+
+function handleSoloNewGame(): void {
+  startKanbanGame();
 }
 
 async function handleRestartInPlaySession(): Promise<void> {
@@ -191,11 +223,27 @@ function handleOpenGuide(): void {
 function toggleMoreMenu(): void {
   moreMenuOpen.value = !moreMenuOpen.value;
   newGameMenuOpen.value = false;
+  playModeMenuOpen.value = false;
 }
 
 function toggleNewGameMenu(): void {
   newGameMenuOpen.value = !newGameMenuOpen.value;
   moreMenuOpen.value = false;
+  playModeMenuOpen.value = false;
+}
+
+function togglePlayModeMenu(): void {
+  playModeMenuOpen.value = !playModeMenuOpen.value;
+  moreMenuOpen.value = false;
+  newGameMenuOpen.value = false;
+}
+
+function handlePlayModeSelect(modeId: string): void {
+  if (modeId === 'evacuation') {
+    startEvacuationGame();
+    return;
+  }
+  startKanbanGame();
 }
 </script>
 
@@ -225,7 +273,6 @@ function toggleNewGameMenu(): void {
       </div>
       <div class="header-actions">
         <UserMenu />
-        <RouterLink v-if="isDev" to="/evacuation" class="dev-link">疏散模拟</RouterLink>
       </div>
     </header>
 
@@ -269,7 +316,21 @@ function toggleNewGameMenu(): void {
               </button>
             </div>
           </div>
-          <button v-else type="button" class="btn btn-sm" @click="handleSoloNewGame">新游戏</button>
+          <div v-else ref="playModeMenuRef" class="menu-wrap">
+            <button type="button" class="btn btn-sm" @click.stop="togglePlayModeMenu">新游戏 ▾</button>
+            <div v-if="playModeMenuOpen" class="dropdown">
+              <button
+                v-for="mode in playModes"
+                :key="mode.id"
+                type="button"
+                class="menu-item play-mode-item"
+                @click="handlePlayModeSelect(mode.id)"
+              >
+                <span class="play-mode-label">{{ mode.label }}</span>
+                <span class="play-mode-desc">{{ mode.description }}</span>
+              </button>
+            </div>
+          </div>
 
           <div ref="moreMenuRef" class="menu-wrap">
             <button type="button" class="btn btn-sm" @click.stop="toggleMoreMenu">更多 ▾</button>
@@ -310,14 +371,23 @@ function toggleNewGameMenu(): void {
               </button>
             </div>
           </div>
-          <button
-            v-else
-            type="button"
-            class="btn btn-sm primary"
-            @click="handleStartNewGame"
-          >
-            新游戏
-          </button>
+          <div v-else ref="playModeMenuRef" class="menu-wrap">
+            <button type="button" class="btn btn-sm primary" @click.stop="togglePlayModeMenu">
+              新游戏 ▾
+            </button>
+            <div v-if="playModeMenuOpen" class="dropdown">
+              <button
+                v-for="mode in playModes"
+                :key="mode.id"
+                type="button"
+                class="menu-item play-mode-item"
+                @click="handlePlayModeSelect(mode.id)"
+              >
+                <span class="play-mode-label">{{ mode.label }}</span>
+                <span class="play-mode-desc">{{ mode.description }}</span>
+              </button>
+            </div>
+          </div>
         </template>
       </div>
     </nav>
@@ -333,6 +403,7 @@ function toggleNewGameMenu(): void {
       :on-load="handleLoad"
       :on-solo-new-game="handleSoloNewGame"
       :on-start-new-game="handleStartNewGame"
+      :on-start-evacuation="startEvacuationGame"
       :on-restart-in-play-session="handleRestartInPlaySession"
       :on-leave-room-solo-new-game="handleLeaveRoomSoloNewGame"
       :on-export-system-log="handleExportSystemLog"
@@ -414,16 +485,6 @@ function toggleNewGameMenu(): void {
   flex-shrink: 0;
 }
 
-.dev-link {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-decoration: none;
-}
-
-.dev-link:hover {
-  color: #6366f1;
-}
-
 .tabs-bar {
   display: flex;
   align-items: center;
@@ -481,7 +542,7 @@ function toggleNewGameMenu(): void {
   position: absolute;
   right: 0;
   top: calc(100% + 0.375rem);
-  min-width: 11rem;
+  min-width: 13rem;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -506,6 +567,24 @@ function toggleNewGameMenu(): void {
 
 .menu-item:hover {
   background: #f8fafc;
+}
+
+.play-mode-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  white-space: normal;
+}
+
+.play-mode-label {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.play-mode-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
 }
 
 .btn {

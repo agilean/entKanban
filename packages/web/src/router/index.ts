@@ -57,7 +57,7 @@ export const router = createRouter({
       path: '/evacuation',
       name: 'evacuation',
       component: () => import('../pages/EvacuationSimPage.vue'),
-      meta: { devOnly: true, title: '疏散模拟' },
+      meta: { title: '疏散模拟' },
     },
     {
       path: '/:pathMatch(.*)*',
