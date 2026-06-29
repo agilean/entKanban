@@ -25,6 +25,20 @@ export interface Room {
   height: number;
   walls: WallSegment[];
   exit: Exit;
+  obstacles: Obstacle[];
+}
+
+export type ObstacleKind = 'circle' | 'rect' | 'ellipse';
+
+export interface Obstacle {
+  id: string;
+  kind: ObstacleKind;
+  cx: number;
+  cy: number;
+  /** circle: radius; rect: half-width; ellipse: semi-axis x */
+  rx: number;
+  /** rect: half-height; ellipse: semi-axis y */
+  ry: number;
 }
 
 export interface Agent {

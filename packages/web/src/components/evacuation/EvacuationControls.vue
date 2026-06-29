@@ -2,8 +2,10 @@
 defineProps<{
   panicRatio: number;
   agentCount: number;
+  obstacleCount: number;
   isRunning: boolean;
   isComplete: boolean;
+  dropRejected: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -11,6 +13,7 @@ const emit = defineEmits<{
   start: [];
   pause: [];
   reset: [];
+  clearObstacles: [];
 }>();
 
 function onRatioInput(event: Event): void {
@@ -44,9 +47,21 @@ function onRatioInput(event: Event): void {
         />
         <span class="ratio-label panic">恐慌</span>
       </div>
-      <p class="ratio-value">
-        恐慌 {{ panicRatio }}% · 正常 {{ 100 - panicRatio }}%
-      </p>
+      <p class="ratio-value">恐慌 {{ panicRatio }}% · 正常 {{ 100 - panicRatio }}%</p>
+    </div>
+
+    <div class="field">
+      <label>房间柱体（{{ obstacleCount }} 个）</label>
+      <p class="field-hint">从左侧拖入柱体，松手后人员会自动重新分布</p>
+      <p v-if="dropRejected" class="field-error">此处无法放置（太靠边、挡住出口或与其他柱体重叠）</p>
+      <button
+        type="button"
+        class="btn clear-btn"
+        :disabled="isRunning || obstacleCount === 0"
+        @click="emit('clearObstacles')"
+      >
+        清除全部柱体
+      </button>
     </div>
 
     <div class="actions">
@@ -60,6 +75,7 @@ function onRatioInput(event: Event): void {
     <div class="legend">
       <div class="legend-item"><span class="dot normal" /> 正常行人</div>
       <div class="legend-item"><span class="dot panic" /> 恐慌行人</div>
+      <div class="legend-item"><span class="pillar" /> 柱体障碍</div>
       <div class="legend-item"><span class="dot exit" /> 出口</div>
     </div>
   </div>
@@ -90,6 +106,20 @@ function onRatioInput(event: Event): void {
   font-size: 1rem;
   font-weight: 600;
   color: #1e293b;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.field-error {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+  line-height: 1.4;
 }
 
 .ratio-row {
@@ -150,6 +180,11 @@ function onRatioInput(event: Event): void {
   background: #1d4ed8;
 }
 
+.clear-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;
@@ -187,6 +222,14 @@ function onRatioInput(event: Event): void {
 
 .dot.exit {
   background: #22c55e;
+  border-radius: 2px;
+}
+
+.pillar {
+  width: 10px;
+  height: 10px;
+  background: #cbd5e1;
+  border: 1px solid #64748b;
   border-radius: 2px;
 }
 </style>

@@ -1,4 +1,5 @@
 import { buildRoomWalls } from './geometry';
+import { pointBlockedByObstacles } from './obstacles';
 import type { Agent, Room, SimConfig } from './types';
 
 export const DEFAULT_ROOM: Room = {
@@ -11,9 +12,19 @@ export const DEFAULT_ROOM: Room = {
     wall: 'bottom',
   },
   walls: [],
+  obstacles: [],
 };
 
 DEFAULT_ROOM.walls = buildRoomWalls(DEFAULT_ROOM.width, DEFAULT_ROOM.height, DEFAULT_ROOM.exit);
+
+export function cloneRoom(room: Room): Room {
+  return {
+    ...room,
+    exit: { ...room.exit },
+    walls: [...room.walls],
+    obstacles: room.obstacles.map((o) => ({ ...o })),
+  };
+}
 
 export const DEFAULT_CONFIG: SimConfig = {
   agentCount: 50,
@@ -56,7 +67,12 @@ function isValidPosition(
   pos: { x: number; y: number },
   agents: Agent[],
   minDist: number,
+  room: Room,
+  config: SimConfig,
 ): boolean {
+  if (pointBlockedByObstacles(pos, room.obstacles, config.agentRadius)) {
+    return false;
+  }
   for (const agent of agents) {
     const dx = pos.x - agent.pos.x;
     const dy = pos.y - agent.pos.y;
@@ -85,9 +101,19 @@ export function createAgents(count: number, room: Room, config: SimConfig): Agen
         x: margin + Math.random() * usableW,
         y: margin + Math.random() * usableH,
       };
-      if (isValidPosition(candidate, agents, minDist)) {
+      if (isValidPosition(candidate, agents, minDist, room, config)) {
         pos = candidate;
         break;
+      }
+    }
+
+    if (!pos) {
+      for (let i = 0; i < count; i++) {
+        const candidate = gridPosition(i, count, margin, usableW, usableH);
+        if (isValidPosition(candidate, agents, minDist, room, config)) {
+          pos = candidate;
+          break;
+        }
       }
     }
 

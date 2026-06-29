@@ -8,6 +8,7 @@ import {
   segmentDistance,
   sub,
 } from './geometry';
+import { obstacleRepulsion } from './obstacles';
 import type { Agent, Room, SimConfig, Vec2 } from './types';
 
 function repulsionForce(
@@ -119,7 +120,10 @@ export function totalForce(
     drivingForce(agent, room, config, elapsedTime),
     add(
       pedestrianRepulsion(agent, activeAgents, config, room),
-      wallRepulsion(agent, room, config),
+      add(
+        wallRepulsion(agent, room, config),
+        obstacleRepulsion(agent, room.obstacles, config),
+      ),
     ),
   );
 }

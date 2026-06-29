@@ -3,9 +3,11 @@ import { onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import EvacuationCanvas from '../components/evacuation/EvacuationCanvas.vue';
 import EvacuationControls from '../components/evacuation/EvacuationControls.vue';
+import EvacuationPillarPalette from '../components/evacuation/EvacuationPillarPalette.vue';
 import EvacuationStats from '../components/evacuation/EvacuationStats.vue';
 import { useEvacuationSim } from '../composables/useEvacuationSim';
 import { useAuthStore } from '../stores/authStore';
+import type { ObstacleKind } from '../simulation/evacuation/types';
 import { submitEvacuationResult } from '../utils/leaderboardApi';
 
 const auth = useAuthStore();
@@ -21,11 +23,15 @@ const {
   pause,
   reset,
   setPanicRatio,
+  dropObstacle,
+  clearObstacles,
   registerDrawCallback,
   unregisterDrawCallback,
 } = sim;
 
 const submitStatus = ref<'idle' | 'submitting' | 'success' | 'error' | 'login-required'>('idle');
+const dropRejected = ref(false);
+let dropRejectTimer: ReturnType<typeof setTimeout> | null = null;
 
 function submissionKey(sessionId: string): string {
   return `evacuation-result-submitted:${sessionId}`;
@@ -58,6 +64,24 @@ async function submitResultIfNeeded(): Promise<void> {
     return;
   }
   submitStatus.value = 'error';
+}
+
+function handleDrop(kind: ObstacleKind, x: number, y: number): void {
+  const placed = dropObstacle(kind, x, y);
+  if (!placed) {
+    showDropRejected();
+  }
+}
+
+function showDropRejected(): void {
+  dropRejected.value = true;
+  if (dropRejectTimer) {
+    clearTimeout(dropRejectTimer);
+  }
+  dropRejectTimer = setTimeout(() => {
+    dropRejected.value = false;
+    dropRejectTimer = null;
+  }, 2500);
 }
 
 function handleStart(): void {
@@ -110,21 +134,30 @@ watch(
 
     <div class="layout">
       <section class="canvas-section">
-        <EvacuationCanvas
-          :engine="engine"
-          :frame-tick="frameTick"
-          :register-draw="registerDrawCallback"
-          :unregister-draw="unregisterDrawCallback"
-        />
+        <div class="sim-stage">
+          <EvacuationPillarPalette :disabled="stats.isRunning" />
+          <EvacuationCanvas
+            :engine="engine"
+            :frame-tick="frameTick"
+            :is-running="stats.isRunning"
+            :register-draw="registerDrawCallback"
+            :unregister-draw="unregisterDrawCallback"
+            @drop-obstacle="handleDrop"
+            @drop-rejected="showDropRejected"
+          />
+        </div>
       </section>
 
       <aside class="sidebar">
         <EvacuationControls
           :agent-count="fixedAgentCount"
           :panic-ratio="panicRatio"
+          :obstacle-count="engine.room.obstacles.length"
+          :drop-rejected="dropRejected"
           :is-running="stats.isRunning"
           :is-complete="stats.isComplete"
           @update:panic-ratio="setPanicRatio"
+          @clear-obstacles="clearObstacles"
           @start="handleStart"
           @pause="pause"
           @reset="handleReset"
@@ -191,6 +224,12 @@ watch(
   min-width: 0;
 }
 
+.sim-stage {
+  display: flex;
+  align-items: stretch;
+  max-height: 700px;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -205,6 +244,11 @@ watch(
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .sim-stage {
+    flex-direction: column;
+    max-height: none;
   }
 }
 </style>

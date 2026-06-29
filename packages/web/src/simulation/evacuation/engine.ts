@@ -1,7 +1,8 @@
 import { clampAgentInRoom, clampMagnitude, hasCrossedExit } from './geometry';
+import { clampAgentOutsideObstacles, canPlaceObstacle, createObstacle, MAX_OBSTACLES } from './obstacles';
 import { totalForce } from './forces';
-import { createAgents, DEFAULT_CONFIG, DEFAULT_ROOM } from './presets';
-import type { Agent, Room, SimConfig, SimStats } from './types';
+import { createAgents, cloneRoom, DEFAULT_CONFIG, DEFAULT_ROOM } from './presets';
+import type { Agent, Obstacle, ObstacleKind, Room, SimConfig, SimStats } from './types';
 
 export class EvacuationEngine {
   room: Room;
@@ -14,7 +15,7 @@ export class EvacuationEngine {
 
   constructor(config: Partial<SimConfig> = {}, room: Room = DEFAULT_ROOM) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.room = room;
+    this.room = cloneRoom(room);
     this.reset();
   }
 
@@ -27,6 +28,39 @@ export class EvacuationEngine {
     this.lastEvacuationTime = null;
     this.exitIntervals = [];
     this.isRunning = false;
+  }
+
+  redistributeAgents(): void {
+    this.agents = createAgents(this.config.agentCount, this.room, this.config);
+    this.elapsedTime = 0;
+    this.lastEvacuationTime = null;
+    this.exitIntervals = [];
+    this.isRunning = false;
+  }
+
+  addObstacle(kind: ObstacleKind, cx: number, cy: number): Obstacle | null {
+    if (this.isRunning || this.room.obstacles.length >= MAX_OBSTACLES) {
+      return null;
+    }
+    const obstacle = createObstacle(kind, cx, cy);
+    if (!canPlaceObstacle(this.room, obstacle, this.room.obstacles)) {
+      return null;
+    }
+    this.room.obstacles.push(obstacle);
+    this.redistributeAgents();
+    return obstacle;
+  }
+
+  removeObstacle(id: string): void {
+    if (this.isRunning) return;
+    this.room.obstacles = this.room.obstacles.filter((o) => o.id !== id);
+    this.redistributeAgents();
+  }
+
+  clearObstacles(): void {
+    if (this.isRunning) return;
+    this.room.obstacles = [];
+    this.redistributeAgents();
   }
 
   start(): void {
@@ -96,6 +130,7 @@ export class EvacuationEngine {
       agent.pos.y += agent.vel.y * dt;
 
       clampAgentInRoom(agent, this.room);
+      clampAgentOutsideObstacles(agent, this.room.obstacles);
 
       if (this.canEvacuate(agent)) {
         this.evacuate(agent);

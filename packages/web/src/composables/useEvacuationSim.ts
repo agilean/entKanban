@@ -1,6 +1,6 @@
 import { onUnmounted, reactive, ref, shallowRef } from 'vue';
 import { EvacuationEngine } from '../simulation/evacuation/engine';
-import type { SimConfig, SimStats } from '../simulation/evacuation/types';
+import type { ObstacleKind, SimConfig, SimStats } from '../simulation/evacuation/types';
 
 const FIXED_AGENT_COUNT = 50;
 
@@ -34,6 +34,12 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
     stats.avgExitInterval = s.avgExitInterval;
     stats.isComplete = s.isComplete;
     stats.isRunning = s.isRunning;
+  }
+
+  function bumpFrame(): void {
+    frameTick.value++;
+    syncStats();
+    drawCallback?.();
   }
 
   function tick(now: number): void {
@@ -91,9 +97,7 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
       agentCount: FIXED_AGENT_COUNT,
       panicRatio: panicRatio.value,
     });
-    frameTick.value++;
-    syncStats();
-    drawCallback?.();
+    bumpFrame();
   }
 
   function setPanicRatio(ratio: number): void {
@@ -103,10 +107,26 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
         agentCount: FIXED_AGENT_COUNT,
         panicRatio: panicRatio.value,
       });
-      frameTick.value++;
-      syncStats();
-      drawCallback?.();
+      bumpFrame();
     }
+  }
+
+  function dropObstacle(kind: ObstacleKind, cx: number, cy: number): boolean {
+    if (engine.value.isRunning) {
+      return false;
+    }
+    const placed = engine.value.addObstacle(kind, cx, cy);
+    if (placed) {
+      bumpFrame();
+      return true;
+    }
+    return false;
+  }
+
+  function clearObstacles(): void {
+    if (engine.value.isRunning) return;
+    engine.value.clearObstacles();
+    bumpFrame();
   }
 
   onUnmounted(() => {
@@ -126,6 +146,8 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
     pause,
     reset,
     setPanicRatio,
+    dropObstacle,
+    clearObstacles,
     syncStats,
     registerDrawCallback,
     unregisterDrawCallback,
