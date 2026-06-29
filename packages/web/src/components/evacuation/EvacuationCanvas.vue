@@ -53,38 +53,14 @@ function draw(): void {
 
   ctx.clearRect(0, 0, canvasW, canvasH);
 
-  ctx.fillStyle = '#f8fafc';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   const topLeft = worldToScreen(0, h, scale);
   const roomW = w * scale;
   const roomH = h * scale;
-  ctx.fillStyle = '#e2e8f0';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(topLeft.sx, topLeft.sy, roomW, roomH);
-
-  // Density heatmap (coarse grid for performance)
-  const gridSize = 0.7;
-  for (let gx = 0; gx < w; gx += gridSize) {
-    for (let gy = 0; gy < h; gy += gridSize) {
-      const cx = gx + gridSize / 2;
-      const cy = gy + gridSize / 2;
-      let count = 0;
-      for (const agent of agents) {
-        if (agent.evacuated) continue;
-        if (Math.abs(agent.pos.x - cx) < gridSize && Math.abs(agent.pos.y - cy) < gridSize) {
-          count++;
-        }
-      }
-      if (count > 0) {
-        const alpha = Math.min(count * 0.18, 0.65);
-        const p = worldToScreen(gx, gy + gridSize, scale);
-        ctx.fillStyle = engine.config.panicMode
-          ? `rgba(239, 68, 68, ${alpha})`
-          : `rgba(59, 130, 246, ${alpha})`;
-        ctx.fillRect(p.sx, p.sy, gridSize * scale, gridSize * scale);
-      }
-    }
-  }
 
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 3;
@@ -119,15 +95,6 @@ function draw(): void {
     ctx.beginPath();
     ctx.arc(p.sx, p.sy, Math.max(r, 2), 0, Math.PI * 2);
     ctx.fill();
-
-    if (agent.vel.x !== 0 || agent.vel.y !== 0) {
-      ctx.strokeStyle = engine.config.panicMode ? '#991b1b' : '#1e40af';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(p.sx, p.sy);
-      ctx.lineTo(p.sx + agent.vel.x * scale * 0.4, p.sy - agent.vel.y * scale * 0.4);
-      ctx.stroke();
-    }
   }
 }
 
