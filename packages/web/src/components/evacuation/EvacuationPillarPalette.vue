@@ -20,6 +20,12 @@ function onDragStart(kind: ObstacleKind, event: DragEvent): void {
   if (!event.dataTransfer) return;
   event.dataTransfer.setData('application/x-evacuation-obstacle', kind);
   event.dataTransfer.effectAllowed = 'copy';
+
+  const blank = document.createElement('canvas');
+  blank.width = 1;
+  blank.height = 1;
+  event.dataTransfer.setDragImage(blank, 0, 0);
+
   emit('dragStart', kind);
 }
 

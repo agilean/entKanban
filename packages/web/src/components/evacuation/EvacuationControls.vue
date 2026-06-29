@@ -52,8 +52,8 @@ function onRatioInput(event: Event): void {
 
     <div class="field">
       <label>房间柱体（{{ obstacleCount }} 个）</label>
-      <p class="field-hint">从左侧拖入柱体，松手后人员会自动重新分布</p>
-      <p v-if="dropRejected" class="field-error">此处无法放置（太靠边、挡住出口或与其他柱体重叠）</p>
+      <p class="field-hint">从左侧拖入柱体，松手后人员会自动重新分布（可贴墙，不可挡出口）</p>
+      <p v-if="dropRejected" class="field-error">此处无法放置（超出房间、挡住出口或与其他柱体重叠）</p>
       <button
         type="button"
         class="btn clear-btn"

@@ -31,6 +31,7 @@ const {
 
 const submitStatus = ref<'idle' | 'submitting' | 'success' | 'error' | 'login-required'>('idle');
 const dropRejected = ref(false);
+const draggingKind = ref<ObstacleKind | null>(null);
 let dropRejectTimer: ReturnType<typeof setTimeout> | null = null;
 
 function submissionKey(sessionId: string): string {
@@ -67,6 +68,7 @@ async function submitResultIfNeeded(): Promise<void> {
 }
 
 function handleDrop(kind: ObstacleKind, x: number, y: number): void {
+  draggingKind.value = null;
   const placed = dropObstacle(kind, x, y);
   if (!placed) {
     showDropRejected();
@@ -135,10 +137,15 @@ watch(
     <div class="layout">
       <section class="canvas-section">
         <div class="sim-stage">
-          <EvacuationPillarPalette :disabled="stats.isRunning" />
+          <EvacuationPillarPalette
+            :disabled="stats.isRunning"
+            @drag-start="draggingKind = $event"
+            @drag-end="draggingKind = null"
+          />
           <EvacuationCanvas
             :engine="engine"
             :frame-tick="frameTick"
+            :dragging-kind="draggingKind"
             :is-running="stats.isRunning"
             :register-draw="registerDrawCallback"
             :unregister-draw="unregisterDrawCallback"

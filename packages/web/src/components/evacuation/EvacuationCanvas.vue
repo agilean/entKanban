@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { canPlaceObstacle, createObstacle } from '../../simulation/evacuation/obstacles';
 import type { EvacuationEngine } from '../../simulation/evacuation/engine';
 import type { Obstacle, ObstacleKind } from '../../simulation/evacuation/types';
 
 const props = defineProps<{
   engine: EvacuationEngine;
   frameTick: number;
+  draggingKind: ObstacleKind | null;
   isRunning: boolean;
   registerDraw: (cb: () => void) => void;
   unregisterDraw: () => void;
@@ -20,6 +22,8 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasSize = ref({ width: 600, height: 600 });
 const isDragOver = ref(false);
+const dragPreview = ref<{ x: number; y: number } | null>(null);
+const dragPreviewValid = ref(true);
 
 const padding = 40;
 
@@ -59,10 +63,17 @@ function clientToWorld(clientX: number, clientY: number): { x: number; y: number
   return screenToWorld(sx, sy, getScale());
 }
 
-function drawObstacle(ctx: CanvasRenderingContext2D, obstacle: Obstacle, scale: number): void {
+function drawObstacle(
+  ctx: CanvasRenderingContext2D,
+  obstacle: Obstacle,
+  scale: number,
+  options?: { alpha?: number; invalid?: boolean },
+): void {
   const center = worldToScreen(obstacle.cx, obstacle.cy, scale);
-  ctx.fillStyle = '#cbd5e1';
-  ctx.strokeStyle = '#64748b';
+  const alpha = options?.alpha ?? 1;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = options?.invalid ? '#fecaca' : '#cbd5e1';
+  ctx.strokeStyle = options?.invalid ? '#ef4444' : '#64748b';
   ctx.lineWidth = 2;
 
   if (obstacle.kind === 'circle') {
@@ -70,6 +81,7 @@ function drawObstacle(ctx: CanvasRenderingContext2D, obstacle: Obstacle, scale: 
     ctx.arc(center.sx, center.sy, obstacle.rx * scale, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.globalAlpha = 1;
     return;
   }
 
@@ -78,6 +90,7 @@ function drawObstacle(ctx: CanvasRenderingContext2D, obstacle: Obstacle, scale: 
     const h = obstacle.ry * 2 * scale;
     ctx.fillRect(center.sx - w / 2, center.sy - h / 2, w, h);
     ctx.strokeRect(center.sx - w / 2, center.sy - h / 2, w, h);
+    ctx.globalAlpha = 1;
     return;
   }
 
@@ -85,6 +98,7 @@ function drawObstacle(ctx: CanvasRenderingContext2D, obstacle: Obstacle, scale: 
   ctx.ellipse(center.sx, center.sy, obstacle.rx * scale, obstacle.ry * scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
 function draw(): void {
@@ -130,6 +144,19 @@ function draw(): void {
     drawObstacle(ctx, obstacle, scale);
   }
 
+  if (props.draggingKind && dragPreview.value) {
+    const preview = createObstacle(
+      props.draggingKind,
+      dragPreview.value.x,
+      dragPreview.value.y,
+      'preview',
+    );
+    drawObstacle(ctx, preview, scale, {
+      alpha: 0.72,
+      invalid: !dragPreviewValid.value,
+    });
+  }
+
   const exit = room.exit;
   const half = exit.width / 2;
   const exitLeft = worldToScreen(exit.cx - half, 0, scale);
@@ -155,24 +182,40 @@ function draw(): void {
   }
 }
 
+function clearDragPreview(): void {
+  dragPreview.value = null;
+  isDragOver.value = false;
+  draw();
+}
+
 function handleDragOver(event: DragEvent): void {
-  if (props.isRunning) return;
+  if (props.isRunning || !props.draggingKind) return;
   if (!event.dataTransfer?.types.includes('application/x-evacuation-obstacle')) return;
   event.preventDefault();
   event.dataTransfer.dropEffect = 'copy';
   isDragOver.value = true;
+
+  const world = clientToWorld(event.clientX, event.clientY);
+  if (!world) return;
+
+  dragPreview.value = world;
+  const preview = createObstacle(props.draggingKind, world.x, world.y, 'preview');
+  dragPreviewValid.value = canPlaceObstacle(props.engine.room, preview, props.engine.room.obstacles);
+  draw();
 }
 
 function handleDragLeave(): void {
-  isDragOver.value = false;
+  clearDragPreview();
 }
 
 function handleDrop(event: DragEvent): void {
   event.preventDefault();
-  isDragOver.value = false;
   if (props.isRunning) return;
 
-  const kind = event.dataTransfer?.getData('application/x-evacuation-obstacle') as ObstacleKind;
+  const kind = (event.dataTransfer?.getData('application/x-evacuation-obstacle') ||
+    props.draggingKind) as ObstacleKind | null;
+  clearDragPreview();
+
   if (!kind) return;
 
   const world = clientToWorld(event.clientX, event.clientY);
@@ -216,6 +259,9 @@ onUnmounted(() => {
 watch(() => props.frameTick, draw);
 watch(() => props.engine.config.panicRatio, draw);
 watch(() => props.engine.room.obstacles.length, draw);
+watch(() => props.draggingKind, (kind) => {
+  if (!kind) clearDragPreview();
+});
 </script>
 
 <template>

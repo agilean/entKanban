@@ -9,6 +9,10 @@ const OBSTACLE_DEFAULTS: Record<ObstacleKind, { rx: number; ry: number }> = {
 
 export const MAX_OBSTACLES = 10;
 
+export function getObstacleDefaults(kind: ObstacleKind): { rx: number; ry: number } {
+  return { ...OBSTACLE_DEFAULTS[kind] };
+}
+
 export function createObstacle(kind: ObstacleKind, cx: number, cy: number, id?: string): Obstacle {
   const size = OBSTACLE_DEFAULTS[kind];
   return {
@@ -130,14 +134,8 @@ function exitKeepoutZone(room: Room): { minX: number; maxX: number; minY: number
 }
 
 export function canPlaceObstacle(room: Room, obstacle: Obstacle, existing: Obstacle[]): boolean {
-  const wallMargin = 0.1;
   const box = obstacleAabb(obstacle);
-  if (
-    box.minX < wallMargin ||
-    box.maxX > room.width - wallMargin ||
-    box.minY < wallMargin ||
-    box.maxY > room.height - wallMargin
-  ) {
+  if (box.minX < 0 || box.maxX > room.width || box.minY < 0 || box.maxY > room.height) {
     return false;
   }
 
