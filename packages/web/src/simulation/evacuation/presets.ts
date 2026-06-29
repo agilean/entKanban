@@ -17,7 +17,7 @@ DEFAULT_ROOM.walls = buildRoomWalls(DEFAULT_ROOM.width, DEFAULT_ROOM.height, DEF
 
 export const DEFAULT_CONFIG: SimConfig = {
   agentCount: 50,
-  panicMode: false,
+  panicRatio: 0,
   normalSpeed: 0.85,
   panicSpeed: 1.35,
   relaxationTime: 0.65,
@@ -98,7 +98,21 @@ export function createAgents(count: number, room: Room, config: SimConfig): Agen
     agents.push(makeAgent(id, pos, config));
   }
 
+  assignPanicFlags(agents, config.panicRatio);
+
   return agents;
+}
+
+function assignPanicFlags(agents: Agent[], panicRatio: number): void {
+  const panicCount = Math.round((agents.length * panicRatio) / 100);
+  const indices = agents.map((_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  for (let i = 0; i < panicCount; i++) {
+    agents[indices[i]].isPanic = true;
+  }
 }
 
 function makeAgent(id: number, pos: { x: number; y: number }, config: SimConfig): Agent {
@@ -109,6 +123,7 @@ function makeAgent(id: number, pos: { x: number; y: number }, config: SimConfig)
     force: { x: 0, y: 0 },
     mass: config.agentMass,
     radius: config.agentRadius,
+    isPanic: false,
     evacuated: false,
     evacuatedAt: null,
   };

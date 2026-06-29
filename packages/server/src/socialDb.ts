@@ -70,6 +70,18 @@ export type InvitationPreview = {
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+function addColumnIfMissing(
+  db: ReplayDatabase,
+  table: string,
+  column: string,
+  definition: string,
+): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!columns.some((col) => col.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 export function migrateSocial(db: ReplayDatabase): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -116,6 +128,11 @@ export function migrateSocial(db: ReplayDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_game_results_org_score ON game_results(org_id, score DESC, completed_at DESC);
     CREATE INDEX IF NOT EXISTS idx_org_invitations_token ON org_invitations(token);
   `);
+
+  addColumnIfMissing(db, 'game_results', 'game_type', "TEXT NOT NULL DEFAULT 'kanban'");
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_game_results_game_score ON game_results(game_type, score DESC, completed_at DESC)`,
+  );
 }
 
 function parseUser(row: {
@@ -390,6 +407,7 @@ export function insertGameResult(
     deployedCount: number;
     snapshotCount: number;
     playSessionId?: string | null;
+    gameType?: string;
   },
 ): GameResult {
   const user = getUserById(db, input.userId);
@@ -397,18 +415,20 @@ export function insertGameResult(
     throw new Error('User not found');
   }
 
+  const gameType = input.gameType ?? 'kanban';
   const id = randomUUID();
   const completedAt = new Date().toISOString();
   db.prepare(
     `INSERT INTO game_results
-      (id, user_id, org_id, session_id, play_session_id, score, deployed_count, snapshot_count, completed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, org_id, session_id, play_session_id, game_type, score, deployed_count, snapshot_count, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     input.userId,
     user.orgId,
     input.sessionId,
     input.playSessionId ?? null,
+    gameType,
     input.score,
     input.deployedCount,
     input.snapshotCount,
@@ -431,7 +451,9 @@ export function getGlobalLeaderboard(
   db: ReplayDatabase,
   limit = 50,
   offset = 0,
+  gameType = 'kanban',
 ): LeaderboardEntry[] {
+  const orderBy = gameType === 'evacuation' ? 'r.score ASC' : 'r.score DESC';
   const rows = db
     .prepare(
       `SELECT
@@ -448,10 +470,11 @@ export function getGlobalLeaderboard(
        FROM game_results r
        JOIN users u ON u.id = r.user_id
        LEFT JOIN organizations o ON o.id = r.org_id
-       ORDER BY r.score DESC, r.completed_at ASC
+       WHERE r.game_type = ?
+       ORDER BY ${orderBy}, r.completed_at ASC
        LIMIT ? OFFSET ?`,
     )
-    .all(limit, offset) as Array<{
+    .all(gameType, limit, offset) as Array<{
     id: string;
     userId: string;
     userName: string;
@@ -483,7 +506,9 @@ export function getOrgLeaderboard(
   orgId: string,
   limit = 50,
   offset = 0,
+  gameType = 'kanban',
 ): LeaderboardEntry[] {
+  const orderBy = gameType === 'evacuation' ? 'r.score ASC' : 'r.score DESC';
   const rows = db
     .prepare(
       `SELECT
@@ -500,11 +525,11 @@ export function getOrgLeaderboard(
        FROM game_results r
        JOIN users u ON u.id = r.user_id
        LEFT JOIN organizations o ON o.id = r.org_id
-       WHERE r.org_id = ?
-       ORDER BY r.score DESC, r.completed_at ASC
+       WHERE r.org_id = ? AND r.game_type = ?
+       ORDER BY ${orderBy}, r.completed_at ASC
        LIMIT ? OFFSET ?`,
     )
-    .all(orgId, limit, offset) as Array<{
+    .all(orgId, gameType, limit, offset) as Array<{
     id: string;
     userId: string;
     userName: string;

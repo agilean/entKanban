@@ -42,10 +42,10 @@ export function drivingForce(
   const e = directionTo(agent.pos, target);
 
   // Gradual speed ramp after alarm — avoids instant sprint at t=0
-  const rampDuration = config.panicMode ? 4 : 2;
+  const rampDuration = agent.isPanic ? 4 : 2;
   const ramp = Math.min(1, elapsedTime / rampDuration);
   const eased = ramp * ramp;
-  const baseSpeed = config.panicMode ? config.panicSpeed : config.normalSpeed;
+  const baseSpeed = agent.isPanic ? config.panicSpeed : config.normalSpeed;
   const v0 = baseSpeed * eased;
 
   const desiredVel = scale(e, v0);
@@ -61,7 +61,7 @@ export function pedestrianRepulsion(
   let force: Vec2 = { x: 0, y: 0 };
   const combinedRadius = config.agentRadius * 2;
   // Panic: weaker repulsion allows compression at bottleneck (FIS)
-  const A = config.panicMode ? config.pedRepulsionA * 0.72 : config.pedRepulsionA;
+  const A = agent.isPanic ? config.pedRepulsionA * 0.72 : config.pedRepulsionA;
   const nearExit = agent.pos.y < 1.5 && room.exit.wall === 'bottom';
 
   for (const other of others) {
@@ -73,7 +73,7 @@ export function pedestrianRepulsion(
 
     const nearest = { x: other.pos.x, y: other.pos.y };
     let repA = A;
-    if (config.panicMode && nearExit && other.pos.y < 1.5) {
+    if (agent.isPanic && nearExit && other.pos.y < 1.5) {
       repA *= 0.55;
     }
     force = add(force, repulsionForce(agent.pos, nearest, dist, repA, config.pedRepulsionB));
@@ -84,7 +84,7 @@ export function pedestrianRepulsion(
 
 export function wallRepulsion(agent: Agent, room: Room, config: SimConfig): Vec2 {
   let force: Vec2 = { x: 0, y: 0 };
-  const A = config.panicMode ? config.wallRepulsionA * 1.2 : config.wallRepulsionA;
+  const A = agent.isPanic ? config.wallRepulsionA * 1.2 : config.wallRepulsionA;
   const { exit, walls } = room;
   const half = exit.width / 2;
 

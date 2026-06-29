@@ -87,7 +87,7 @@ export class EvacuationEngine {
       agent.vel.x += (agent.force.x / agent.mass) * dt;
       agent.vel.y += (agent.force.y / agent.mass) * dt;
 
-      const maxSpeed = this.config.panicMode
+      const maxSpeed = agent.isPanic
         ? this.config.panicSpeed * 1.1
         : this.config.maxSpeed;
       agent.vel = clampMagnitude(agent.vel, maxSpeed);
@@ -117,12 +117,10 @@ export class EvacuationEngine {
         a.pos.x >= exit.cx - half - a.radius * 2 &&
         a.pos.x <= exit.cx + half + a.radius * 2,
     );
-    const congestion = nearExit.length;
-
-    // Gu Ning ~0.3s base gap; panic clogging widens effective gap
+    const panicNearExit = nearExit.filter((a) => a.isPanic).length;
     let minGap = 0.28;
-    if (this.config.panicMode && congestion > 3) {
-      minGap += (congestion - 3) * 0.12;
+    if (agent.isPanic && panicNearExit > 3) {
+      minGap += (panicNearExit - 3) * 0.12;
     }
 
     if (

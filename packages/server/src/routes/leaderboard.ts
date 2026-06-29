@@ -15,6 +15,7 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
       score?: number;
       deployedCount?: number;
       snapshotCount?: number;
+      gameType?: string;
     };
 
     if (
@@ -34,6 +35,7 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
         deployedCount: body.deployedCount,
         snapshotCount: body.snapshotCount,
         playSessionId: body.playSessionId,
+        gameType: body.gameType,
       });
       if (body.playSessionId) {
         completeParticipant(db, body.playSessionId, userId, {
@@ -58,7 +60,8 @@ export function createLeaderboardRoutes(db: ReplayDatabase): Hono<{ Variables: A
   routes.get('/global', (c) => {
     const limit = parsePagination(c.req.query('limit'), 50);
     const offset = parsePagination(c.req.query('offset'), 0);
-    return c.json({ entries: getGlobalLeaderboard(db, limit, offset) });
+    const gameType = parseGameType(c.req.query('gameType'));
+    return c.json({ entries: getGlobalLeaderboard(db, limit, offset, gameType) });
   });
 
   routes.get('/org', requireAuth, (c) => {
@@ -69,9 +72,10 @@ export function createLeaderboardRoutes(db: ReplayDatabase): Hono<{ Variables: A
     }
     const limit = parsePagination(c.req.query('limit'), 50);
     const offset = parsePagination(c.req.query('offset'), 0);
+    const gameType = parseGameType(c.req.query('gameType'));
     return c.json({
       org: { id: user.org.id, name: user.org.name },
-      entries: getOrgLeaderboard(db, user.org.id, limit, offset),
+      entries: getOrgLeaderboard(db, user.org.id, limit, offset, gameType),
     });
   });
 
@@ -93,4 +97,8 @@ export function createLeaderboardRoutes(db: ReplayDatabase): Hono<{ Variables: A
 function parsePagination(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseGameType(value: string | undefined): string {
+  return value === 'evacuation' ? 'evacuation' : 'kanban';
 }

@@ -1,32 +1,101 @@
 <script setup lang="ts">
+import { onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import EvacuationCanvas from '../components/evacuation/EvacuationCanvas.vue';
 import EvacuationControls from '../components/evacuation/EvacuationControls.vue';
 import EvacuationStats from '../components/evacuation/EvacuationStats.vue';
 import { useEvacuationSim } from '../composables/useEvacuationSim';
+import { useAuthStore } from '../stores/authStore';
+import { submitEvacuationResult } from '../utils/leaderboardApi';
 
+const auth = useAuthStore();
 const sim = useEvacuationSim();
 const {
   engine,
   stats,
-  panicMode,
-  agentCount,
+  panicRatio,
+  runSessionId,
+  fixedAgentCount,
   frameTick,
   start,
   pause,
   reset,
-  setAgentCount,
-  setPanicMode,
+  setPanicRatio,
   registerDrawCallback,
   unregisterDrawCallback,
 } = sim;
 
+const submitStatus = ref<'idle' | 'submitting' | 'success' | 'error' | 'login-required'>('idle');
+
+function submissionKey(sessionId: string): string {
+  return `evacuation-result-submitted:${sessionId}`;
+}
+
+async function submitResultIfNeeded(): Promise<void> {
+  if (!stats.isComplete) {
+    return;
+  }
+  if (!auth.isLoggedIn) {
+    submitStatus.value = 'login-required';
+    return;
+  }
+  const key = submissionKey(runSessionId.value);
+  if (sessionStorage.getItem(key) === '1') {
+    submitStatus.value = 'success';
+    return;
+  }
+
+  submitStatus.value = 'submitting';
+  const ok = await submitEvacuationResult({
+    sessionId: runSessionId.value,
+    elapsedTime: stats.elapsedTime,
+    panicRatio: panicRatio.value,
+    agentCount: fixedAgentCount,
+  });
+  if (ok) {
+    sessionStorage.setItem(key, '1');
+    submitStatus.value = 'success';
+    return;
+  }
+  submitStatus.value = 'error';
+}
+
 function handleStart(): void {
   if (stats.isComplete) {
     reset();
+    submitStatus.value = 'idle';
   }
   start();
 }
+
+function handleReset(): void {
+  reset();
+  submitStatus.value = 'idle';
+}
+
+onMounted(async () => {
+  if (!auth.initialized) {
+    await auth.initialize();
+  }
+});
+
+watch(
+  () => stats.isComplete,
+  (complete) => {
+    if (complete) {
+      void submitResultIfNeeded();
+    }
+  },
+);
+
+watch(
+  () => auth.isLoggedIn,
+  (loggedIn) => {
+    if (loggedIn && stats.isComplete && submitStatus.value === 'login-required') {
+      void submitResultIfNeeded();
+    }
+  },
+);
 </script>
 
 <template>
@@ -35,7 +104,7 @@ function handleStart(): void {
       <RouterLink to="/" class="back-link">← 返回游戏</RouterLink>
       <div class="title-block">
         <h1>社会力疏散模拟</h1>
-        <p class="subtitle">Helbing Social Force Model · 单出口房间 · Faster-is-Slower</p>
+        <p class="subtitle">Helbing Social Force Model · 单出口房间 · 用时排行榜</p>
       </div>
     </header>
 
@@ -51,17 +120,20 @@ function handleStart(): void {
 
       <aside class="sidebar">
         <EvacuationControls
-          :agent-count="agentCount"
-          :panic-mode="panicMode"
+          :agent-count="fixedAgentCount"
+          :panic-ratio="panicRatio"
           :is-running="stats.isRunning"
           :is-complete="stats.isComplete"
-          @update:agent-count="setAgentCount"
-          @update:panic-mode="setPanicMode"
+          @update:panic-ratio="setPanicRatio"
           @start="handleStart"
           @pause="pause"
-          @reset="reset"
+          @reset="handleReset"
         />
-        <EvacuationStats :stats="stats" :panic-mode="panicMode" />
+        <EvacuationStats
+          :stats="stats"
+          :panic-ratio="panicRatio"
+          :submit-status="submitStatus"
+        />
       </aside>
     </div>
   </div>

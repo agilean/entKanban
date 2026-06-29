@@ -1,5 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
+export type LeaderboardGameType = 'kanban' | 'evacuation';
+
 export type LeaderboardEntry = {
   rank: number;
   userId: string;
@@ -19,6 +21,14 @@ export type SubmitResultInput = {
   deployedCount: number;
   snapshotCount: number;
   playSessionId?: string | null;
+  gameType?: LeaderboardGameType;
+};
+
+export type SubmitEvacuationResultInput = {
+  sessionId: string;
+  elapsedTime: number;
+  panicRatio: number;
+  agentCount: number;
 };
 
 async function requestJson<T>(
@@ -45,6 +55,14 @@ async function requestJson<T>(
   }
 }
 
+export function evacuationScoreFromSeconds(elapsedTime: number): number {
+  return Math.max(1, Math.round(elapsedTime * 100));
+}
+
+export function formatEvacuationScore(score: number): string {
+  return `${(score / 100).toFixed(1)}s`;
+}
+
 export async function submitGameResult(input: SubmitResultInput): Promise<boolean> {
   const result = await requestJson<{ result: unknown }>('/results', {
     method: 'POST',
@@ -52,9 +70,24 @@ export async function submitGameResult(input: SubmitResultInput): Promise<boolea
   });
   return result.status === 201;
 }
-export async function fetchGlobalLeaderboard(limit = 50, offset = 0): Promise<LeaderboardEntry[]> {
+
+export async function submitEvacuationResult(input: SubmitEvacuationResultInput): Promise<boolean> {
+  return submitGameResult({
+    sessionId: input.sessionId,
+    score: evacuationScoreFromSeconds(input.elapsedTime),
+    deployedCount: input.panicRatio,
+    snapshotCount: input.agentCount,
+    gameType: 'evacuation',
+  });
+}
+
+export async function fetchGlobalLeaderboard(
+  limit = 50,
+  offset = 0,
+  gameType: LeaderboardGameType = 'kanban',
+): Promise<LeaderboardEntry[]> {
   const result = await requestJson<{ entries: LeaderboardEntry[] }>(
-    `/leaderboard/global?limit=${limit}&offset=${offset}`,
+    `/leaderboard/global?limit=${limit}&offset=${offset}&gameType=${gameType}`,
   );
   return result.data?.entries ?? [];
 }
@@ -62,11 +95,12 @@ export async function fetchGlobalLeaderboard(limit = 50, offset = 0): Promise<Le
 export async function fetchOrgLeaderboard(
   limit = 50,
   offset = 0,
+  gameType: LeaderboardGameType = 'kanban',
 ): Promise<{ org: { id: string; name: string } | null; entries: LeaderboardEntry[] }> {
   const result = await requestJson<{
     org: { id: string; name: string };
     entries: LeaderboardEntry[];
-  }>(`/leaderboard/org?limit=${limit}&offset=${offset}`);
+  }>(`/leaderboard/org?limit=${limit}&offset=${offset}&gameType=${gameType}`);
   return {
     org: result.data?.org ?? null,
     entries: result.data?.entries ?? [],

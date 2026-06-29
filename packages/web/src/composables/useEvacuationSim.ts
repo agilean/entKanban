@@ -2,11 +2,15 @@ import { onUnmounted, reactive, ref, shallowRef } from 'vue';
 import { EvacuationEngine } from '../simulation/evacuation/engine';
 import type { SimConfig, SimStats } from '../simulation/evacuation/types';
 
+const FIXED_AGENT_COUNT = 50;
+
 export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
-  const engine = shallowRef(new EvacuationEngine(initialConfig));
+  const engine = shallowRef(
+    new EvacuationEngine({ agentCount: FIXED_AGENT_COUNT, ...initialConfig }),
+  );
   const stats = reactive<SimStats>({ ...engine.value.stats });
-  const panicMode = ref(engine.value.config.panicMode);
-  const agentCount = ref(engine.value.config.agentCount);
+  const panicRatio = ref(engine.value.config.panicRatio);
+  const runSessionId = ref(crypto.randomUUID());
   const frameTick = ref(0);
 
   let rafId: number | null = null;
@@ -65,6 +69,10 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
   }
 
   function start(): void {
+    if (stats.isComplete) {
+      reset();
+    }
+    runSessionId.value = crypto.randomUUID();
     engine.value.start();
     syncStats();
     startLoop();
@@ -78,29 +86,23 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
 
   function reset(): void {
     stopLoop();
+    runSessionId.value = crypto.randomUUID();
     engine.value.reset({
-      agentCount: agentCount.value,
-      panicMode: panicMode.value,
+      agentCount: FIXED_AGENT_COUNT,
+      panicRatio: panicRatio.value,
     });
     frameTick.value++;
     syncStats();
     drawCallback?.();
   }
 
-  function setAgentCount(count: number): void {
-    agentCount.value = count;
+  function setPanicRatio(ratio: number): void {
+    panicRatio.value = Math.max(0, Math.min(100, Math.round(ratio)));
     if (!engine.value.isRunning) {
-      engine.value.reset({ agentCount: count, panicMode: panicMode.value });
-      frameTick.value++;
-      syncStats();
-      drawCallback?.();
-    }
-  }
-
-  function setPanicMode(panic: boolean): void {
-    panicMode.value = panic;
-    if (!engine.value.isRunning) {
-      engine.value.reset({ agentCount: agentCount.value, panicMode: panic });
+      engine.value.reset({
+        agentCount: FIXED_AGENT_COUNT,
+        panicRatio: panicRatio.value,
+      });
       frameTick.value++;
       syncStats();
       drawCallback?.();
@@ -116,14 +118,14 @@ export function useEvacuationSim(initialConfig?: Partial<SimConfig>) {
   return {
     engine,
     stats,
-    panicMode,
-    agentCount,
+    panicRatio,
+    runSessionId,
     frameTick,
+    fixedAgentCount: FIXED_AGENT_COUNT,
     start,
     pause,
     reset,
-    setAgentCount,
-    setPanicMode,
+    setPanicRatio,
     syncStats,
     registerDrawCallback,
     unregisterDrawCallback,

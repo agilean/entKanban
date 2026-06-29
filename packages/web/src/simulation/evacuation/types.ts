@@ -34,13 +34,15 @@ export interface Agent {
   force: Vec2;
   mass: number;
   radius: number;
+  isPanic: boolean;
   evacuated: boolean;
   evacuatedAt: number | null;
 }
 
 export interface SimConfig {
   agentCount: number;
-  panicMode: boolean;
+  /** 0 = all normal, 100 = all panic */
+  panicRatio: number;
   normalSpeed: number;
   panicSpeed: number;
   relaxationTime: number;

@@ -1,27 +1,21 @@
 <script setup lang="ts">
 defineProps<{
+  panicRatio: number;
   agentCount: number;
-  panicMode: boolean;
   isRunning: boolean;
   isComplete: boolean;
 }>();
 
 const emit = defineEmits<{
-  'update:agentCount': [value: number];
-  'update:panicMode': [value: boolean];
+  'update:panicRatio': [value: number];
   start: [];
   pause: [];
   reset: [];
 }>();
 
-const countOptions = [20, 50, 100];
-
-function onCountChange(count: number): void {
-  emit('update:agentCount', count);
-}
-
-function onModeChange(panic: boolean): void {
-  emit('update:panicMode', panic);
+function onRatioInput(event: Event): void {
+  const value = Number((event.target as HTMLInputElement).value);
+  emit('update:panicRatio', value);
 }
 </script>
 
@@ -31,43 +25,28 @@ function onModeChange(panic: boolean): void {
 
     <div class="field">
       <label>人数</label>
-      <div class="btn-group">
-        <button
-          v-for="n in countOptions"
-          :key="n"
-          type="button"
-          class="btn"
-          :class="{ active: agentCount === n }"
-          :disabled="isRunning"
-          @click="onCountChange(n)"
-        >
-          {{ n }}
-        </button>
-      </div>
+      <p class="fixed-value">{{ agentCount }} 人</p>
     </div>
 
     <div class="field">
-      <label>疏散模式</label>
-      <div class="btn-group">
-        <button
-          type="button"
-          class="btn"
-          :class="{ active: !panicMode }"
+      <label>恐慌比例</label>
+      <div class="ratio-row">
+        <span class="ratio-label">正常</span>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          :value="panicRatio"
           :disabled="isRunning"
-          @click="onModeChange(false)"
-        >
-          正常
-        </button>
-        <button
-          type="button"
-          class="btn panic"
-          :class="{ active: panicMode }"
-          :disabled="isRunning"
-          @click="onModeChange(true)"
-        >
-          恐慌/竞争
-        </button>
+          class="ratio-slider"
+          @input="onRatioInput"
+        />
+        <span class="ratio-label panic">恐慌</span>
       </div>
+      <p class="ratio-value">
+        恐慌 {{ panicRatio }}% · 正常 {{ 100 - panicRatio }}%
+      </p>
     </div>
 
     <div class="actions">
@@ -79,8 +58,8 @@ function onModeChange(panic: boolean): void {
     </div>
 
     <div class="legend">
-      <div class="legend-item"><span class="dot normal" /> 正常模式行人</div>
-      <div class="legend-item"><span class="dot panic" /> 恐慌模式行人</div>
+      <div class="legend-item"><span class="dot normal" /> 正常行人</div>
+      <div class="legend-item"><span class="dot panic" /> 恐慌行人</div>
       <div class="legend-item"><span class="dot exit" /> 出口</div>
     </div>
   </div>
@@ -106,9 +85,38 @@ function onModeChange(panic: boolean): void {
   margin-bottom: 0.375rem;
 }
 
-.btn-group {
+.fixed-value {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ratio-row {
   display: flex;
-  gap: 0.375rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ratio-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.ratio-label.panic {
+  color: #dc2626;
+}
+
+.ratio-slider {
+  flex: 1;
+  accent-color: #ef4444;
+}
+
+.ratio-value {
+  margin: 0.375rem 0 0;
+  font-size: 0.8125rem;
+  color: #475569;
 }
 
 .btn {
@@ -129,19 +137,6 @@ function onModeChange(panic: boolean): void {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn.active {
-  background: #e0e7ff;
-  border-color: #818cf8;
-  color: #3730a3;
-  font-weight: 600;
-}
-
-.btn.panic.active {
-  background: #fee2e2;
-  border-color: #f87171;
-  color: #991b1b;
 }
 
 .btn.primary {

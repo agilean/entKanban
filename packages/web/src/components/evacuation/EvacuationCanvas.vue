@@ -90,7 +90,7 @@ function draw(): void {
     const r = agent.radius * scale;
 
     ctx.globalAlpha = 1;
-    ctx.fillStyle = engine.config.panicMode ? '#ef4444' : '#3b82f6';
+    ctx.fillStyle = agent.isPanic ? '#ef4444' : '#3b82f6';
 
     ctx.beginPath();
     ctx.arc(p.sx, p.sy, Math.max(r, 2), 0, Math.PI * 2);
@@ -128,7 +128,7 @@ onUnmounted(() => {
 });
 
 watch(() => props.frameTick, draw);
-watch(() => props.engine.config.panicMode, draw);
+watch(() => props.engine.config.panicRatio, draw);
 </script>
 
 <template>

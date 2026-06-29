@@ -1,25 +1,61 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import AppLayout from '../layouts/AppLayout.vue';
 import { useAuthStore } from '../stores/authStore';
-import { fetchGlobalLeaderboard, fetchOrgLeaderboard, type LeaderboardEntry } from '../utils/leaderboardApi';
+import {
+  fetchGlobalLeaderboard,
+  fetchOrgLeaderboard,
+  formatEvacuationScore,
+  type LeaderboardEntry,
+  type LeaderboardGameType,
+} from '../utils/leaderboardApi';
 
 type TabId = 'global' | 'org';
 
 const auth = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 const activeTab = ref<TabId>('global');
+const gameType = ref<LeaderboardGameType>('kanban');
 const entries = ref<LeaderboardEntry[]>([]);
 const orgName = ref<string | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+
+const isEvacuation = computed(() => gameType.value === 'evacuation');
+
+const subtitle = computed(() =>
+  isEvacuation.value
+    ? '按疏散总用时排序，用时越短排名越高。'
+    : '按 21 天累计净利润排序，每次完成挑战都会记录一条成绩。',
+);
+
+function parseGameTypeFromRoute(): LeaderboardGameType {
+  return route.query.game === 'evacuation' ? 'evacuation' : 'kanban';
+}
+
+function formatScore(entry: LeaderboardEntry): string {
+  if (isEvacuation.value) {
+    return formatEvacuationScore(entry.score);
+  }
+  const prefix = entry.score >= 0 ? '+' : '';
+  return `${prefix}${entry.score.toLocaleString()}`;
+}
+
+function scoreClass(entry: LeaderboardEntry): string {
+  if (isEvacuation.value) {
+    return 'time';
+  }
+  return entry.score >= 0 ? 'positive' : 'negative';
+}
 
 async function loadLeaderboard(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
     if (activeTab.value === 'global') {
-      entries.value = await fetchGlobalLeaderboard();
+      entries.value = await fetchGlobalLeaderboard(50, 0, gameType.value);
       orgName.value = null;
       return;
     }
@@ -28,7 +64,7 @@ async function loadLeaderboard(): Promise<void> {
       orgName.value = null;
       return;
     }
-    const result = await fetchOrgLeaderboard();
+    const result = await fetchOrgLeaderboard(50, 0, gameType.value);
     entries.value = result.entries;
     orgName.value = result.org?.name ?? null;
   } catch {
@@ -43,6 +79,14 @@ function switchTab(tab: TabId): void {
   void loadLeaderboard();
 }
 
+function switchGameType(next: LeaderboardGameType): void {
+  gameType.value = next;
+  void router.replace({
+    query: next === 'evacuation' ? { game: 'evacuation' } : {},
+  });
+  void loadLeaderboard();
+}
+
 function formatDate(value: string): string {
   return new Date(value).toLocaleString('zh-CN', {
     month: '2-digit',
@@ -53,11 +97,23 @@ function formatDate(value: string): string {
 }
 
 onMounted(async () => {
+  gameType.value = parseGameTypeFromRoute();
   if (!auth.initialized) {
     await auth.initialize();
   }
   await loadLeaderboard();
 });
+
+watch(
+  () => route.query.game,
+  () => {
+    const next = parseGameTypeFromRoute();
+    if (next !== gameType.value) {
+      gameType.value = next;
+      void loadLeaderboard();
+    }
+  },
+);
 </script>
 
 <template>
@@ -66,10 +122,29 @@ onMounted(async () => {
       <header class="page-header">
         <div>
           <h2>排行榜</h2>
-          <p class="subtitle">按 21 天累计净利润排序，每次完成挑战都会记录一条成绩。</p>
+          <p class="subtitle">{{ subtitle }}</p>
         </div>
         <RouterLink to="/" class="link">返回游戏</RouterLink>
       </header>
+
+      <div class="game-tabs">
+        <button
+          type="button"
+          class="game-tab"
+          :class="{ active: gameType === 'kanban' }"
+          @click="switchGameType('kanban')"
+        >
+          看板游戏
+        </button>
+        <button
+          type="button"
+          class="game-tab"
+          :class="{ active: gameType === 'evacuation' }"
+          @click="switchGameType('evacuation')"
+        >
+          疏散模拟
+        </button>
+      </div>
 
       <div class="tabs">
         <button type="button" class="tab" :class="{ active: activeTab === 'global' }" @click="switchTab('global')">
@@ -103,8 +178,9 @@ onMounted(async () => {
             <th>排名</th>
             <th>玩家</th>
             <th v-if="activeTab === 'global'">组织</th>
-            <th>净利润</th>
-            <th>部署数</th>
+            <th>{{ isEvacuation ? '疏散用时' : '净利润' }}</th>
+            <th>{{ isEvacuation ? '恐慌比例' : '部署数' }}</th>
+            <th v-if="isEvacuation">人数</th>
             <th>完成时间</th>
           </tr>
         </thead>
@@ -118,10 +194,9 @@ onMounted(async () => {
               </div>
             </td>
             <td v-if="activeTab === 'global'">{{ entry.orgName ?? '—' }}</td>
-            <td :class="{ positive: entry.score >= 0, negative: entry.score < 0 }">
-              {{ entry.score >= 0 ? '+' : '' }}{{ entry.score.toLocaleString() }}
-            </td>
-            <td>{{ entry.deployedCount }}</td>
+            <td :class="scoreClass(entry)">{{ formatScore(entry) }}</td>
+            <td>{{ isEvacuation ? `${entry.deployedCount}%` : entry.deployedCount }}</td>
+            <td v-if="isEvacuation">{{ entry.snapshotCount }}</td>
             <td>{{ formatDate(entry.completedAt) }}</td>
           </tr>
         </tbody>
@@ -158,6 +233,27 @@ onMounted(async () => {
   color: #2563eb;
   text-decoration: none;
   font-size: 0.875rem;
+}
+
+.game-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.game-tab {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  cursor: pointer;
+  color: #475569;
+}
+
+.game-tab.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
 }
 
 .tabs {
@@ -249,6 +345,11 @@ th {
 
 .negative {
   color: #b91c1c;
+  font-weight: 600;
+}
+
+.time {
+  color: #1d4ed8;
   font-weight: 600;
 }
 </style>

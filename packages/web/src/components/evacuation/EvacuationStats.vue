@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../../stores/authStore';
 import type { SimStats } from '../../simulation/evacuation/types';
+
+const auth = useAuthStore();
 
 const props = defineProps<{
   stats: SimStats;
-  panicMode: boolean;
+  panicRatio: number;
+  submitStatus: 'idle' | 'submitting' | 'success' | 'error' | 'login-required';
 }>();
 
 const intervalChartPoints = computed(() => {
@@ -55,8 +60,8 @@ const progressPct = computed(() => {
         <span class="value">{{ avgIntervalLabel }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">模式</span>
-        <span class="value" :class="{ panic: panicMode }">{{ panicMode ? '恐慌' : '正常' }}</span>
+        <span class="label">恐慌比例</span>
+        <span class="value" :class="{ panic: panicRatio > 0 }">{{ panicRatio }}%</span>
       </div>
     </div>
 
@@ -66,6 +71,16 @@ const progressPct = computed(() => {
 
     <div v-if="stats.isComplete" class="complete-banner">
       疏散完成！总用时 {{ elapsedLabel }}
+      <span v-if="submitStatus === 'submitting'" class="submit-note"> · 成绩提交中…</span>
+      <span v-else-if="submitStatus === 'success'" class="submit-note success"> · 已记入排行榜</span>
+      <span v-else-if="submitStatus === 'login-required'" class="submit-note">
+        · <button type="button" class="inline-btn" @click="auth.login()">登录</button> 后可上榜
+      </span>
+      <span v-else-if="submitStatus === 'error'" class="submit-note error"> · 成绩提交失败</span>
+    </div>
+
+    <div v-if="stats.isComplete && submitStatus === 'success'" class="leaderboard-link">
+      <RouterLink to="/leaderboard?game=evacuation">查看疏散排行榜 →</RouterLink>
     </div>
 
     <div class="chart-section">
@@ -77,8 +92,8 @@ const progressPct = computed(() => {
     </div>
 
     <div class="hint">
-      <strong>Faster-is-Slower 实验：</strong>
-      先用正常模式运行记录时间 T1，再切换恐慌模式记录 T2。通常 T2 &gt; T1。
+      <strong>排行榜规则：</strong>
+      50 人全部疏散后，总用时记入疏散排行榜（用时越短排名越高）。
     </div>
   </div>
 </template>
@@ -143,6 +158,40 @@ const progressPct = computed(() => {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.submit-note {
+  font-weight: 400;
+}
+
+.submit-note.success {
+  color: #15803d;
+}
+
+.submit-note.error {
+  color: #b91c1c;
+}
+
+.inline-btn {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.leaderboard-link {
+  font-size: 0.8125rem;
+}
+
+.leaderboard-link a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.leaderboard-link a:hover {
+  text-decoration: underline;
 }
 
 .chart-section h4 {
