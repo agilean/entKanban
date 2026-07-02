@@ -22,9 +22,12 @@ async function requestJson<T>(
   path: string,
   init?: RequestInit,
 ): Promise<{ data: T | null; status: number; error?: string }> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       credentials: 'include',
+      signal: controller.signal,
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -39,6 +42,8 @@ async function requestJson<T>(
     return { data, status: response.status };
   } catch {
     return { data: null, status: 0, error: 'Network error' };
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 

@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import HomePage from '../pages/HomePage.vue';
 import GamePage from '../pages/GamePage.vue';
+import KnowledgeBasePage from '../pages/KnowledgeBasePage.vue';
+import WasteBoardPage from '../pages/WasteBoardPage.vue';
 import { useAuthStore } from '../stores/authStore';
 
 export const router = createRouter({
@@ -7,9 +10,27 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'home',
+      component: HomePage,
+      meta: { title: '首页' },
+    },
+    {
+      path: '/knowledge',
+      name: 'knowledge',
+      component: KnowledgeBasePage,
+      meta: { title: '精益知识库' },
+    },
+    {
+      path: '/waste',
+      name: 'waste',
+      component: WasteBoardPage,
+      meta: { title: '浪费排行榜' },
+    },
+    {
+      path: '/game',
       name: 'game',
       component: GamePage,
-      meta: { title: '游戏' },
+      meta: { title: '精益游戏屋' },
     },
     {
       path: '/leaderboard',
@@ -66,12 +87,12 @@ export const router = createRouter({
   ],
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach((to) => {
   if (to.meta.devOnly && !import.meta.env.DEV) {
     return '/';
   }
   const auth = useAuthStore();
-  if (!auth.initialized) {
-    await auth.initialize();
+  if (!auth.initialized && !auth.loading) {
+    void auth.initialize();
   }
 });

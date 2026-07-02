@@ -19,17 +19,9 @@ export function resolveWebDistPath(): string | null {
 }
 
 export function mountWebStatic(app: Hono<any>, webDistPath: string): void {
-  app.use(
-    '*',
-    serveStatic({
-      root: webDistPath,
-    }),
-  );
-  app.get(
-    '*',
-    serveStatic({
-      root: webDistPath,
-      rewriteRequestPath: () => '/index.html',
-    }),
-  );
+  app.get('/assets/*', serveStatic({ root: webDistPath }));
+  app.get('*', serveStatic({
+    root: webDistPath,
+    rewriteRequestPath: () => '/index.html',
+  }));
 }

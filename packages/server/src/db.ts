@@ -5,6 +5,7 @@ import type { DiceRollLogEntry } from '@kanban-game/engine';
 import type { GameSessionState } from '@kanban-game/engine';
 import { migrateSocial } from './socialDb.js';
 import { migratePlaySessions } from './playSessionDb.js';
+import { migrateWaste } from './wasteDb.js';
 
 export type ReplayDatabase = DatabaseSync;
 
@@ -82,6 +83,7 @@ function migrate(db: ReplayDatabase): void {
   `);
   migrateSocial(db);
   migratePlaySessions(db);
+  migrateWaste(db);
 }
 
 export function upsertSession(db: ReplayDatabase, id: string, session: GameSessionState): void {

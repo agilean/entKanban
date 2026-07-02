@@ -84,6 +84,8 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         redirectPath = `/invite/${state.slice('invite:'.length)}`;
       } else if (state?.startsWith('playsession:')) {
         redirectPath = `/sessions/invite/${state.slice('playsession:'.length)}`;
+      } else if (state === 'waste') {
+        redirectPath = '/waste';
       }
       return c.redirect(`${config.webOrigin}${redirectPath}?auth=success`);
     } catch (error) {

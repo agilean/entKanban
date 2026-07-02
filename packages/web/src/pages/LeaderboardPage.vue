@@ -124,7 +124,7 @@ watch(
           <h2>排行榜</h2>
           <p class="subtitle">{{ subtitle }}</p>
         </div>
-        <RouterLink to="/" class="link">返回游戏</RouterLink>
+        <RouterLink to="/game" class="link">返回游戏</RouterLink>
       </header>
 
       <div class="game-tabs">

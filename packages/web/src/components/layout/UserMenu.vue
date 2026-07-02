@@ -56,13 +56,28 @@ onUnmounted(() => {
         <strong>{{ displayName }}</strong>
         <span v-if="auth.org" class="org">{{ auth.org.name }}</span>
       </div>
+      <button type="button" class="menu-item" @click="navigate('/')">首页</button>
+      <button type="button" class="menu-item" @click="navigate('/waste')">浪费排行榜</button>
+      <button type="button" class="menu-item" @click="navigate('/game')">精益游戏屋</button>
       <button type="button" class="menu-item" @click="navigate('/sessions')">我的竞赛房</button>
       <button type="button" class="menu-item" @click="navigate('/leaderboard')">排行榜</button>
       <button type="button" class="menu-item" @click="navigate('/org')">我的组织</button>
       <button type="button" class="menu-item danger" @click="handleLogout">退出登录</button>
     </div>
   </div>
-  <button v-else type="button" class="login-btn" @click="auth.login()">飞书登录</button>
+  <div v-else ref="menuRef" class="user-menu">
+    <button type="button" class="trigger guest" @click.stop="toggle">
+      <span class="name">导航</span>
+      <span class="chevron" :class="{ open }">▾</span>
+    </button>
+    <div v-if="open" class="dropdown">
+      <button type="button" class="menu-item" @click="navigate('/')">首页</button>
+      <button type="button" class="menu-item" @click="navigate('/waste')">浪费排行榜</button>
+      <button type="button" class="menu-item" @click="navigate('/game')">精益游戏屋</button>
+      <button type="button" class="menu-item" @click="navigate('/knowledge')">精益知识库</button>
+      <button type="button" class="menu-item primary" @click="auth.login()">飞书登录</button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -155,6 +170,15 @@ onUnmounted(() => {
 
 .menu-item.danger {
   color: #b91c1c;
+}
+
+.menu-item.primary {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.trigger.guest {
+  padding: 0.5rem 0.75rem;
 }
 
 .login-btn {

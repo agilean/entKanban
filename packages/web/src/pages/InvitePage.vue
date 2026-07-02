@@ -86,11 +86,11 @@ onMounted(async () => {
           >
             {{ auth.isLoggedIn ? (accepting ? '加入中…' : '接受邀请') : '飞书登录并加入' }}
           </button>
-          <button type="button" class="btn" @click="router.push('/')">返回游戏</button>
+          <button type="button" class="btn" @click="router.push('/game')">返回游戏</button>
         </div>
         <div v-else class="actions">
           <button type="button" class="btn primary" @click="router.push('/org')">查看组织</button>
-          <button type="button" class="btn" @click="router.push('/')">返回游戏</button>
+          <button type="button" class="btn" @click="router.push('/game')">返回游戏</button>
         </div>
       </div>
     </div>

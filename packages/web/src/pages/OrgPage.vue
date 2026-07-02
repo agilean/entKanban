@@ -93,7 +93,7 @@ onMounted(async () => {
           <h2>组织管理</h2>
           <p class="subtitle">创建组织、邀请成员，并在组织排行榜中一起竞技。</p>
         </div>
-        <RouterLink to="/" class="link">返回游戏</RouterLink>
+        <RouterLink to="/game" class="link">返回游戏</RouterLink>
       </header>
 
       <p v-if="!auth.isLoggedIn" class="card hint">
