@@ -243,7 +243,7 @@ onMounted(async () => {
 
         <section class="panel">
           <h2>分享浪费现象</h2>
-          <p class="hint">无需登录，填写花名和观察内容即可提交。</p>
+          <p class="hint">无需登录，填写花名和观察内容即可提交。登录后提交还可获得个人积分 +5。</p>
           <input
             v-model="submitNickname"
             type="text"

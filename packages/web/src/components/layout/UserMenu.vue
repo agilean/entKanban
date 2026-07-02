@@ -57,11 +57,12 @@ onUnmounted(() => {
         <span v-if="auth.org" class="org">{{ auth.org.name }}</span>
       </div>
       <button type="button" class="menu-item" @click="navigate('/')">首页</button>
+      <button type="button" class="menu-item" @click="navigate('/personal')">个人排行榜</button>
       <button type="button" class="menu-item" @click="navigate('/waste')">浪费排行榜</button>
       <button type="button" class="menu-item" @click="navigate('/game')">精益游戏屋</button>
       <button type="button" class="menu-item" @click="navigate('/sessions')">我的竞赛房</button>
-      <button type="button" class="menu-item" @click="navigate('/leaderboard')">排行榜</button>
-      <button type="button" class="menu-item" @click="navigate('/org')">我的组织</button>
+      <button type="button" class="menu-item" @click="navigate('/leaderboard')">游戏排行榜</button>
+      <button type="button" class="menu-item" @click="navigate('/org')">组织成员</button>
       <button type="button" class="menu-item danger" @click="handleLogout">退出登录</button>
     </div>
   </div>
@@ -72,6 +73,7 @@ onUnmounted(() => {
     </button>
     <div v-if="open" class="dropdown">
       <button type="button" class="menu-item" @click="navigate('/')">首页</button>
+      <button type="button" class="menu-item" @click="navigate('/personal')">个人排行榜</button>
       <button type="button" class="menu-item" @click="navigate('/waste')">浪费排行榜</button>
       <button type="button" class="menu-item" @click="navigate('/game')">精益游戏屋</button>
       <button type="button" class="menu-item" @click="navigate('/knowledge')">精益知识库</button>

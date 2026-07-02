@@ -6,6 +6,7 @@ export type AppConfig = {
   webOrigin: string;
   cookieSecure: boolean;
   logAccessToken: string;
+  defaultOrgName: string;
 };
 
 export function getConfig(): AppConfig {
@@ -22,5 +23,6 @@ export function getConfig(): AppConfig {
     webOrigin,
     cookieSecure: process.env.COOKIE_SECURE === 'true' || Boolean(externalUrl),
     logAccessToken: process.env.LOG_ACCESS_TOKEN ?? '',
+    defaultOrgName: process.env.DEFAULT_ORG_NAME ?? '精益学习平台',
   };
 }

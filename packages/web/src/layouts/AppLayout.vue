@@ -172,7 +172,7 @@ function startEvacuationGame(): void {
   if (game.hasSession) {
     game.resetGame();
   }
-  void router.push('/evacuation');
+  void router.push('/game/run-fast');
 }
 
 function handleStartNewGame(): void {

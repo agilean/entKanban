@@ -80,7 +80,7 @@ const progressPct = computed(() => {
     </div>
 
     <div v-if="stats.isComplete && submitStatus === 'success'" class="leaderboard-link">
-      <RouterLink to="/leaderboard?game=evacuation">查看疏散排行榜 →</RouterLink>
+      <RouterLink to="/leaderboard?game=evacuation">查看跑得快排行榜 →</RouterLink>
     </div>
 
     <div class="chart-section">
@@ -93,7 +93,7 @@ const progressPct = computed(() => {
 
     <div class="hint">
       <strong>排行榜规则：</strong>
-      50 人全部疏散后，总用时记入疏散排行榜（用时越短排名越高）。
+      50 人全部疏散后，总用时记入跑得快排行榜（用时越短排名越高）。
     </div>
   </div>
 </template>

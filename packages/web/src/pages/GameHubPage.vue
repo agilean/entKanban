@@ -1,67 +1,41 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
 import UserMenu from '../components/layout/UserMenu.vue';
-
-const sections = [
-  {
-    title: '精益知识库',
-    description: '系统学习精益思想、工具与实践方法，建立共同的改善语言。',
-    path: '/knowledge',
-    icon: '📚',
-    accent: '#2563eb',
-  },
-  {
-    title: '浪费排行榜',
-    description: '发现身边的浪费，匿名分享花名即可。登录后可顶、评论、加入战队。',
-    path: '/waste',
-    icon: '🏆',
-    accent: '#d97706',
-  },
-  {
-    title: '精益游戏屋',
-    description: '精益看板、跑得快等模拟游戏，在体验中理解流动、拉动与现场改善。',
-    path: '/game',
-    icon: '🎮',
-    accent: '#059669',
-  },
-  {
-    title: '个人排行榜',
-    description: '完成游戏按排名得分，发现浪费也能累计积分，看看你在内网排第几。',
-    path: '/personal',
-    icon: '⭐',
-    accent: '#7c3aed',
-  },
-];
+import { HUB_GAMES } from '../utils/gameHub';
 </script>
 
 <template>
-  <div class="home">
+  <div class="hub">
     <header class="header">
       <div class="brand">
-        <h1>内网精益学习平台</h1>
-        <p>单组织内网 · 知识 · 观察 · 实践 · 积分</p>
+        <RouterLink to="/" class="home-link">← 返回首页</RouterLink>
+        <h1>精益游戏屋</h1>
+        <p>选择一款模拟游戏，在体验中理解精益思想</p>
       </div>
       <UserMenu />
     </header>
 
     <main class="main">
       <section class="hero">
-        <h2>选择一个板块开始</h2>
-        <p>飞书登录后自动加入组织，无需创建或加入团队。</p>
+        <h2>选择游戏</h2>
+        <p>更多玩法持续更新中，欢迎先体验现有两款。</p>
       </section>
 
       <div class="cards">
         <RouterLink
-          v-for="section in sections"
-          :key="section.path"
-          :to="section.path"
+          v-for="game in HUB_GAMES"
+          :key="game.id"
+          :to="game.available ? game.route : '#'"
           class="card"
-          :style="{ '--accent': section.accent }"
+          :class="{ 'card--disabled': !game.available }"
+          :style="{ '--accent': game.accent }"
+          @click="!game.available && $event.preventDefault()"
         >
-          <span class="card-icon" aria-hidden="true">{{ section.icon }}</span>
-          <h3>{{ section.title }}</h3>
-          <p>{{ section.description }}</p>
-          <span class="card-cta">进入 →</span>
+          <span class="card-icon" aria-hidden="true">{{ game.icon }}</span>
+          <h3>{{ game.title }}</h3>
+          <p>{{ game.description }}</p>
+          <span v-if="game.available" class="card-cta">开始游戏 →</span>
+          <span v-else class="card-cta muted">{{ game.comingSoonLabel ?? '即将上线' }}</span>
         </RouterLink>
       </div>
     </main>
@@ -69,23 +43,24 @@ const sections = [
 </template>
 
 <style scoped>
-.home {
+.hub {
   min-height: 100vh;
-  background: linear-gradient(160deg, #f8fafc 0%, #eef2ff 45%, #f0fdf4 100%);
+  background: linear-gradient(160deg, #f0fdf4 0%, #ecfdf5 40%, #f8fafc 100%);
 }
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 1rem;
   padding: 1.25rem 2rem;
   border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px);
 }
 
 .brand h1 {
-  margin: 0;
+  margin: 0.5rem 0 0;
   font-size: 1.5rem;
   color: #0f172a;
 }
@@ -96,8 +71,18 @@ const sections = [
   color: #64748b;
 }
 
+.home-link {
+  font-size: 0.875rem;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.home-link:hover {
+  color: #059669;
+}
+
 .main {
-  max-width: 1040px;
+  max-width: 880px;
   margin: 0 auto;
   padding: 3rem 1.5rem 4rem;
 }
@@ -120,7 +105,7 @@ const sections = [
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.25rem;
 }
 
@@ -138,10 +123,15 @@ const sections = [
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
 }
 
-.card:hover {
+.card:hover:not(.card--disabled) {
   transform: translateY(-2px);
   border-color: var(--accent);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.card--disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .card-icon {
@@ -168,5 +158,9 @@ const sections = [
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--accent);
+}
+
+.card-cta.muted {
+  color: #94a3b8;
 }
 </style>

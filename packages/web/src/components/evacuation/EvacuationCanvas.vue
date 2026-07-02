@@ -274,7 +274,7 @@ watch(() => props.draggingKind, (kind) => {
       ref="canvasRef"
       :width="canvasSize.width"
       :height="canvasSize.height"
-      aria-label="疏散模拟画布"
+      aria-label="跑得快画布"
       @dragover="handleDragOver"
       @dragleave="handleDragLeave"
       @drop="handleDrop"

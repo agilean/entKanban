@@ -27,7 +27,7 @@ const isEvacuation = computed(() => gameType.value === 'evacuation');
 
 const subtitle = computed(() =>
   isEvacuation.value
-    ? '按疏散总用时排序，用时越短排名越高。'
+    ? '跑得快：按总用时排序，用时越短排名越高。'
     : '按 21 天累计净利润排序，每次完成挑战都会记录一条成绩。',
 );
 
@@ -124,7 +124,7 @@ watch(
           <h2>排行榜</h2>
           <p class="subtitle">{{ subtitle }}</p>
         </div>
-        <RouterLink to="/game" class="link">返回游戏</RouterLink>
+        <RouterLink to="/game" class="link">返回游戏屋</RouterLink>
       </header>
 
       <div class="game-tabs">
@@ -134,7 +134,7 @@ watch(
           :class="{ active: gameType === 'kanban' }"
           @click="switchGameType('kanban')"
         >
-          看板游戏
+          精益看板
         </button>
         <button
           type="button"
@@ -142,7 +142,7 @@ watch(
           :class="{ active: gameType === 'evacuation' }"
           @click="switchGameType('evacuation')"
         >
-          疏散模拟
+          跑得快
         </button>
       </div>
 

@@ -2,8 +2,15 @@ import { Hono } from 'hono';
 import { requireAuth, type AuthVariables } from '../auth/middleware.js';
 import type { ReplayDatabase } from '../db.js';
 import {
+  awardWasteCommentReceived,
+  awardWasteSubmitPoints,
+  awardWasteUpvoteReceived,
+} from '../personalPointsDb.js';
+import { autoJoinDefaultOrganization } from '../singleOrg.js';
+import {
   addWasteComment,
   createWasteEntry,
+  getWasteEntryAuthorUserId,
   getWasteLeaderboard,
   joinWasteTeam,
   listWasteEntries,
@@ -40,10 +47,18 @@ export function createWasteRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVar
       return c.json({ error: '请描述浪费现象' }, 400);
     }
     try {
+      const userId = c.get('userId') as string | undefined;
+      if (userId) {
+        autoJoinDefaultOrganization(db, userId);
+      }
       const entry = createWasteEntry(db, {
         nickname: body.nickname,
         description: body.description,
+        userId: userId ?? null,
       });
+      if (userId) {
+        awardWasteSubmitPoints(db, userId, entry.id);
+      }
       return c.json({ entry }, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : '提交失败';
@@ -55,7 +70,11 @@ export function createWasteRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVar
     const userId = c.get('userId');
     const wasteId = c.req.param('id') ?? '';
     try {
+      const authorUserId = getWasteEntryAuthorUserId(db, wasteId);
       const result = upvoteWasteEntry(db, userId, wasteId);
+      if (authorUserId && authorUserId !== userId) {
+        awardWasteUpvoteReceived(db, authorUserId, wasteId, userId);
+      }
       return c.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : '顶失败';
@@ -71,7 +90,11 @@ export function createWasteRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVar
       return c.json({ error: '评论内容不能为空' }, 400);
     }
     try {
+      const authorUserId = getWasteEntryAuthorUserId(db, wasteId);
       const comment = addWasteComment(db, userId, wasteId, body.content);
+      if (authorUserId && authorUserId !== userId) {
+        awardWasteCommentReceived(db, authorUserId, wasteId, comment.id);
+      }
       return c.json({ comment }, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : '评论失败';
@@ -83,6 +106,7 @@ export function createWasteRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVar
     const userId = c.get('userId');
     const wasteId = c.req.param('id') ?? '';
     try {
+      autoJoinDefaultOrganization(db, userId);
       const result = joinWasteTeam(db, userId, wasteId);
       return c.json(result);
     } catch (error) {

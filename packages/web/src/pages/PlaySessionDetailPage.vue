@@ -131,7 +131,7 @@ async function handleStartPlay(): Promise<void> {
   const ok = await game.startNewGameInPlaySession(playSession.value.id);
   playing.value = false;
   if (ok) {
-    router.push('/game');
+    router.push('/game/kanban');
   }
 }
 

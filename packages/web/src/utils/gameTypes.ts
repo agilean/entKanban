@@ -1,6 +1,7 @@
 import { GAME_TYPE_REGISTRY, GAME_TYPES, type GameTypeDefinition } from '@kanban-game/engine';
+import { HUB_GAMES, type HubGameId } from './gameHub';
 
-export type PlayModeId = 'kanban' | 'evacuation';
+export type PlayModeId = HubGameId;
 
 export type PlayMode = {
   id: PlayModeId;
@@ -9,20 +10,12 @@ export type PlayMode = {
   route: string;
 };
 
-export const PLAY_MODES: PlayMode[] = [
-  {
-    id: 'kanban',
-    label: '看板游戏',
-    description: '21 天 EntKanban 挑战',
-    route: '/',
-  },
-  {
-    id: 'evacuation',
-    label: '疏散模拟',
-    description: '社会力模型 · 单出口疏散',
-    route: '/evacuation',
-  },
-];
+export const PLAY_MODES: PlayMode[] = HUB_GAMES.filter((game) => game.available).map((game) => ({
+  id: game.id,
+  label: game.title,
+  description: game.description,
+  route: game.route,
+}));
 
 export function listAvailableGameTypes(): GameTypeDefinition[] {
   return GAME_TYPES.map((id) => GAME_TYPE_REGISTRY[id]);

@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { requireAuth, type AuthVariables } from '../auth/middleware.js';
 import type { ReplayDatabase } from '../db.js';
 import { getGlobalLeaderboard, getOrgLeaderboard, getUserWithOrg, insertGameResult } from '../socialDb.js';
+import { awardGameResultPoints } from '../personalPointsDb.js';
+import { autoJoinDefaultOrganization } from '../singleOrg.js';
 import { completeParticipant, getPlaySessionById, getPlaySessionLeaderboard } from '../playSessionDb.js';
 
 export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
@@ -28,6 +30,7 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
     }
 
     try {
+      autoJoinDefaultOrganization(db, userId);
       const result = insertGameResult(db, {
         userId,
         sessionId: body.sessionId,
@@ -37,6 +40,13 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
         playSessionId: body.playSessionId,
         gameType: body.gameType,
       });
+      const pointsEarned = awardGameResultPoints(
+        db,
+        result.id,
+        userId,
+        result.orgId,
+        body.gameType ?? 'kanban',
+      );
       if (body.playSessionId) {
         completeParticipant(db, body.playSessionId, userId, {
           score: body.score,
@@ -44,7 +54,7 @@ export function createResultRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVa
           currentDay: 21,
         });
       }
-      return c.json({ result }, 201);
+      return c.json({ result, pointsEarned }, 201);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to submit result';
       return c.json({ error: message }, 400);

@@ -11,6 +11,7 @@ import { logError, logInfo, logWarn } from '../logging.js';
 import type { ReplayDatabase } from '../db.js';
 import { acceptInvitation, getUserWithOrg, upsertUserByFeishu } from '../socialDb.js';
 import { acceptPlaySessionInvitation } from '../playSessionDb.js';
+import { autoJoinDefaultOrganization } from '../singleOrg.js';
 
 export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
   const routes = new Hono<{ Variables: AuthVariables }>();
@@ -50,7 +51,7 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         redirectUri: config.feishuRedirectUri,
       });
       const profile = await exchangeCodeForUserProfile(code);
-      const user = upsertUserByFeishu(db, profile);
+      let user = upsertUserByFeishu(db, profile);
 
       if (state?.startsWith('invite:')) {
         const token = state.slice('invite:'.length);
@@ -76,6 +77,9 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         }
       }
 
+      autoJoinDefaultOrganization(db, user.id);
+      user = getUserWithOrg(db, user.id)!;
+
       const sessionToken = await signSession(user.id);
       c.header('Set-Cookie', buildSetCookieHeader(sessionToken));
       logInfo('auth.callback', 'Login succeeded', { userId: user.id, name: user.name });
@@ -86,6 +90,8 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         redirectPath = `/sessions/invite/${state.slice('playsession:'.length)}`;
       } else if (state === 'waste') {
         redirectPath = '/waste';
+      } else if (state === 'personal') {
+        redirectPath = '/personal';
       }
       return c.redirect(`${config.webOrigin}${redirectPath}?auth=success`);
     } catch (error) {
@@ -101,6 +107,7 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
 
   routes.get('/me', requireAuth, (c) => {
     const userId = c.get('userId');
+    autoJoinDefaultOrganization(db, userId);
     const user = getUserWithOrg(db, userId);
     if (!user) {
       return c.json({ error: 'User not found' }, 404);

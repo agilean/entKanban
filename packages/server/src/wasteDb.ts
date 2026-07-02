@@ -172,7 +172,7 @@ function getUserDisplayName(db: ReplayDatabase, userId: string): string {
 
 export function createWasteEntry(
   db: ReplayDatabase,
-  input: { nickname: string; description: string },
+  input: { nickname: string; description: string; userId?: string | null },
 ): WasteEntry {
   const authorNickname = validateNickname(input.nickname);
   const trimmed = input.description.trim();
@@ -184,10 +184,17 @@ export function createWasteEntry(
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO waste_entries (id, user_id, author_nickname, description, created_at)
-     VALUES (?, NULL, ?, ?, ?)`,
-  ).run(id, authorNickname, trimmed, now);
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(id, input.userId ?? null, authorNickname, trimmed, now);
 
-  return { id, userId: null, authorNickname, description: trimmed, createdAt: now };
+  return { id, userId: input.userId ?? null, authorNickname, description: trimmed, createdAt: now };
+}
+
+export function getWasteEntryAuthorUserId(db: ReplayDatabase, wasteId: string): string | null {
+  const row = db.prepare('SELECT user_id FROM waste_entries WHERE id = ?').get(wasteId) as
+    | { user_id: string | null }
+    | undefined;
+  return row?.user_id ?? null;
 }
 
 function listCommentsForEntry(db: ReplayDatabase, wasteId: string): WasteCommentView[] {

@@ -9,7 +9,6 @@ import DecisionPanel from '../components/decisions/DecisionPanel.vue';
 import MobileBacklogReorderSheet from '../components/mobile/MobileBacklogReorderSheet.vue';
 import MobileCardActions from '../components/mobile/MobileCardActions.vue';
 import MobileReleaseSheet from '../components/mobile/MobileReleaseSheet.vue';
-import OrgOnboardingPanel from '../components/onboarding/OrgOnboardingPanel.vue';
 import PlayOptionsHint from '../components/onboarding/PlayOptionsHint.vue';
 import SetupGuide from '../components/onboarding/SetupGuide.vue';
 import GameOverSummary from '../components/summary/GameOverSummary.vue';
@@ -23,10 +22,6 @@ const game = useGameStore();
 const ui = useUiStore();
 const auth = useAuthStore();
 const { isMobile } = useIsMobile();
-
-const showOrgOnboarding = computed(
-  () => auth.isLoggedIn && !auth.hasOrg && !ui.orgOnboardingDismissed,
-);
 
 const showSidePanel = computed(() => game.phase === GamePhase.RELEASE);
 const showReleaseFab = computed(() => isMobile.value && showSidePanel.value);
@@ -61,21 +56,12 @@ onMounted(async () => {
   }
 });
 
-watch(
-  () => auth.hasOrg,
-  (hasOrg) => {
-    if (hasOrg) {
-      ui.resetOrgOnboardingDismissed();
-    }
-  },
-);
 </script>
 
 <template>
   <AppLayout>
     <SetupGuide />
 
-    <OrgOnboardingPanel v-if="showOrgOnboarding" />
     <PlayOptionsHint />
 
     <section v-if="!game.hasSession" class="empty">

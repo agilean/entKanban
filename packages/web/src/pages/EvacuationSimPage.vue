@@ -127,9 +127,9 @@ watch(
 <template>
   <div class="page">
     <header class="header">
-      <RouterLink to="/game" class="back-link">← 返回游戏</RouterLink>
+      <RouterLink to="/game" class="back-link">← 返回游戏屋</RouterLink>
       <div class="title-block">
-        <h1>社会力疏散模拟</h1>
+        <h1>跑得快</h1>
         <p class="subtitle">Helbing Social Force Model · 单出口房间 · 用时排行榜</p>
       </div>
     </header>

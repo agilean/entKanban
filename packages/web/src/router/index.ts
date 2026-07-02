@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomePage from '../pages/HomePage.vue';
+import GameHubPage from '../pages/GameHubPage.vue';
 import GamePage from '../pages/GamePage.vue';
 import KnowledgeBasePage from '../pages/KnowledgeBasePage.vue';
 import WasteBoardPage from '../pages/WasteBoardPage.vue';
+import PersonalLeaderboardPage from '../pages/PersonalLeaderboardPage.vue';
 import { useAuthStore } from '../stores/authStore';
 
 export const router = createRouter({
@@ -27,10 +29,28 @@ export const router = createRouter({
       meta: { title: '浪费排行榜' },
     },
     {
+      path: '/personal',
+      name: 'personal',
+      component: PersonalLeaderboardPage,
+      meta: { title: '个人排行榜' },
+    },
+    {
       path: '/game',
-      name: 'game',
-      component: GamePage,
+      name: 'game-hub',
+      component: GameHubPage,
       meta: { title: '精益游戏屋' },
+    },
+    {
+      path: '/game/kanban',
+      name: 'game-kanban',
+      component: GamePage,
+      meta: { title: '精益看板' },
+    },
+    {
+      path: '/game/run-fast',
+      name: 'game-run-fast',
+      component: () => import('../pages/EvacuationSimPage.vue'),
+      meta: { title: '跑得快' },
     },
     {
       path: '/leaderboard',
@@ -76,9 +96,7 @@ export const router = createRouter({
     },
     {
       path: '/evacuation',
-      name: 'evacuation',
-      component: () => import('../pages/EvacuationSimPage.vue'),
-      meta: { title: '疏散模拟' },
+      redirect: '/game/run-fast',
     },
     {
       path: '/:pathMatch(.*)*',
