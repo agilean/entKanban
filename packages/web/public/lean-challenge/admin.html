@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>精益闯关后台</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="admin-locked">
+    <main class="admin-shell">
+      <section id="loginPanel" class="admin-card">
+        <p class="eyebrow">Admin</p>
+        <h1>后台登录</h1>
+        <form id="adminLoginForm" class="contact-form">
+          <label>
+            <span>用户名</span>
+            <input id="adminUsername" type="text" autocomplete="username" required />
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="adminPassword" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-btn full-width" type="submit">登录后台</button>
+          <p id="loginFeedback" class="feedback" role="status"></p>
+        </form>
+      </section>
+
+      <section id="dashboardPanel" class="admin-dashboard protected-admin-content" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Question Bank</p>
+            <h1>后台管理</h1>
+          </div>
+          <div class="actions">
+            <a class="secondary-link" href="index.html">返回前台</a>
+            <button id="logoutBtn" class="secondary-btn" type="button">退出</button>
+          </div>
+        </header>
+
+        <nav class="admin-tabs" aria-label="后台页面">
+          <button id="questionsTabBtn" class="mode-btn active" type="button">题库管理</button>
+          <button id="scoresTabBtn" class="mode-btn" type="button">成绩记录</button>
+        </nav>
+
+        <div id="questionsView">
+        <section class="bank-panel admin-bank-panel">
+          <div class="bank-header">
+            <h2>题库说明</h2>
+          </div>
+          <p>
+            题库集中放在 <code>questions.js</code>。记忆题和精益题都按
+            <code>low</code>、<code>medium</code>、<code>high</code> 增加题目即可。
+          </p>
+          <div class="difficulty-map">
+            <span>1-4 关：低</span>
+            <span>5-7 关：中</span>
+            <span>8-10 关：高</span>
+          </div>
+          <div id="bankStats" class="bank-stats"></div>
+        </section>
+
+        <section id="questionLists" class="question-lists"></section>
+        </div>
+
+        <section id="scoresView" class="bank-panel admin-bank-panel" hidden>
+          <div class="bank-header">
+            <h2>成绩记录</h2>
+          </div>
+          <p>
+            这里展示全部通关后提交联系方式的用户。答题时间为从点击开始闯关到第 10 关通过的总用时。
+          </p>
+          <div id="scoresTable" class="scores-table"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="questions.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>

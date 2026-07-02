@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">恭喜答对插图</title>
+  <desc id="desc">一个可爱的奖杯和星星插图</desc>
+  <rect width="240" height="240" rx="32" fill="#fff7ef"/>
+  <circle cx="120" cy="112" r="70" fill="#eaf6f4"/>
+  <path d="M76 82h88v38c0 25-20 45-44 45s-44-20-44-45V82Z" fill="#f7c948" stroke="#142023" stroke-width="6"/>
+  <path d="M76 96H55c0 25 13 42 32 45" fill="none" stroke="#142023" stroke-width="6" stroke-linecap="round"/>
+  <path d="M164 96h21c0 25-13 42-32 45" fill="none" stroke="#142023" stroke-width="6" stroke-linecap="round"/>
+  <path d="M103 166h34v24h-34z" fill="#f7c948" stroke="#142023" stroke-width="6"/>
+  <path d="M83 190h74" stroke="#142023" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="99" cy="112" r="5" fill="#142023"/>
+  <circle cx="141" cy="112" r="5" fill="#142023"/>
+  <path d="M105 132c8 9 23 9 31 0" fill="none" stroke="#142023" stroke-width="6" stroke-linecap="round"/>
+  <path d="m58 55 7 14 15 2-11 10 3 15-14-7-13 7 2-15-11-10 15-2 7-14Z" fill="#ff8a65"/>
+  <path d="m184 52 5 11 12 2-9 8 2 12-10-6-11 6 2-12-9-8 12-2 6-11Z" fill="#2a6f67"/>
+  <path d="M42 155c14 5 19 14 16 28" stroke="#ff8a65" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M198 153c-15 6-20 15-16 29" stroke="#2a6f67" stroke-width="6" stroke-linecap="round" fill="none"/>
+</svg>

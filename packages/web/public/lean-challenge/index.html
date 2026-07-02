@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>精益闯关小游戏</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell frontend-shell">
+      <section class="game-panel" aria-live="polite">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Lean Challenge</p>
+            <h1>精益闯关小游戏</h1>
+          </div>
+          <div class="top-actions">
+            <a id="adminEntryLink" class="admin-entry-link" href="admin.html">后台登录</a>
+            <div class="progress-card">
+              <span id="roundLabel">第 1 / 10 关</span>
+              <strong id="difficultyLabel">低难度</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressFill"></div>
+        </div>
+
+        <section id="screenIntro" class="screen active">
+          <div class="stage-card primary-stage">
+            <div class="stage-copy">
+              <p class="kicker">第一阶段</p>
+              <h2>知识闯关：认识精益</h2>
+              <p>
+                先记住热身题，再回答精益题。低难度热身题显示 4 秒，中高难度显示 3 秒；
+                精益题限时 10 秒，高级关卡回忆热身题答案限时 6 秒。
+              </p>
+            </div>
+            <button id="startBtn" class="primary-btn">开始知识闯关</button>
+          </div>
+        </section>
+
+        <section id="screenMemory" class="screen">
+          <p class="kicker">请记住这道题</p>
+          <div id="memoryQuestion" class="memory-question"></div>
+          <p id="countdownText" class="countdown"></p>
+        </section>
+
+        <section id="screenLean" class="screen">
+          <p class="kicker">精益问题</p>
+          <h2 id="leanQuestion"></h2>
+          <p id="leanTimerText" class="question-timer"></p>
+          <form id="leanForm" class="answer-grid"></form>
+          <p id="leanFeedback" class="feedback" role="status"></p>
+        </section>
+
+        <section id="screenRecall" class="screen">
+          <p class="kicker">回忆热身题答案</p>
+          <h2 id="recallPrompt"></h2>
+          <p id="recallTimerText" class="question-timer"></p>
+          <form id="recallForm" class="recall-form">
+            <input id="recallInput" type="text" inputmode="text" autocomplete="off" />
+            <button class="primary-btn" type="submit">提交</button>
+          </form>
+          <p id="recallFeedback" class="feedback" role="status"></p>
+        </section>
+
+        <section id="screenResult" class="screen">
+          <p id="resultKicker" class="kicker"></p>
+          <h2 id="resultTitle"></h2>
+          <p id="resultBody"></p>
+          <div class="actions">
+            <button id="nextBtn" class="primary-btn">下一关</button>
+            <button id="restartBtn" class="secondary-btn">重新开始</button>
+          </div>
+        </section>
+      </section>
+
+    </main>
+
+    <div id="correctModal" class="modal" hidden>
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="correctTitle">
+        <img src="assets/congrats.svg" alt="恭喜答对" />
+        <h2 id="correctTitle">恭喜答对了！</h2>
+        <p>准备回忆刚才的热身题答案。</p>
+      </div>
+    </div>
+
+    <div id="contactModal" class="modal" hidden>
+      <div class="modal-box contact-box" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
+        <img src="assets/congrats.svg" alt="全部通关" />
+        <h2 id="contactTitle">全部通关！</h2>
+        <p>请留下联系方式，方便后续联系与统计。</p>
+        <form id="contactForm" name="lean-game-contact" method="POST" data-netlify="true" class="contact-form">
+          <input type="hidden" name="form-name" value="lean-game-contact" />
+          <label>
+            <span>姓名</span>
+            <input name="name" type="text" autocomplete="name" required />
+          </label>
+          <label>
+            <span>手机号</span>
+            <input name="phone" type="tel" autocomplete="tel" required />
+          </label>
+          <label>
+            <span>公司/部门</span>
+            <input name="organization" type="text" autocomplete="organization" />
+          </label>
+          <button class="primary-btn full-width" type="submit">提交联系方式</button>
+          <p id="contactFeedback" class="feedback" role="status"></p>
+        </form>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="questions.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

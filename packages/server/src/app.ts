@@ -20,6 +20,7 @@ import { createInvitationRoutes, createOrgRoutes } from './routes/orgs.js';
 import { createPlaySessionRoutes } from './routes/playSessions.js';
 import { createWasteRoutes } from './routes/waste.js';
 import { createPersonalRoutes } from './routes/personal.js';
+import { createLeanGameScoreRoutes } from './routes/leanGameScores.js';
 import { canUserWriteGameSession, updateParticipantProgress } from './playSessionDb.js';
 import { mountWebStatic, resolveWebDistPath } from './static.js';
 
@@ -62,6 +63,7 @@ export function createApp(db: ReplayDatabase, options?: { serveWeb?: boolean }):
   app.route('/api/play-sessions', createPlaySessionRoutes(db));
   app.route('/api/waste', createWasteRoutes(db));
   app.route('/api/personal', createPersonalRoutes(db));
+  app.route('/.netlify/functions', createLeanGameScoreRoutes());
 
   app.get('/api/sessions', (c) => {
     const limit = Number(c.req.query('limit') ?? '50');

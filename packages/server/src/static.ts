@@ -19,7 +19,15 @@ export function resolveWebDistPath(): string | null {
 }
 
 export function mountWebStatic(app: Hono<any>, webDistPath: string): void {
+  const leanChallengeIndex = serveStatic({
+    root: webDistPath,
+    rewriteRequestPath: () => '/lean-challenge/index.html',
+  });
+
   app.get('/assets/*', serveStatic({ root: webDistPath }));
+  app.get('/lean-challenge', leanChallengeIndex);
+  app.get('/lean-challenge/', leanChallengeIndex);
+  app.get('/lean-challenge/*', serveStatic({ root: webDistPath }));
   app.get('*', serveStatic({
     root: webDistPath,
     rewriteRequestPath: () => '/index.html',

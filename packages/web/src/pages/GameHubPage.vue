@@ -18,14 +18,15 @@ import { HUB_GAMES } from '../utils/gameHub';
     <main class="main">
       <section class="hero">
         <h2>选择游戏</h2>
-        <p>更多玩法持续更新中，欢迎先体验现有两款。</p>
+        <p>更多玩法持续更新中，欢迎体验现有玩法。</p>
       </section>
 
       <div class="cards">
-        <RouterLink
+        <component
+          :is="game.external ? 'a' : RouterLink"
           v-for="game in HUB_GAMES"
           :key="game.id"
-          :to="game.available ? game.route : '#'"
+          v-bind="game.external ? { href: game.available ? game.route : '#' } : { to: game.available ? game.route : '#' }"
           class="card"
           :class="{ 'card--disabled': !game.available }"
           :style="{ '--accent': game.accent }"
@@ -36,7 +37,7 @@ import { HUB_GAMES } from '../utils/gameHub';
           <p>{{ game.description }}</p>
           <span v-if="game.available" class="card-cta">开始游戏 →</span>
           <span v-else class="card-cta muted">{{ game.comingSoonLabel ?? '即将上线' }}</span>
-        </RouterLink>
+        </component>
       </div>
     </main>
   </div>
