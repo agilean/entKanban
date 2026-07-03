@@ -1,10 +1,6 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { signSession } from '../src/auth/session.js';
 import { createApp } from '../src/app.js';
-import { openDatabase } from '../src/db.js';
 import { upsertUserByFeishu } from '../src/socialDb.js';
 import {
   addWasteComment,
@@ -13,20 +9,19 @@ import {
   joinWasteTeam,
   upvoteWasteEntry,
 } from '../src/wasteDb.js';
+import { cleanupTempDatabase, openTempDatabase, type TempDatabase } from './helpers/tempDb.js';
 
 describe('waste board', () => {
-  let dbPath: string;
+  let tempDatabase: TempDatabase | undefined;
 
   afterEach(() => {
-    if (dbPath) {
-      rmSync(dbPath, { force: true });
-    }
+    cleanupTempDatabase(tempDatabase);
+    tempDatabase = undefined;
   });
 
   function openTestDb() {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-waste-'));
-    dbPath = join(dir, 'test.db');
-    return openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-waste-');
+    return tempDatabase.db;
   }
 
   it('allows anonymous submission with nickname', () => {

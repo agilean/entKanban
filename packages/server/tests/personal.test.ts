@@ -1,27 +1,22 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { openDatabase } from '../src/db.js';
 import { awardGameResultPoints, getPersonalLeaderboard, rankToGamePoints } from '../src/personalPointsDb.js';
 import { insertGameResult, upsertUserByFeishu } from '../src/socialDb.js';
 import { autoJoinDefaultOrganization, ensureDefaultOrganization } from '../src/singleOrg.js';
 import { createWasteEntry } from '../src/wasteDb.js';
+import { cleanupTempDatabase, openTempDatabase, type TempDatabase } from './helpers/tempDb.js';
 
 describe('personal points and single org', () => {
-  let dbPath: string;
+  let tempDatabase: TempDatabase | undefined;
 
   afterEach(() => {
-    if (dbPath) {
-      rmSync(dbPath, { force: true });
-    }
+    cleanupTempDatabase(tempDatabase);
+    tempDatabase = undefined;
   });
 
   function openTestDb() {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-personal-'));
-    dbPath = join(dir, 'test.db');
-    return openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-personal-');
+    return tempDatabase.db;
   }
 
   it('maps game rank to points', () => {

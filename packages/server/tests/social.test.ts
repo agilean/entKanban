@@ -1,10 +1,6 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { signSession } from '../src/auth/session.js';
 import { createApp } from '../src/app.js';
-import { openDatabase } from '../src/db.js';
 import {
   acceptInvitation,
   createInvitation,
@@ -14,20 +10,19 @@ import {
   insertGameResult,
   upsertUserByFeishu,
 } from '../src/socialDb.js';
+import { cleanupTempDatabase, openTempDatabase, type TempDatabase } from './helpers/tempDb.js';
 
 describe('social features', () => {
-  let dbPath: string;
+  let tempDatabase: TempDatabase | undefined;
 
   afterEach(() => {
-    if (dbPath) {
-      rmSync(dbPath, { force: true });
-    }
+    cleanupTempDatabase(tempDatabase);
+    tempDatabase = undefined;
   });
 
   function openTestDb() {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-social-'));
-    dbPath = join(dir, 'test.db');
-    return openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-social-');
+    return tempDatabase.db;
   }
 
   it('creates organizations and accepts invitations', () => {

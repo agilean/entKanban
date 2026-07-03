@@ -1,13 +1,10 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { openDatabase } from '../src/db.js';
 import { logError, logInfo } from '../src/logging.js';
+import { cleanupTempDatabase, openTempDatabase, type TempDatabase } from './helpers/tempDb.js';
 
 describe('log routes', () => {
-  let dbPath: string;
+  let tempDatabase: TempDatabase | undefined;
   const originalToken = process.env.LOG_ACCESS_TOKEN;
 
   beforeEach(() => {
@@ -16,15 +13,13 @@ describe('log routes', () => {
 
   afterEach(() => {
     process.env.LOG_ACCESS_TOKEN = originalToken;
-    if (dbPath) {
-      rmSync(dbPath, { force: true });
-    }
+    cleanupTempDatabase(tempDatabase);
+    tempDatabase = undefined;
   });
 
   it('returns recent logs when access token is valid', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-logs-'));
-    dbPath = join(dir, 'test.db');
-    const db = openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-logs-');
+    const db = tempDatabase.db;
     const app = createApp(db);
 
     logInfo('test', 'hello log');

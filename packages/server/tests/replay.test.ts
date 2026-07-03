@@ -1,25 +1,21 @@
 import { GameSession } from '@kanban-game/engine';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { getReplay, insertDiceRollEntry, openDatabase, upsertSession } from '../src/db.js';
+import { getReplay, insertDiceRollEntry, upsertSession } from '../src/db.js';
 import { State } from '@kanban-game/engine';
+import { cleanupTempDatabase, openTempDatabase, type TempDatabase } from './helpers/tempDb.js';
 
 describe('replay database', () => {
-  let dbPath: string;
+  let tempDatabase: TempDatabase | undefined;
 
   afterEach(() => {
-    if (dbPath) {
-      rmSync(dbPath, { force: true });
-    }
+    cleanupTempDatabase(tempDatabase);
+    tempDatabase = undefined;
   });
 
   it('stores session snapshots and dice roll entries for replay', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-db-'));
-    dbPath = join(dir, 'test.db');
-    const db = openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-db-');
+    const db = tempDatabase.db;
 
     upsertSession(db, 'session-1', GameSession.createNew().toJSON());
     insertDiceRollEntry(db, 'session-1', {
@@ -48,9 +44,8 @@ describe('replay database', () => {
   });
 
   it('exposes replay over HTTP', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kanban-db-'));
-    dbPath = join(dir, 'test.db');
-    const db = openDatabase(dbPath);
+    tempDatabase = openTempDatabase('kanban-db-');
+    const db = tempDatabase.db;
     const app = createApp(db);
 
     upsertSession(db, 'session-http', GameSession.createNew().toJSON());
