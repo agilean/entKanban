@@ -15,6 +15,7 @@
             <h1>精益闯关小游戏</h1>
           </div>
           <div class="top-actions">
+            <div id="authBar" class="auth-bar" aria-live="polite"></div>
             <a id="adminEntryLink" class="admin-entry-link" href="admin.html">后台登录</a>
             <div class="progress-card">
               <span id="roundLabel">第 1 / 10 关</span>
@@ -36,9 +37,20 @@
                 先记住热身题，再回答精益题。低难度热身题显示 4 秒，中高难度显示 3 秒；
                 精益题限时 10 秒，高级关卡回忆热身题答案限时 6 秒。
               </p>
+              <p id="loginHint" class="login-hint">请先使用飞书登录后再开始闯关。</p>
             </div>
             <button id="startBtn" class="primary-btn">开始知识闯关</button>
           </div>
+
+          <aside class="leaderboard-panel" aria-labelledby="leaderboardTitle">
+            <div class="leaderboard-header">
+              <h2 id="leaderboardTitle">通关时长排行榜</h2>
+              <p>全站每人最快通关记录，用时越短排名越高。</p>
+            </div>
+            <div id="leaderboardList" class="leaderboard-list" aria-live="polite">
+              <p class="empty-state">正在加载排行榜...</p>
+            </div>
+          </aside>
         </section>
 
         <section id="screenMemory" class="screen">
@@ -76,7 +88,6 @@
           </div>
         </section>
       </section>
-
     </main>
 
     <div id="correctModal" class="modal" hidden>
@@ -84,31 +95,6 @@
         <img src="assets/congrats.svg" alt="恭喜答对" />
         <h2 id="correctTitle">恭喜答对了！</h2>
         <p>准备回忆刚才的热身题答案。</p>
-      </div>
-    </div>
-
-    <div id="contactModal" class="modal" hidden>
-      <div class="modal-box contact-box" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
-        <img src="assets/congrats.svg" alt="全部通关" />
-        <h2 id="contactTitle">全部通关！</h2>
-        <p>请留下联系方式，方便后续联系与统计。</p>
-        <form id="contactForm" name="lean-game-contact" method="POST" data-netlify="true" class="contact-form">
-          <input type="hidden" name="form-name" value="lean-game-contact" />
-          <label>
-            <span>姓名</span>
-            <input name="name" type="text" autocomplete="name" required />
-          </label>
-          <label>
-            <span>手机号</span>
-            <input name="phone" type="tel" autocomplete="tel" required />
-          </label>
-          <label>
-            <span>公司/部门</span>
-            <input name="organization" type="text" autocomplete="organization" />
-          </label>
-          <button class="primary-btn full-width" type="submit">提交联系方式</button>
-          <p id="contactFeedback" class="feedback" role="status"></p>
-        </form>
       </div>
     </div>
 

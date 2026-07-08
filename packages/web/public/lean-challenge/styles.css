@@ -130,6 +130,143 @@ body.no-admin-access .role-switcher {
   justify-items: end;
 }
 
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-avatar,
+.leaderboard-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.auth-avatar-fallback,
+.leaderboard-avatar-fallback {
+  display: inline-grid;
+  place-items: center;
+  background: #2a6f67;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.auth-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.auth-login-btn,
+.auth-logout-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.auth-status {
+  color: #4b5c60;
+  font-size: 14px;
+}
+
+.login-hint {
+  margin-top: 12px;
+  color: #b45309;
+  font-size: 16px;
+}
+
+#screenIntro.active {
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+.leaderboard-panel {
+  padding: 18px;
+  border: 1px solid rgba(20, 32, 35, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.leaderboard-header h2 {
+  margin-bottom: 6px;
+  font-size: 22px;
+}
+
+.leaderboard-header p {
+  margin-bottom: 0;
+  color: #4b5c60;
+  font-size: 14px;
+}
+
+.leaderboard-list {
+  margin-top: 16px;
+}
+
+.leaderboard-rows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 36px 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(20, 32, 35, 0.08);
+  border-radius: 8px;
+  background: #f7fbfa;
+}
+
+.leaderboard-row.is-current-user {
+  border-color: rgba(42, 111, 103, 0.45);
+  background: #edf7f5;
+}
+
+.leaderboard-rank {
+  font-weight: 800;
+  color: #2a6f67;
+}
+
+.leaderboard-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.leaderboard-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-meta span {
+  color: #4b5c60;
+  font-size: 12px;
+}
+
+.leaderboard-duration {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.empty-state {
+  margin: 0;
+  color: #4b5c60;
+}
+
 .role-switcher {
   display: inline-grid;
   grid-template-columns: 1fr 1fr;

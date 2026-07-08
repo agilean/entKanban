@@ -7,6 +7,7 @@ import { migrateSocial } from './socialDb.js';
 import { migratePlaySessions } from './playSessionDb.js';
 import { migrateWaste } from './wasteDb.js';
 import { migratePersonalPoints } from './personalPointsDb.js';
+import { migrateLeanChallenge } from './leanChallengeDb.js';
 
 export type ReplayDatabase = DatabaseSync;
 
@@ -86,6 +87,7 @@ function migrate(db: ReplayDatabase): void {
   migratePlaySessions(db);
   migrateWaste(db);
   migratePersonalPoints(db);
+  migrateLeanChallenge(db);
 }
 
 export function upsertSession(db: ReplayDatabase, id: string, session: GameSessionState): void {

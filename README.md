@@ -24,6 +24,15 @@ pnpm dev
 | `@kanban-game/engine` | 游戏规则引擎（无 UI 依赖） |
 | `@kanban-game/web` | Vue 前端应用 |
 
+## 精益闯关小游戏
+
+静态资源位于 `packages/web/public/lean-challenge/`，通过游戏屋入口 `/lean-challenge/` 访问。
+
+- **身份**：需先飞书登录（与主应用共用 `kanban_session` Cookie）
+- **成绩**：写入服务端 SQLite 表 `lean_challenge_scores`
+- **排行榜**：全站每人最快通关记录，按 `duration_seconds` 升序排名
+- **API**：`/api/lean-challenge/score-submit`、`/api/lean-challenge/leaderboard`（兼容 `/.netlify/functions/*`）
+
 ## 部署
 
 ### Render（推荐：单服务同域）

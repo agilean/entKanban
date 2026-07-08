@@ -22,7 +22,6 @@ logoutBtn.addEventListener("click", logout);
 questionsTabBtn.addEventListener("click", () => showAdminView("questions"));
 scoresTabBtn.addEventListener("click", () => showAdminView("scores"));
 
-importTransferredScores();
 showLogin();
 
 function handleLogin(event) {
@@ -128,10 +127,8 @@ async function renderScores() {
         <thead>
           <tr>
             <th>阶段</th>
-            <th>姓名</th>
-            <th>手机号</th>
-            <th>公司/部门</th>
-            <th>得分</th>
+            <th>用户</th>
+            <th>用户 ID</th>
             <th>答题时间</th>
             <th>提交时间</th>
           </tr>
@@ -142,23 +139,15 @@ async function renderScores() {
       </table>
     `;
   } catch (error) {
-    scoresTable.innerHTML = `<p class="empty-state">成绩读取失败，请检查线上数据库配置。</p>`;
+    scoresTable.innerHTML = `<p class="empty-state">成绩读取失败，请检查服务端配置。</p>`;
   }
 }
 
 async function loadScores() {
-  if (isServerApiEnabled()) {
-    return loadServerApiScores();
+  if (!isServerApiEnabled()) {
+    return [];
   }
 
-  if (isRemoteScoresEnabled()) {
-    return loadRemoteScores();
-  }
-
-  return JSON.parse(localStorage.getItem("leanGameContacts") || "[]");
-}
-
-async function loadServerApiScores() {
   const response = await fetch(`${config.apiBase}/score-list`);
 
   if (!response.ok) {
@@ -168,84 +157,16 @@ async function loadServerApiScores() {
   return response.json();
 }
 
-async function loadRemoteScores() {
-  const table = config.scoresTable || "lean_game_scores";
-  const response = await fetch(
-      `${config.supabaseUrl}/rest/v1/${table}?select=stage,stage_name,score,name,phone,organization,completed_at,duration_seconds&order=completed_at.desc`,
-    {
-      headers: {
-        apikey: config.supabaseAnonKey,
-        Authorization: `Bearer ${config.supabaseAnonKey}`
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Remote score load failed");
-  }
-
-  const rows = await response.json();
-  return rows.map((row) => ({
-    name: row.name,
-    stage: row.stage,
-    stageName: row.stage_name,
-    score: row.score,
-    phone: row.phone,
-    organization: row.organization,
-    completedAt: row.completed_at,
-    durationSeconds: row.duration_seconds
-  }));
-}
-
-function isRemoteScoresEnabled() {
-  return Boolean(config.supabaseUrl && config.supabaseAnonKey);
-}
-
 function isServerApiEnabled() {
   return Boolean(config.apiBase && window.location.protocol !== "file:");
-}
-
-function importTransferredScores() {
-  if (!window.name) {
-    return;
-  }
-
-  try {
-    const payload = JSON.parse(window.name);
-    if (payload.type !== "leanGameScoresTransfer" || !Array.isArray(payload.contacts)) {
-      return;
-    }
-
-    const contacts = JSON.parse(localStorage.getItem("leanGameContacts") || "[]");
-    const mergedContacts = mergeContacts(contacts, payload.contacts);
-    localStorage.setItem("leanGameContacts", JSON.stringify(mergedContacts));
-    window.name = "";
-  } catch (error) {
-    window.name = "";
-  }
-}
-
-function mergeContacts(existingContacts, incomingContacts) {
-  const seen = new Set();
-  return [...existingContacts, ...incomingContacts].filter((contact) => {
-    const key = `${contact.phone || ""}-${contact.completedAt || ""}-${contact.durationSeconds || ""}`;
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
 }
 
 function renderScoreRow(contact) {
   return `
     <tr>
       <td>${escapeHtml(contact.stageName || contact.stage || "知识闯关：认识精益")}</td>
-      <td>${escapeHtml(contact.name || "")}</td>
-      <td>${escapeHtml(contact.phone || "")}</td>
-      <td>${escapeHtml(contact.organization || "")}</td>
-      <td>${formatScore(contact)}</td>
+      <td>${escapeHtml(contact.userName || "")}</td>
+      <td>${escapeHtml(contact.userId || "")}</td>
       <td>${formatDuration(Number(contact.durationSeconds || 0))}</td>
       <td>${formatDate(contact.completedAt)}</td>
     </tr>
@@ -260,14 +181,6 @@ function formatDuration(seconds) {
   const minutes = Math.floor(seconds / 60);
   const restSeconds = seconds % 60;
   return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`;
-}
-
-function formatScore(contact) {
-  if (contact.score === undefined || contact.score === null || contact.score === "") {
-    return "-";
-  }
-
-  return contact.stage === "Lean System Lab" ? `${contact.score}/5` : `${contact.score}/10`;
 }
 
 function formatDate(value) {

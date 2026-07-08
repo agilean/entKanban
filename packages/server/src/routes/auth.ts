@@ -92,6 +92,8 @@ export function createAuthRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVari
         redirectPath = '/waste';
       } else if (state === 'personal') {
         redirectPath = '/personal';
+      } else if (state === 'lean-challenge') {
+        redirectPath = '/lean-challenge/';
       }
       return c.redirect(`${config.webOrigin}${redirectPath}?auth=success`);
     } catch (error) {

@@ -6,7 +6,6 @@ const MEMORY_SECONDS_BY_DIFFICULTY = {
 };
 const LEAN_SECONDS = 10;
 const HIGH_RECALL_SECONDS = 6;
-const CONTACT_FORM_ENDPOINT = "";
 const config = window.LEAN_GAME_CONFIG || {};
 
 const difficultyConfig = [
@@ -25,7 +24,9 @@ const state = {
   startedAt: null,
   completedDurationSeconds: null,
   usedMemoryQuestions: new Set(),
-  usedLeanQuestions: new Set()
+  usedLeanQuestions: new Set(),
+  currentUser: null,
+  authChecked: false
 };
 
 const screens = {
@@ -56,20 +57,129 @@ const resultBody = document.querySelector("#resultBody");
 const nextBtn = document.querySelector("#nextBtn");
 const restartBtn = document.querySelector("#restartBtn");
 const correctModal = document.querySelector("#correctModal");
-const contactModal = document.querySelector("#contactModal");
-const contactForm = document.querySelector("#contactForm");
-const contactFeedback = document.querySelector("#contactFeedback");
+const authBar = document.querySelector("#authBar");
+const loginHint = document.querySelector("#loginHint");
+const leaderboardList = document.querySelector("#leaderboardList");
+const startBtn = document.querySelector("#startBtn");
 const adminEntryLink = document.querySelector("#adminEntryLink");
 
-document.querySelector("#startBtn").addEventListener("click", startGame);
+startBtn.addEventListener("click", handleStartClick);
 nextBtn.addEventListener("click", nextRound);
 restartBtn.addEventListener("click", resetGame);
 leanForm.addEventListener("submit", handleLeanAnswer);
 recallForm.addEventListener("submit", handleRecallAnswer);
-contactForm.addEventListener("submit", handleContactSubmit);
 adminEntryLink.addEventListener("click", transferLocalScoresToAdmin);
 
 updateHeader();
+initPage();
+
+async function initPage() {
+  await refreshAuthState();
+  await loadLeaderboard();
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("auth") === "success") {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+}
+
+async function refreshAuthState() {
+  state.authChecked = false;
+  renderAuthBar({ loading: true });
+
+  if (!isServerApiEnabled()) {
+    state.currentUser = null;
+    state.authChecked = true;
+    renderAuthBar();
+    updateStartButton();
+    return;
+  }
+
+  try {
+    const response = await fetch(`${getAuthApiBase()}/auth/me`, {
+      credentials: "include"
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      state.currentUser = payload.user;
+    } else {
+      state.currentUser = null;
+    }
+  } catch {
+    state.currentUser = null;
+  }
+
+  state.authChecked = true;
+  renderAuthBar();
+  updateStartButton();
+}
+
+function renderAuthBar(options = {}) {
+  if (options.loading) {
+    authBar.innerHTML = `<span class="auth-status">正在检查登录状态...</span>`;
+    return;
+  }
+
+  if (state.currentUser) {
+    const avatar = state.currentUser.avatarUrl
+      ? `<img class="auth-avatar" src="${escapeHtml(state.currentUser.avatarUrl)}" alt="" />`
+      : `<span class="auth-avatar auth-avatar-fallback">${escapeHtml(state.currentUser.name.slice(0, 1))}</span>`;
+    authBar.innerHTML = `
+      <div class="auth-user">
+        ${avatar}
+        <span class="auth-name">${escapeHtml(state.currentUser.name)}</span>
+      </div>
+      <button type="button" class="secondary-btn auth-logout-btn" id="logoutBtn">退出</button>
+    `;
+    document.querySelector("#logoutBtn")?.addEventListener("click", handleLogout);
+    return;
+  }
+
+  authBar.innerHTML = `
+    <a class="primary-btn auth-login-btn" href="${getFeishuLoginUrl()}">飞书登录</a>
+  `;
+}
+
+function updateStartButton() {
+  const loggedIn = Boolean(state.currentUser);
+  startBtn.disabled = state.authChecked && !loggedIn && isServerApiEnabled();
+  loginHint.hidden = loggedIn || !isServerApiEnabled();
+  loginHint.textContent = loggedIn
+    ? ""
+    : "请先使用飞书登录后再开始闯关。";
+}
+
+function handleStartClick() {
+  if (!state.authChecked) {
+    return;
+  }
+
+  if (isServerApiEnabled() && !state.currentUser) {
+    window.location.href = getFeishuLoginUrl();
+    return;
+  }
+
+  startGame();
+}
+
+async function handleLogout() {
+  if (!isServerApiEnabled()) {
+    return;
+  }
+
+  try {
+    await fetch(`${getAuthApiBase()}/auth/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+  } catch {
+    // ignore network errors and clear local auth state
+  }
+
+  state.currentUser = null;
+  renderAuthBar();
+  updateStartButton();
+}
 
 function startGame() {
   state.round = 1;
@@ -95,6 +205,7 @@ function resetGame() {
   recallFeedback.textContent = "";
   updateHeader();
   showScreen("intro");
+  loadLeaderboard();
 }
 
 function nextRound() {
@@ -185,7 +296,7 @@ function showRecallQuestion() {
   startRecallTimerIfNeeded();
 }
 
-function handleRecallAnswer(event) {
+async function handleRecallAnswer(event) {
   event.preventDefault();
   clearInterval(state.recallTimer);
   const answer = normalizeAnswer(recallInput.value);
@@ -197,10 +308,42 @@ function handleRecallAnswer(event) {
 
   if (state.round >= TOTAL_ROUNDS) {
     state.completedDurationSeconds = Math.round((Date.now() - state.startedAt) / 1000);
-    showSuccess("全部通关", "太棒了，10 关全部完成。");
-    setTimeout(showContactModal, 500);
+    await completeChallenge();
   } else {
     showSuccess("闯关成功", "本关完成，可以进入下一关。");
+  }
+}
+
+async function completeChallenge() {
+  const durationText = formatDuration(state.completedDurationSeconds || 0);
+  showSuccess("全部通关", `太棒了，10 关全部完成。本次用时 ${durationText}。`);
+
+  if (!isServerApiEnabled()) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${config.apiBase}/score-submit`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stage: "Lean Basics",
+        stageName: "知识闯关：认识精益",
+        completedAt: new Date().toISOString(),
+        durationSeconds: state.completedDurationSeconds || 0
+      })
+    });
+
+    if (!response.ok) {
+      resultBody.textContent += " 成绩提交失败，请稍后重试。";
+      return;
+    }
+
+    resultBody.textContent += " 成绩已记录到排行榜。";
+    await loadLeaderboard();
+  } catch {
+    resultBody.textContent += " 成绩提交失败，请检查网络后重试。";
   }
 }
 
@@ -286,109 +429,64 @@ function hideCorrectModal() {
   correctModal.hidden = true;
 }
 
-function showContactModal() {
-  contactModal.hidden = false;
-  contactModal.classList.add("show");
-  contactFeedback.textContent = "";
-  contactForm.elements.name.focus();
-}
+async function loadLeaderboard() {
+  if (!isServerApiEnabled()) {
+    leaderboardList.innerHTML = `<p class="empty-state">本地预览模式，暂无排行榜数据。</p>`;
+    return;
+  }
 
-async function handleContactSubmit(event) {
-  event.preventDefault();
-  const formData = new FormData(contactForm);
-  const contact = {
-    stage: "Lean Basics",
-    stageName: "知识闯关：认识精益",
-    score: TOTAL_ROUNDS,
-    name: String(formData.get("name") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
-    organization: String(formData.get("organization") || "").trim(),
-    completedAt: new Date().toISOString(),
-    durationSeconds: state.completedDurationSeconds || 0
-  };
-  contactFeedback.textContent = "正在提交...";
+  leaderboardList.innerHTML = `<p class="empty-state">正在加载排行榜...</p>`;
 
   try {
-    if (isServerApiEnabled()) {
-      await saveContactViaServerApi(contact);
-      saveContactLocally(contact);
-    } else if (isRemoteScoresEnabled()) {
-      await saveContactRemotely(contact);
-      saveContactLocally(contact);
-    } else if (CONTACT_FORM_ENDPOINT) {
-      await fetch(CONTACT_FORM_ENDPOINT, {
-        method: "POST",
-        body: formData
-      });
-    } else if (window.location.protocol !== "file:") {
-      formData.append("completedAt", contact.completedAt);
-      formData.append("durationSeconds", String(contact.durationSeconds));
-      await fetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(formData).toString()
-      });
-    } else {
-      saveContactLocally(contact);
+    const response = await fetch(`${config.apiBase}/leaderboard?limit=20`);
+    if (!response.ok) {
+      throw new Error("leaderboard load failed");
     }
 
-    contactFeedback.textContent = "提交成功，感谢参与！";
-    contactForm.reset();
-    setTimeout(() => {
-      contactModal.classList.remove("show");
-      contactModal.hidden = true;
-    }, 1200);
-  } catch (error) {
-    contactFeedback.textContent = "提交失败，请稍后再试。";
+    const payload = await response.json();
+    renderLeaderboard(payload.entries || []);
+  } catch {
+    leaderboardList.innerHTML = `<p class="empty-state">排行榜加载失败，请稍后刷新。</p>`;
   }
 }
 
-function saveContactLocally(contact) {
-  const contacts = JSON.parse(localStorage.getItem("leanGameContacts") || "[]");
-  contacts.push(contact);
-  localStorage.setItem("leanGameContacts", JSON.stringify(contacts));
-}
-
-async function saveContactViaServerApi(contact) {
-  const response = await fetch(`${config.apiBase}/score-submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(contact)
-  });
-
-  if (!response.ok) {
-    throw new Error("Server score save failed");
+function renderLeaderboard(entries) {
+  if (entries.length === 0) {
+    leaderboardList.innerHTML = `<p class="empty-state">暂无通关记录，快来拿下第一名！</p>`;
+    return;
   }
+
+  leaderboardList.innerHTML = `
+    <ol class="leaderboard-rows">
+      ${entries
+        .map((entry) => {
+          const isCurrentUser = state.currentUser?.id === entry.userId;
+          const avatar = entry.avatarUrl
+            ? `<img class="leaderboard-avatar" src="${escapeHtml(entry.avatarUrl)}" alt="" />`
+            : `<span class="leaderboard-avatar leaderboard-avatar-fallback">${escapeHtml((entry.userName || "?").slice(0, 1))}</span>`;
+          return `
+            <li class="leaderboard-row${isCurrentUser ? " is-current-user" : ""}">
+              <span class="leaderboard-rank">${entry.rank}</span>
+              ${avatar}
+              <div class="leaderboard-meta">
+                <strong>${escapeHtml(entry.userName || "未知用户")}</strong>
+                ${entry.orgName ? `<span>${escapeHtml(entry.orgName)}</span>` : ""}
+              </div>
+              <span class="leaderboard-duration">${formatDuration(entry.durationSeconds)}</span>
+            </li>
+          `;
+        })
+        .join("")}
+    </ol>
+  `;
 }
 
-async function saveContactRemotely(contact) {
-  const response = await fetch(`${config.supabaseUrl}/rest/v1/${config.scoresTable || "lean_game_scores"}`, {
-    method: "POST",
-    headers: {
-      apikey: config.supabaseAnonKey,
-      Authorization: `Bearer ${config.supabaseAnonKey}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    },
-    body: JSON.stringify({
-      stage: contact.stage,
-      stage_name: contact.stageName,
-      score: contact.score,
-      name: contact.name,
-      phone: contact.phone,
-      organization: contact.organization,
-      completed_at: contact.completedAt,
-      duration_seconds: contact.durationSeconds
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error("Remote score save failed");
-  }
+function getFeishuLoginUrl() {
+  return `${getAuthApiBase()}/auth/feishu/login?state=lean-challenge`;
 }
 
-function isRemoteScoresEnabled() {
-  return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+function getAuthApiBase() {
+  return config.authApiBase || "/api";
 }
 
 function isServerApiEnabled() {
@@ -396,16 +494,22 @@ function isServerApiEnabled() {
 }
 
 function transferLocalScoresToAdmin() {
-  const contacts = localStorage.getItem("leanGameContacts");
-  if (!contacts) {
-    window.name = "";
-    return;
-  }
+  window.name = "";
+}
 
-  window.name = JSON.stringify({
-    type: "leanGameScoresTransfer",
-    contacts: JSON.parse(contacts)
-  });
+function formatDuration(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function randomItem(items) {
