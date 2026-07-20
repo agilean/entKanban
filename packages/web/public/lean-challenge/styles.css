@@ -165,12 +165,38 @@ body.no-admin-access .role-switcher {
   font-weight: 700;
 }
 
-.auth-login-btn,
 .auth-logout-btn {
   min-height: 36px;
   padding: 0 14px;
   font-size: 14px;
   text-decoration: none;
+}
+
+.auth-login-btn.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 104px;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(42, 111, 103, 0.18);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.auth-login-btn.primary-btn:hover {
+  background: #215e57;
+  box-shadow: 0 6px 16px rgba(42, 111, 103, 0.24);
+  transform: translateY(-1px);
+}
+
+.auth-login-btn.primary-btn:focus-visible {
+  outline: 3px solid rgba(42, 111, 103, 0.24);
+  outline-offset: 3px;
 }
 
 .auth-status {
@@ -536,9 +562,11 @@ p {
 }
 
 .admin-entry-link {
+  width: 104px;
   color: #2a6f67;
   font-size: 14px;
   font-weight: 800;
+  text-align: center;
   text-decoration: none;
 }
 
