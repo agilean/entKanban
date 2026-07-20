@@ -1,0 +1,16 @@
+services:
+  kanban-game:
+    build: .
+    image: kanban-game:latest
+    ports:
+      - "3910:3910"
+    environment:
+      PORT: "3910"
+      KANBAN_DB_PATH: /app/data/kanban-replay.db
+      WEB_DIST_PATH: /app/packages/web/dist
+    volumes:
+      - kanban-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  kanban-data:

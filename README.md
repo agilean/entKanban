@@ -17,6 +17,28 @@ pnpm build
 pnpm dev
 ```
 
+## Docker
+
+The Docker image serves the built Vue app and the Hono API from one Node service.
+SQLite data is stored under `/app/data`; keep this path mounted as a volume in production.
+
+```bash
+docker compose up -d --build
+```
+
+Open:
+
+```text
+http://localhost:3910
+```
+
+To run without Compose:
+
+```bash
+docker build -t kanban-game .
+docker run -d --name kanban-game -p 3910:3910 -v kanban-data:/app/data kanban-game
+```
+
 ## 包结构
 
 | 包 | 说明 |

@@ -28,6 +28,9 @@ export function mountWebStatic(app: Hono<any>, webDistPath: string): void {
   app.get('/lean-challenge', leanChallengeIndex);
   app.get('/lean-challenge/', leanChallengeIndex);
   app.get('/lean-challenge/*', serveStatic({ root: webDistPath }));
+  app.get('/', (c) => c.redirect('/lean-challenge/index.html'));
+  app.get('/game', (c) => c.redirect('/lean-challenge/index.html'));
+  app.get('/game/', (c) => c.redirect('/lean-challenge/index.html'));
   app.get('*', serveStatic({
     root: webDistPath,
     rewriteRequestPath: () => '/index.html',
