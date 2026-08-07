@@ -3,6 +3,7 @@ import { requireAuth, type AuthVariables } from '../auth/middleware.js';
 import type { ReplayDatabase } from '../db.js';
 import {
   getLeanChallengeLeaderboard,
+  getLeanChallengePersonalBest,
   insertLeanChallengeScore,
   listLeanChallengeScoresAdmin,
 } from '../leanChallengeDb.js';
@@ -13,6 +14,8 @@ type ScoreSubmitBody = {
   completedAt?: string;
   durationSeconds?: number | string;
 };
+
+const PUBLIC_LEADERBOARD_LIMIT = 10;
 
 export function createLeanChallengeRoutes(db: ReplayDatabase): Hono<{ Variables: AuthVariables }> {
   const routes = new Hono<{ Variables: AuthVariables }>();
@@ -36,6 +39,7 @@ export function createLeanChallengeRoutes(db: ReplayDatabase): Hono<{ Variables:
     }
 
     try {
+      const previousPersonalBest = getLeanChallengePersonalBest(db, userId);
       const result = insertLeanChallengeScore(db, {
         userId,
         durationSeconds,
@@ -43,15 +47,31 @@ export function createLeanChallengeRoutes(db: ReplayDatabase): Hono<{ Variables:
         stage: body.stage,
         stageName: body.stageName,
       });
-      return c.json({ ok: true, result }, 201);
+      const personalBestDurationSeconds = getLeanChallengePersonalBest(db, userId);
+      return c.json(
+        {
+          ok: true,
+          result,
+          isPersonalBest:
+            previousPersonalBest === null || durationSeconds < previousPersonalBest,
+          personalBestDurationSeconds,
+        },
+        201,
+      );
     } catch {
       return c.json({ error: 'Submit failed' }, 500);
     }
   });
 
   routes.get('/leaderboard', (c) => {
-    const limit = parsePagination(c.req.query('limit'), 50);
+    const requestedLimit = parsePagination(
+      c.req.query('limit'),
+      PUBLIC_LEADERBOARD_LIMIT,
+    );
+    const limit = Math.min(requestedLimit, PUBLIC_LEADERBOARD_LIMIT);
     const offset = parsePagination(c.req.query('offset'), 0);
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    c.header('Pragma', 'no-cache');
     return c.json({ entries: getLeanChallengeLeaderboard(db, limit, offset) });
   });
 

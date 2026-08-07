@@ -69,6 +69,11 @@ restartBtn.addEventListener("click", resetGame);
 leanForm.addEventListener("submit", handleLeanAnswer);
 recallForm.addEventListener("submit", handleRecallAnswer);
 adminEntryLink.addEventListener("click", transferLocalScoresToAdmin);
+document.addEventListener("copy", preventCopyDuringMemory);
+document.addEventListener("cut", preventCopyDuringMemory);
+screens.memory.addEventListener("contextmenu", preventDefault);
+screens.memory.addEventListener("dragstart", preventDefault);
+screens.memory.addEventListener("selectstart", preventDefault);
 
 updateHeader();
 initPage();
@@ -81,6 +86,16 @@ async function initPage() {
   if (params.get("auth") === "success") {
     window.history.replaceState({}, "", window.location.pathname);
   }
+}
+
+function preventCopyDuringMemory(event) {
+  if (screens.memory.classList.contains("active")) {
+    event.preventDefault();
+  }
+}
+
+function preventDefault(event) {
+  event.preventDefault();
 }
 
 async function refreshAuthState() {
@@ -306,6 +321,8 @@ async function handleRecallAnswer(event) {
     return;
   }
 
+  updateProgress(state.round);
+
   if (state.round >= TOTAL_ROUNDS) {
     state.completedDurationSeconds = Math.round((Date.now() - state.startedAt) / 1000);
     await completeChallenge();
@@ -380,7 +397,11 @@ function updateHeader() {
   const difficulty = getDifficulty();
   roundLabel.textContent = `第 ${state.round} / ${TOTAL_ROUNDS} 关`;
   difficultyLabel.textContent = difficulty.label;
-  progressFill.style.width = `${((state.round - 1) / TOTAL_ROUNDS) * 100}%`;
+  updateProgress(state.round - 1);
+}
+
+function updateProgress(completedRounds) {
+  progressFill.style.width = `${(completedRounds / TOTAL_ROUNDS) * 100}%`;
 }
 
 function startLeanTimer() {
@@ -438,7 +459,9 @@ async function loadLeaderboard() {
   leaderboardList.innerHTML = `<p class="empty-state">正在加载排行榜...</p>`;
 
   try {
-    const response = await fetch(`${config.apiBase}/leaderboard?limit=20`);
+    const response = await fetch(`${config.apiBase}/leaderboard?limit=10`, {
+      cache: "no-store"
+    });
     if (!response.ok) {
       throw new Error("leaderboard load failed");
     }

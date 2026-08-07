@@ -82,6 +82,21 @@ export function insertLeanChallengeScore(
   };
 }
 
+export function getLeanChallengePersonalBest(
+  db: ReplayDatabase,
+  userId: string,
+): number | null {
+  const row = db
+    .prepare(
+      `SELECT MIN(duration_seconds) AS durationSeconds
+       FROM lean_challenge_scores
+       WHERE user_id = ?`,
+    )
+    .get(userId) as { durationSeconds: number | null };
+
+  return row.durationSeconds;
+}
+
 export function getLeanChallengeLeaderboard(
   db: ReplayDatabase,
   limit = 50,

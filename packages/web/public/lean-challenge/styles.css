@@ -428,6 +428,12 @@ p {
   background: #f7fbfa;
 }
 
+#screenMemory {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .memory-question {
   display: grid;
   place-items: center;
