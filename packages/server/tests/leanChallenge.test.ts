@@ -3,6 +3,7 @@ import { signSession } from '../src/auth/session.js';
 import { createApp } from '../src/app.js';
 import {
   getLeanChallengeLeaderboard,
+  getLeanChallengeRank,
   insertLeanChallengeScore,
 } from '../src/leanChallengeDb.js';
 import { upsertUserByFeishu } from '../src/socialDb.js';
@@ -60,6 +61,12 @@ describe('lean challenge features', () => {
     });
 
     expect(response.status).toBe(201);
+    const payload = (await response.json()) as {
+      currentRank: number;
+      personalBestDurationSeconds: number;
+    };
+    expect(payload.currentRank).toBe(1);
+    expect(payload.personalBestDurationSeconds).toBe(180);
     const leaderboard = getLeanChallengeLeaderboard(db);
     expect(leaderboard).toHaveLength(1);
     expect(leaderboard[0]?.userName).toBe('Lean Player');
@@ -205,6 +212,27 @@ describe('lean challenge features', () => {
     );
     const adminPayload = (await adminResponse.json()) as Array<unknown>;
     expect(adminPayload).toHaveLength(12);
+  });
+
+  it('returns a player rank even when the player is outside the public top ten', () => {
+    const db = openTestDb();
+    let lastUserId = '';
+
+    for (let index = 0; index < 12; index += 1) {
+      const user = upsertUserByFeishu(db, {
+        feishuOpenId: `full-rank-player-${index}`,
+        name: `Full Rank Player ${index}`,
+      });
+      lastUserId = user.id;
+      insertLeanChallengeScore(db, {
+        userId: user.id,
+        durationSeconds: 100 + index,
+        completedAt: `2026-07-08T11:${String(index).padStart(2, '0')}:00.000Z`,
+      });
+    }
+
+    expect(getLeanChallengeLeaderboard(db, 10)).toHaveLength(10);
+    expect(getLeanChallengeRank(db, lastUserId)).toBe(12);
   });
 
   it('keeps legacy netlify function routes working', async () => {

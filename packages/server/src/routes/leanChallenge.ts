@@ -4,6 +4,7 @@ import type { ReplayDatabase } from '../db.js';
 import {
   getLeanChallengeLeaderboard,
   getLeanChallengePersonalBest,
+  getLeanChallengeRank,
   insertLeanChallengeScore,
   listLeanChallengeScoresAdmin,
 } from '../leanChallengeDb.js';
@@ -48,6 +49,7 @@ export function createLeanChallengeRoutes(db: ReplayDatabase): Hono<{ Variables:
         stageName: body.stageName,
       });
       const personalBestDurationSeconds = getLeanChallengePersonalBest(db, userId);
+      const currentRank = getLeanChallengeRank(db, userId);
       return c.json(
         {
           ok: true,
@@ -55,6 +57,7 @@ export function createLeanChallengeRoutes(db: ReplayDatabase): Hono<{ Variables:
           isPersonalBest:
             previousPersonalBest === null || durationSeconds < previousPersonalBest,
           personalBestDurationSeconds,
+          currentRank,
         },
         201,
       );

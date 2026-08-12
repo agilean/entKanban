@@ -82,6 +82,38 @@
           <p id="resultKicker" class="kicker"></p>
           <h2 id="resultTitle"></h2>
           <p id="resultBody"></p>
+          <section id="failureAnalysis" class="answer-analysis" aria-labelledby="analysisTitle" hidden>
+            <p class="analysis-label">错题解析</p>
+            <h3 id="analysisTitle"></h3>
+            <dl class="analysis-details">
+              <div>
+                <dt>你的答案</dt>
+                <dd id="analysisUserAnswer"></dd>
+              </div>
+              <div>
+                <dt>正确答案</dt>
+                <dd id="analysisCorrectAnswer"></dd>
+              </div>
+            </dl>
+            <p id="analysisExplanation" class="analysis-explanation"></p>
+          </section>
+          <section id="sharePanel" class="share-panel" aria-labelledby="shareTitle" hidden>
+            <div class="share-heading">
+              <div>
+                <p class="analysis-label">通关纪念</p>
+                <h3 id="shareTitle">生成排行榜图片</h3>
+              </div>
+              <p>突出你的最好成绩与排名，分享到飞书邀请同事来挑战。</p>
+            </div>
+            <div class="share-preview-frame">
+              <img id="sharePreview" alt="精益闯关排行榜分享图预览" />
+            </div>
+            <p id="shareStatus" class="share-status" role="status"></p>
+            <div class="actions share-actions">
+              <button id="shareFeishuBtn" class="primary-btn" type="button">分享到飞书</button>
+              <button id="saveShareBtn" class="secondary-btn" type="button">保存图片</button>
+            </div>
+          </section>
           <div class="actions">
             <button id="nextBtn" class="primary-btn">下一关</button>
             <button id="restartBtn" class="secondary-btn">重新开始</button>

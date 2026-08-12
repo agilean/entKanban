@@ -97,6 +97,41 @@ export function getLeanChallengePersonalBest(
   return row.durationSeconds;
 }
 
+export function getLeanChallengeRank(
+  db: ReplayDatabase,
+  userId: string,
+): number | null {
+  const row = db
+    .prepare(
+      `WITH personal_bests AS (
+         SELECT
+           s.user_id AS userId,
+           s.duration_seconds AS durationSeconds,
+           s.completed_at AS completedAt,
+           ROW_NUMBER() OVER (
+             PARTITION BY s.user_id
+             ORDER BY s.duration_seconds ASC, s.completed_at ASC
+           ) AS personalBestRow
+         FROM lean_challenge_scores s
+       ),
+       ranked AS (
+         SELECT
+           userId,
+           ROW_NUMBER() OVER (
+             ORDER BY durationSeconds ASC, completedAt ASC, userId ASC
+           ) AS currentRank
+         FROM personal_bests
+         WHERE personalBestRow = 1
+       )
+       SELECT currentRank
+       FROM ranked
+       WHERE userId = ?`,
+    )
+    .get(userId) as { currentRank: number } | undefined;
+
+  return row?.currentRank ?? null;
+}
+
 export function getLeanChallengeLeaderboard(
   db: ReplayDatabase,
   limit = 50,
@@ -123,7 +158,7 @@ export function getLeanChallengeLeaderboard(
          LEFT JOIN organizations o ON o.id = u.org_id
        )
        WHERE rn = 1
-       ORDER BY durationSeconds ASC, completedAt ASC
+       ORDER BY durationSeconds ASC, completedAt ASC, userId ASC
        LIMIT ? OFFSET ?`,
     )
     .all(limit, offset) as Array<{
