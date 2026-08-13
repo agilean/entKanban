@@ -65,6 +65,7 @@ const analysisExplanation = document.querySelector("#analysisExplanation");
 const sharePanel = document.querySelector("#sharePanel");
 const sharePreview = document.querySelector("#sharePreview");
 const shareStatus = document.querySelector("#shareStatus");
+const copyShareBtn = document.querySelector("#copyShareBtn");
 const shareFeishuBtn = document.querySelector("#shareFeishuBtn");
 const saveShareBtn = document.querySelector("#saveShareBtn");
 const nextBtn = document.querySelector("#nextBtn");
@@ -81,6 +82,7 @@ nextBtn.addEventListener("click", nextRound);
 restartBtn.addEventListener("click", resetGame);
 leanForm.addEventListener("submit", handleLeanAnswer);
 recallForm.addEventListener("submit", handleRecallAnswer);
+copyShareBtn.addEventListener("click", copyShareImage);
 shareFeishuBtn.addEventListener("click", shareChallengeImage);
 saveShareBtn.addEventListener("click", downloadShareImage);
 adminEntryLink.addEventListener("click", transferLocalScoresToAdmin);
@@ -598,6 +600,7 @@ function clearResultExtras() {
 async function prepareShareCard(summary) {
   sharePanel.hidden = false;
   shareStatus.textContent = "正在生成排行榜图片...";
+  copyShareBtn.disabled = true;
   shareFeishuBtn.disabled = true;
   saveShareBtn.disabled = true;
 
@@ -610,6 +613,7 @@ async function prepareShareCard(summary) {
     state.shareImageUrl = URL.createObjectURL(blob);
     sharePreview.src = state.shareImageUrl;
     shareStatus.textContent = "图片已生成，可直接分享或保存。";
+    copyShareBtn.disabled = false;
     shareFeishuBtn.disabled = false;
     saveShareBtn.disabled = false;
   } catch {
@@ -623,8 +627,8 @@ async function createChallengeShareImage(summary) {
   }
 
   const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1620;
+  canvas.width = 1600;
+  canvas.height = 900;
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Canvas is unavailable");
@@ -639,95 +643,78 @@ async function createChallengeShareImage(summary) {
   context.fillStyle = "#f3f7f7";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#0f5963";
-  context.fillRect(0, 0, canvas.width, 330);
+  context.fillRect(0, 0, canvas.width, 235);
   context.fillStyle = "#e67e22";
-  context.fillRect(0, 0, 18, 330);
+  context.fillRect(0, 0, 16, 235);
 
-  setCanvasFont(context, 30, 700);
-  context.fillStyle = "#bfe1dc";
-  context.fillText("精益游戏屋 · 精益闯关", 72, 78);
-  setCanvasFont(context, 72, 800);
-  context.fillStyle = "#ffffff";
-  context.fillText("我通关啦！", 72, 178);
-  setCanvasFont(context, 28, 500);
-  context.fillStyle = "#d9efec";
-  context.fillText("10 关全部完成，来和我比一比精益实力", 72, 236);
-
-  drawRoundedRect(context, 58, 272, 964, 276, 18, "#ffffff", "#d9e5e4");
   setCanvasFont(context, 24, 700);
+  context.fillStyle = "#bfe1dc";
+  context.fillText("精益游戏屋 · 精益闯关", 64, 55);
+  setCanvasFont(context, 64, 800);
+  context.fillStyle = "#ffffff";
+  context.fillText("厉害吧！来战呀！", 64, 132);
+  setCanvasFont(context, 24, 500);
+  context.fillStyle = "#d9efec";
+  context.fillText("10 关全部完成，来和我比一比精益实力", 64, 184);
+
+  drawRoundedRect(context, 845, 32, 691, 170, 16, "#ffffff");
+  setCanvasFont(context, 19, 700);
   context.fillStyle = "#69777a";
-  context.fillText("挑战者", 96, 326);
-  setCanvasFont(context, 42, 800);
+  context.fillText("挑战者", 880, 73);
+  setCanvasFont(context, 38, 800);
   context.fillStyle = "#142023";
-  drawFittedCanvasText(context, userName, 96, 382, 520);
+  drawFittedCanvasText(context, userName, 880, 125, 235);
 
-  drawRoundedRect(context, 96, 420, 348, 88, 12, "#edf7f5");
-  setCanvasFont(context, 20, 700);
-  context.fillStyle = "#4b5c60";
-  context.fillText("个人最好", 122, 454);
-  setCanvasFont(context, 34, 800);
-  context.fillStyle = "#0f5963";
-  context.fillText(formatImageDuration(bestDuration), 122, 493);
+  drawShareMetric(context, 1130, 60, 118, 112, "个人最好", formatImageDuration(bestDuration), "#edf7f5", "#0f5963");
+  drawShareMetric(context, 1262, 60, 118, 112, "当前排名", currentRank ? `第 ${currentRank} 名` : "待上榜", "#fff4e8", "#b05612");
+  drawShareMetric(context, 1394, 60, 108, 112, "完成关卡", "10 / 10", "#f6f8f8", "#142023");
 
-  drawRoundedRect(context, 464, 420, 278, 88, 12, "#fff4e8");
-  setCanvasFont(context, 20, 700);
-  context.fillStyle = "#7f4b18";
-  context.fillText("当前排名", 490, 454);
-  setCanvasFont(context, 34, 800);
-  context.fillStyle = "#b05612";
-  context.fillText(currentRank ? `第 ${currentRank} 名` : "待上榜", 490, 493);
-
-  drawRoundedRect(context, 762, 420, 220, 88, 12, "#f6f8f8");
-  setCanvasFont(context, 20, 700);
+  setCanvasFont(context, 32, 800);
+  context.fillStyle = "#142023";
+  context.fillText("通关前十排行榜", 64, 292);
+  setCanvasFont(context, 20, 500);
   context.fillStyle = "#69777a";
-  context.fillText("完成关卡", 788, 454);
-  setCanvasFont(context, 34, 800);
-  context.fillStyle = "#142023";
-  context.fillText("10 / 10", 788, 493);
+  context.fillText("每人按最好成绩排名 · 用时越短越靠前", 64, 324);
 
-  setCanvasFont(context, 34, 800);
-  context.fillStyle = "#142023";
-  context.fillText("通关前十排行榜", 64, 620);
-  setCanvasFont(context, 22, 500);
-  context.fillStyle = "#69777a";
-  context.fillText("每人按最好成绩排名 · 用时越短越靠前", 64, 660);
-
-  let rowY = 690;
+  const rowStartY = 350;
+  const rowWidth = 716;
+  const rowStep = 70;
   if (entries.length === 0) {
-    drawRoundedRect(context, 64, rowY, 952, 92, 12, "#ffffff", "#d9e5e4");
-    setCanvasFont(context, 25, 600);
+    drawRoundedRect(context, 64, rowStartY, 1472, 80, 12, "#ffffff", "#d9e5e4");
+    setCanvasFont(context, 23, 600);
     context.fillStyle = "#69777a";
-    context.fillText("排行榜数据暂未加载", 96, rowY + 57);
-    rowY += 112;
+    context.fillText("排行榜数据暂未加载", 96, rowStartY + 50);
   } else {
-    entries.forEach((entry) => {
-      drawShareLeaderboardRow(context, entry, rowY, entry.userId === state.currentUser?.id);
-      rowY += 72;
+    entries.forEach((entry, index) => {
+      const column = Math.floor(index / 5);
+      const row = index % 5;
+      const x = column === 0 ? 64 : 820;
+      const y = rowStartY + row * rowStep;
+      drawShareLeaderboardRow(context, entry, x, y, rowWidth, entry.userId === state.currentUser?.id);
     });
   }
 
   if (currentRank && currentRank > 10) {
-    setCanvasFont(context, 20, 700);
+    setCanvasFont(context, 18, 700);
     context.fillStyle = "#b05612";
-    context.fillText("我的排名", 64, rowY + 20);
-    rowY += 34;
+    context.fillText("我的排名", 64, 722);
     drawShareLeaderboardRow(context, {
       rank: currentRank,
       userName,
       orgName: state.currentUser?.orgName || "",
       durationSeconds: bestDuration
-    }, rowY, true);
+    }, 200, 735, rowWidth, true);
   }
 
   context.fillStyle = "#0f5963";
-  context.fillRect(0, 1532, 1080, 88);
-  setCanvasFont(context, 24, 700);
+  context.fillRect(0, 820, 1600, 80);
+  setCanvasFont(context, 23, 700);
   context.fillStyle = "#ffffff";
-  context.fillText("打开精益闯关，刷新你的最好成绩", 64, 1584);
-  setCanvasFont(context, 20, 500);
+  context.fillText("打开精益闯关，刷新你的最好成绩", 64, 869);
+  setCanvasFont(context, 19, 500);
   context.fillStyle = "#bfe1dc";
   context.textAlign = "right";
-  context.fillText(formatShareDate(new Date()), 1016, 1584);
+  context.fillText(formatShareDate(new Date()), 1536, 869);
   context.textAlign = "left";
 
   return new Promise((resolve, reject) => {
@@ -741,31 +728,43 @@ async function createChallengeShareImage(summary) {
   });
 }
 
-function drawShareLeaderboardRow(context, entry, y, isCurrentUser) {
+function drawShareMetric(context, x, y, width, height, label, value, background, valueColor) {
+  drawRoundedRect(context, x, y, width, height, 10, background);
+  setCanvasFont(context, 16, 700);
+  context.fillStyle = "#69777a";
+  context.textAlign = "center";
+  context.fillText(label, x + width / 2, y + 34);
+  setCanvasFont(context, 25, 800);
+  context.fillStyle = valueColor;
+  drawCenteredFittedCanvasText(context, value, x + width / 2, y + 78, width - 16);
+  context.textAlign = "left";
+}
+
+function drawShareLeaderboardRow(context, entry, x, y, width, isCurrentUser) {
   const background = isCurrentUser ? "#fff4e8" : "#ffffff";
   const border = isCurrentUser ? "#e67e22" : "#d9e5e4";
-  drawRoundedRect(context, 64, y, 952, 62, 10, background, border);
+  drawRoundedRect(context, x, y, width, 60, 10, background, border);
 
-  drawRoundedRect(context, 84, y + 11, 48, 40, 8, isCurrentUser ? "#e67e22" : "#e8f0ef");
-  setCanvasFont(context, 21, 800);
+  drawRoundedRect(context, x + 14, y + 10, 44, 40, 8, isCurrentUser ? "#e67e22" : "#e8f0ef");
+  setCanvasFont(context, 20, 800);
   context.fillStyle = isCurrentUser ? "#ffffff" : "#0f5963";
   context.textAlign = "center";
-  context.fillText(String(entry.rank), 108, y + 39);
+  context.fillText(String(entry.rank), x + 36, y + 37);
   context.textAlign = "left";
 
-  setCanvasFont(context, 23, 800);
+  setCanvasFont(context, 20, 800);
   context.fillStyle = "#142023";
-  drawFittedCanvasText(context, entry.userName || "未知用户", 158, y + 38, 470);
+  drawFittedCanvasText(context, entry.userName || "未知用户", x + 76, y + 37, 360);
   if (isCurrentUser) {
-    setCanvasFont(context, 17, 700);
+    setCanvasFont(context, 15, 700);
     context.fillStyle = "#b05612";
-    context.fillText("这是我", 650, y + 38);
+    context.fillText("这是我", x + 452, y + 37);
   }
 
-  setCanvasFont(context, 24, 800);
+  setCanvasFont(context, 21, 800);
   context.fillStyle = "#0f5963";
   context.textAlign = "right";
-  context.fillText(formatImageDuration(entry.durationSeconds), 988, y + 39);
+  context.fillText(formatImageDuration(entry.durationSeconds), x + width - 20, y + 38);
   context.textAlign = "left";
 }
 
@@ -803,6 +802,40 @@ function drawFittedCanvasText(context, value, x, y, maxWidth) {
     fitted = fitted.slice(0, -1);
   }
   context.fillText(`${fitted}…`, x, y);
+}
+
+function drawCenteredFittedCanvasText(context, value, x, y, maxWidth) {
+  const text = String(value);
+  if (context.measureText(text).width <= maxWidth) {
+    context.fillText(text, x, y);
+    return;
+  }
+
+  let fitted = text;
+  while (fitted.length > 1 && context.measureText(`${fitted}…`).width > maxWidth) {
+    fitted = fitted.slice(0, -1);
+  }
+  context.fillText(`${fitted}…`, x, y);
+}
+
+async function copyShareImage() {
+  if (!state.shareImageBlob) {
+    return;
+  }
+
+  try {
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      throw new Error("Image clipboard is unavailable");
+    }
+
+    await navigator.clipboard.write([
+      new ClipboardItem({ "image/png": state.shareImageBlob })
+    ]);
+    shareStatus.textContent = "成绩图已复制，请打开飞书会话，按 Ctrl+V 发送。";
+  } catch {
+    downloadShareImage();
+    shareStatus.textContent = "当前浏览器不支持复制图片，图片已保存，请拖入飞书会话发送。";
+  }
 }
 
 async function shareChallengeImage() {
